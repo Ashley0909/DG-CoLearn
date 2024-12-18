@@ -10,7 +10,7 @@ import torch.optim as optim
 
 from sklearn.metrics import average_precision_score
 
-from utils import get_exclusive_edges, prediction
+from utils import get_exclusive_edges, prediction, compute_mrr
 from plot_graphs import draw_graph, plot_h
 
 class FLClient:
@@ -360,7 +360,7 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
     with torch.no_grad():  # Don't need to compute gradients bc testing don't require updating weights
         if task_cfg.task_type == 'LP':
             count = 0.0 # only for getting metrics, since each client only has one batch (so dont need count for accuracy)
-            metrics = {'ap': 0.0, 'f1': 0.0, 'macro_auc': 0.0, 'micro_auc': 0.0}
+            metrics = {'ap': 0.0, 'f1': 0.0, 'macro_auc': 0.0, 'micro_auc': 0.0, 'mrr': 0.0}
             for data in fdl.fbd_list:
                 x, edge_index, edge_label_index, edge_label = data.x.to(device), data.edge_index.to(device), data.edge_label_index.to(device), data.y.to(device)
                 model_id = cm_map[data.location.id]
@@ -376,6 +376,8 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
 
                 # Compute other metrics
                 acc, ap, f1, macro_auc, micro_auc = prediction(predicted_y, edge_label.type_as(predicted_y))
+                mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
+                metrics['mrr'] += mrr
                 metrics['ap'], metrics['f1'], metrics['macro_auc'], metrics['micro_auc'] = metrics['ap'] + ap, metrics['f1'] + f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
                 client_test_acc[model_id] += acc
                 count += 1
@@ -425,7 +427,7 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
     # Local evaluation, batch-wise
     accuracy = 0.0
     count = 0
-    metrics = {'ap': 0.0, 'f1': 0.0, 'macro_auc': 0.0, 'micro_auc': 0.0}
+    metrics = {'ap': 0.0, 'f1': 0.0, 'macro_auc': 0.0, 'micro_auc': 0.0, 'mrr': 0.0}
 
     if task_cfg.task_type == 'LP':
         for data in fdl.fbd_list:
@@ -441,6 +443,8 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
                 test_sum_loss[model_id] += loss.detach().item()
 
             # Compute other metrics
+            mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
+            metrics['mrr'] += mrr
             acc, ap, f1, macro_auc, micro_auc = prediction(predicted_y, edge_label.type_as(predicted_y))
             accuracy, metrics['ap'], metrics['f1'], metrics['macro_auc'], metrics['micro_auc'] = accuracy + acc, metrics['ap'] + ap, metrics['f1'] + f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
             count += 1

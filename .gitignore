@@ -6,3 +6,4 @@ graph_output/
 stats/
 test_ap_plots/
 val_ap_plots/
+analysis.ipynb

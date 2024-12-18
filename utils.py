@@ -311,3 +311,15 @@ def prediction(pred_score, true_l):
     micro_auc = roc_auc_score(true, pred_score, average='micro')
 
     return acc, ap, f1, macro_auc, micro_auc
+
+def compute_mrr(pred_score, true_l):
+    sorted_indices = torch.argsort(pred_score, descending=True)
+    sorted_labels = true_l[sorted_indices]
+
+    true_edge_ranks = torch.where(sorted_labels == 1)[0]
+
+    reciprocal_ranks = 1.0 / (true_edge_ranks + 1)
+
+    mrr = reciprocal_ranks.mean().item()
+
+    return mrr

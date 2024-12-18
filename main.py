@@ -46,15 +46,15 @@ def main():
         else:    
             task_cfg = TaskSettings(task_type='ResNet', dataset=task2run, num_classes=100, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='nllLoss', lr=1e-2, lr_decay=5e-4)
     elif task2run == 'bitcoinOTC':
-        env_cfg = EnvSettings(n_clients=4, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.5, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
+        env_cfg = EnvSettings(n_clients=2, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.5, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset='bitcoinOTC', path='data/bitcoinOTC/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-3, lr_decay=5e-3)
-    elif task2run == 'CollegeMsg':
-        env_cfg = EnvSettings(n_clients=2, n_rounds=10, n_epochs=10, batch_size=20, train_frac=0.5, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
+    elif task2run == 'UCI':
+        env_cfg = EnvSettings(n_clients=2, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.5, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='LP', dataset='CollegeMsg', path='data/CollegeMsg/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-3, lr_decay=5e-3)
+        task_cfg = TaskSettings(task_type='LP', dataset='UCI', path='data/CollegeMsg/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-3, lr_decay=5e-3)
     else:
-        print('[Err] Invalid task name provided. Options are {boston, mnist, cifar10, cifar100, bitcoinOTC, CollegeMsg}')
+        print('[Err] Invalid task name provided. Options are {boston, mnist, cifar10, cifar100, bitcoinOTC, UCI}')
         exit(0)
 
     env_cfg.mode = task_mode

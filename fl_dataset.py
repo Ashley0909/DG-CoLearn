@@ -200,7 +200,7 @@ def load_data(task_cfg, env_cfg):
 
         task_cfg.in_dim = data[0].num_node_features
         task_cfg.out_dim = data[0].num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
-    elif task_cfg.dataset == 'CollegeMsg':
+    elif task_cfg.dataset == 'UCI':
         # path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
         # extract_gz(path, task_cfg.path)
         # os.unlink(path)
@@ -215,7 +215,7 @@ def load_data(task_cfg, env_cfg):
         task_cfg.in_dim = data[0].num_node_features
         task_cfg.out_dim = data[0].num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
     else:
-        print('E> Invalid dataset specified. Options are {Boston, mnist, cifar10, bitcoinOTC, CollegeMsg}')
+        print('E> Invalid dataset specified. Options are {Boston, mnist, cifar10, bitcoinOTC, UCI}')
         exit(-1)
 
     if isdgnn:

@@ -7,7 +7,7 @@ from utils import clustering, weighted_aggregate, merge_clients, check_ambiguous
 from plot_graphs import plot_h
     
 
-def safa_aggregate(task_cfg, models, local_shards_sizes, data_size):
+def safa_aggregate(models, local_shards_sizes, data_size):
     # Construct an empty global model using a local model
     global_model = copy.deepcopy(models[0])
     global_model_params = global_model.state_dict()  # All the parameters of each layer in the model
@@ -15,11 +15,7 @@ def safa_aggregate(task_cfg, models, local_shards_sizes, data_size):
     for name, param in global_model_params.items():
         global_model_params[name] = 0.0
 
-    if task_cfg.task_type == "LP":
-        total_data_shards = local_shards_sizes[0] + local_shards_sizes[1] + local_shards_sizes[2]
-        client_weights_val = total_data_shards / data_size
-    else:
-        client_weights_val = np.array(local_shards_sizes) / data_size
+    client_weights_val = np.array(local_shards_sizes) / data_size
 
     for lm in range(len(models)):  # For each local model
         for name, param in models[lm].state_dict().items():

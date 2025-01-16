@@ -22,14 +22,16 @@ Another important function to runs the Federated Learning process, called by `ma
 `lag`: lag tolerance for SAFA, a positive integer, e.g. 3, 5 or 10  
 `client_frac`: the fraction of clients to select in each training round, valid in (0,1]  
 `taskname`: federated machine learning task for demo, options are {boston, mnist, cifar10}
-`taskmode`: task mode introduced by me, options are {'Semi-Async', 'FedAssets', 'FLDGNN'}
+`taskmode`: task mode introduced by us, options are {'Semi-Async', 'FedAssets', 'FLDGNN-LP', 'FLDGNN-NC'}
 
 #### Examples
 `python3 main.py 0.1 5 1.0 boston Semi-Async`  
 `python3 main.py 0.3 5 0.3 mnist Semi-Async`  
 `python3 main.py 0.0 5 0.5 cifar10 FedAssets`
 `python3 main.py 0.0 5 0.3 mnist FedAssets`
-`python3 main.py 0.0 5 1.0 bitcoinOTC FLDGNN`
+`python3 main.py 0.0 5 1.0 bitcoinOTC FLDGNN-LP`
+`python3 main.py 0.0 5 1.0 DBLP3 FLDGNN-NC`
+`python3 main.py 0.0 5 1.0 Reddit FLDGNN-NC`
 
 ### Default Hyperparameters
 `benign_ratio`: 0.6

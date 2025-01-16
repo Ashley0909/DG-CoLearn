@@ -175,7 +175,7 @@ def run_FL(env_cfg, task_cfg, global_mod, cm_map, data_size, fed_data_train, fed
          global_model, benign = fedassets_aggregate(rd, cache, selected_ids, client_shard_sizes, data_size, mali_map)
          benign_clients.extend(benign)
       else:
-         global_model = safa_aggregate(task_cfg, cache, client_shard_sizes, data_size)
+         global_model = safa_aggregate(cache, client_shard_sizes, data_size)
       update_cloud_cache(cache, local_models, undrafted_ids)
 
       # Versioning
@@ -315,10 +315,7 @@ def run_FedAssets(env_cfg, task_cfg, global_mod, cm_map, data_size, fed_data_tra
    
    return best_model, best_round, best_loss
 
-def run_DGNN(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap):
-   """
-      data size: the number of positive and negative edges
-   """
+def run_dylp(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap):
    # Initialise
    global_model = global_mod
    local_models = [None for _ in range(env_cfg.n_clients)]
@@ -386,7 +383,7 @@ def run_DGNN(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
 
       # Aggregate Local Models
       update_cloud_cache(cache, local_models, client_ids)
-      global_model = safa_aggregate(task_cfg, cache, client_shard_sizes, data_size)
+      global_model = safa_aggregate(cache, client_shard_sizes, data_size)
       print("Aggregated Model")
       
       # Global Test

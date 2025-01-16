@@ -2,14 +2,17 @@ import os
 import copy
 import numpy as np
 import random
+import math
 import torch
+from collections import defaultdict
 from PIL import Image
 from torchvision import transforms
 from torchvision import datasets as torch_datasets
-from torchvision.transforms import ToTensor, Normalize, RandomCrop, RandomHorizontalFlip
 from torch_geometric import datasets as torchgeometric_datasets
+from torch_geometric.data import Data
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import negative_sampling
+from itertools import permutations
 
 from fl_clients import FLClient, FLBackdoorClient, EdgeDevice
 from utils import sample_dirichlet, normalize, process_data
@@ -29,7 +32,7 @@ class FLBaseDataset:
         assert isinstance(client, FLClient) or isinstance(client, FLBackdoorClient)
         self.location = client
 
-class FLGNNDataset:
+class FLLPDataset:
     def __init__(self, x, edge_index, edge_label_index, edge_label, previous_edge_index, client=None):
         self.x = x
         self.edge_index = edge_index  # edge_indces of pos edges
@@ -49,9 +52,26 @@ class FLGNNDataset:
         assert isinstance(client, EdgeDevice)
         self.location = client
 
+class FLNCDataset:
+    def __init__(self, x, subnodes, edge_index, previous_edge_index, y, client=None):
+        self.x = x
+        self.subnodes = subnodes
+        self.edge_index = edge_index
+        self.previous_edge_index = previous_edge_index
+        self.y = y
+        self.location = client
+
+    def __len__(self):
+        return len(self.x)
+    
+    def bind(self, client):
+        """ Bind the dataset to a client """
+        assert isinstance(client, EdgeDevice)
+        self.location = client
+
 class FLFedDataset:
     def __init__(self, fbd_list):
-        self.fbd_list = fbd_list  # a list of FLBaseDatasets / FLGNNDataset 
+        self.fbd_list = fbd_list  # a list of FLBaseDatasets / FLLPDataset 
         self.total_datasize = 0
         for fbd in self.fbd_list:
             self.total_datasize += len(fbd)  # mnist: train=60000, test=10000
@@ -151,11 +171,10 @@ class FLGNNDataLoader:
         raise StopIteration
 
 def load_data(task_cfg, env_cfg):
-    if task_cfg.dataset == 'Boston':
+    if task_cfg.dataset == 'boston':
         data = np.loadtxt(task_cfg.path, delimiter=',', skiprows=1)
         data = normalize(data)
         data_merged = True
-        isdgnn = False
     elif task_cfg.dataset == 'mnist':
         # ref: https://github.com/pytorch/examples/blob/master/mnist/main.py
         mnist_train = torch_datasets.MNIST('data/mnist/', train=True, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]))
@@ -167,7 +186,7 @@ def load_data(task_cfg, env_cfg):
 
         train_data_size, test_data_size = len(train_x), len(test_x)
         data_size = train_data_size + test_data_size
-        data_merged, isdgnn = False, False
+        data_merged = False
     elif task_cfg.dataset == 'cifar10':
         cifar10_train = torch_datasets.CIFAR10('data/cifar10/', train=True, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]))
         cifar10_test = torch_datasets.CIFAR10('data/cifar10/', train=False, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]))
@@ -178,7 +197,7 @@ def load_data(task_cfg, env_cfg):
 
         train_data_size, test_data_size = len(train_x), len(test_x)
         data_size = train_data_size + test_data_size
-        data_merged, isdgnn = False, False
+        data_merged = False
     elif task_cfg.dataset == 'cifar100':
         cifar100_train = torch_datasets.CIFAR100('data/cifar100/', train=True, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]))
         cifar100_test = torch_datasets.CIFAR100('data/cifar100/', train=False, download=True, transform=transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]))
@@ -189,66 +208,10 @@ def load_data(task_cfg, env_cfg):
 
         train_data_size, test_data_size = len(train_x), len(test_x)
         data_size = train_data_size + test_data_size
-        data_merged, isdgnn = False, False
-    elif task_cfg.dataset == 'bitcoinOTC':
-        data = torchgeometric_datasets.BitcoinOTC(task_cfg.path)
-        num_snapshots = len(data)
-        hidden_conv1, hidden_conv2 = 64, 32
-        last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]),torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
-        weights = torch.zeros(data[0].num_nodes)
-        isdgnn, data_merged = True, False
-
-        task_cfg.in_dim = data[0].num_node_features
-        task_cfg.out_dim = data[0].num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
-    elif task_cfg.dataset == 'UCI':
-        # path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
-        # extract_gz(path, task_cfg.path)
-        # os.unlink(path)
-        txt_path = os.path.join(task_cfg.path, "CollegeMsg.txt")
-        data = process_data(txt_path)
-        num_snapshots = len(data)
-        hidden_conv1, hidden_conv2 = 64, 32
-        last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
-        weights = torch.zeros(data[0].num_nodes)
-        isdgnn, data_merged = True, False
-
-        task_cfg.in_dim = data[0].num_node_features
-        task_cfg.out_dim = data[0].num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
+        data_merged = False
     else:
-        print('E> Invalid dataset specified. Options are {Boston, mnist, cifar10, bitcoinOTC, UCI}')
+        print('E> Invalid dataset specified. Options are {boston, mnist, cifar10, cifar100}')
         exit(-1)
-
-    if isdgnn:
-        """ Distribute Subnodes """
-        # Shuffle node indices for subnode allocation
-        rand_node_idc = torch.randperm(data[0].num_nodes).tolist()
-
-        subnodes_split, subnodes_list = [0], []
-        if env_cfg.data_dist[0] == 'E': # Case 1: Equal Distribution in terms of Number of Nodes
-            subnode_eq = int(data[0].num_nodes / env_cfg.n_clients)
-            for i in range(env_cfg.n_clients):
-                subnodes_split.append((i+1) * subnode_eq)
-        elif env_cfg.data_dist[0] == 'N': # Case 2: Normal Distribution in terms of Number of Nodes
-            mu= data[0].num_nodes / env_cfg.n_clients
-            sigma = env_cfg.data_dist[1] * mu
-            node_shardsizes = generate_shard_sizes(env_cfg.n_clients, data[0].num_nodes, mu, sigma)
-
-            last_point = 0
-            for split in node_shardsizes:
-                subnodes_split.append(last_point + int(split))
-                last_point += int(split)
-
-            subnodes_split[-1] = data[0].num_nodes
-
-        for i in range(env_cfg.n_clients):
-            client_subnodes = rand_node_idc[subnodes_split[i]: subnodes_split[i+1]]
-            client_subnodes.sort()
-            subnodes_list.append(client_subnodes)
-
-        """ Split each snapshot into train, val and test """
-        train_list, val_list, test_list, data_size = partition_data("test-temporal", num_snapshots, data)
-
-        return num_snapshots, train_list, val_list, test_list, data_size, last_embeddings, weights, subnodes_list
     
     # Partition Data
     if data_merged:
@@ -263,11 +226,71 @@ def load_data(task_cfg, env_cfg):
     
     return train_x, train_y, test_x, test_y, data_size
 
-def partition_data(mode, num_snapshots, data):
+def load_lp_data(task_cfg):
+    if task_cfg.dataset == 'bitcoinOTC':
+        data = torchgeometric_datasets.BitcoinOTC(task_cfg.path)
+    elif task_cfg.dataset == 'UCI':
+        # path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
+        # extract_gz(path, task_cfg.path)
+        # os.unlink(path)
+        txt_path = os.path.join(task_cfg.path, "CollegeMsg.txt")
+        data = process_data(txt_path)
+    else:
+        print('E> Invalid link prediction dataset specified. Options are {bitcoinOTC, UCI}')
+        exit(-1)
+
+    num_snapshots = len(data)
+    hidden_conv1, hidden_conv2 = 64, 32
+    last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]),torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
+    weights = torch.zeros(data[0].num_nodes)
+    task_cfg.in_dim = data[0].num_node_features
+    task_cfg.out_dim = data[0].num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
+
+    """ Split each snapshot into train, val and test """
+    train_list, val_list, test_list, data_size = partition_lp_data("test-temporal", num_snapshots, data)
+
+    return num_snapshots, train_list, val_list, test_list, data_size, {'last_embeddings': last_embeddings, 'weights': weights, 'num_nodes': data[0].num_nodes}
+
+def load_nc_data(task_cfg):
+    data = np.load('./data/{}.npz'.format(task_cfg.dataset))
+    adjs = data['adjs']
+    feature = data['attmats']
+    label = data['labels']
+    assert adjs.shape[1] == adjs.shape[2] == feature.shape[0] == label.shape[0]
+    assert adjs.shape[0] == feature.shape[1]
+    num_timesteps = adjs.shape[0]
+    hidden_conv1, hidden_conv2 = 64, 32
+    num_nodes = feature.shape[0]
+    print("total number of nodes", num_nodes)
+    last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
+    weights = torch.zeros(num_nodes)
+    task_cfg.in_dim = feature.shape[2]
+    task_cfg.out_dim = num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
+
+    for node in range(num_nodes):
+        adjs[:, node, node] = 0
+    adjs = [adjs[t, :, :] for t in range(adjs.shape[0])]
+    feature = [feature[:, t, :] for t in range(feature.shape[1])]
+    label = np.argmax(label, axis=1)
+    task_cfg.num_classes = max(label) + 1
+    adjs = [torch.tensor(adj, dtype=torch.long).to_sparse() for adj in adjs]
+    indices = [adj.indices() for adj in adjs]
+    graph_snapshots = [Data(edge_index=index, num_nodes=num_nodes) for index in indices]
+    feature = [torch.tensor(feat, dtype=torch.float) for feat in feature]
+    label = torch.tensor(label, dtype=torch.long)
+    for graph, feat in zip(graph_snapshots, feature):
+        graph.x = feat
+        graph.y = label
+
+    return num_timesteps, graph_snapshots, {'last_embeddings': last_embeddings, 'weights': weights, 'num_nodes': num_nodes, 'y': label}
+
+def partition_lp_data(mode, num_snapshots, data):
     """ Partition data in train, val and test according to different scenarios:
         real-life: clients do not have t+1 data to validation (train and val both in time t)
         test-temporal: clients test the models on generalising future performance (val and test both in time t+1)
         ideal: clients train using t, val using t+1 and test using t+2
+
+        Split edges in each snapshot
     """
     all_modes = {"real-life", "test-temporal", "ideal"}
     train_list, val_list, test_list, data_size, num_previous_edges = [], [], [], [], [0]
@@ -284,7 +307,7 @@ def partition_data(mode, num_snapshots, data):
                 print("Invalid Mode, Split according to Real-Life mode")
             transform = RandomLinkSplit(num_val=0.25,num_test=0.0)  # RandomLinkSplit also sample/generates negative edges (same ratio as positive edges)
             train_data, val_data, _ = transform(current)
-            """ CAUTION: Since the edge index is not modified, the size for edge_index and the rest (edge_label = edge_label_index) are different """
+            """ CAUTION: The edge index is not modified, only edge_label = edge_label_index are split """
         
             test_data = copy.deepcopy(data[i+1])
             test_data.x = torch.Tensor([[1] for _ in range(test_data.num_nodes)])
@@ -358,7 +381,7 @@ def poison_data(task_cfg, x, y, poisoning_rate=0.7, target_label=9):
 
     return x,y
 
-def get_FL_datasets(train_x, train_y, test_x, test_y, env_cfg, task_cfg, clients, from_file=None):
+def get_clientdata(train_x, train_y, test_x, test_y, env_cfg, task_cfg, clients, from_file=None):
     """ Build federated datasets for each client """
     train_size = len(train_x)
     test_size = len(test_x)
@@ -484,109 +507,179 @@ def get_FL_datasets(train_x, train_y, test_x, test_y, env_cfg, task_cfg, clients
 
     return fed_data_train, fed_data_test, client_shards_sizes
 
-def get_random_FLGNN_datasets(train, val, test, env_cfg, clients, from_file=None):
-    """ Build GNN federated datasets for each client """
-    n_clients = env_cfg.n_clients
-    client_train_data, client_val_data, client_test_data = [], [], [] # list of FLGNNDatasets
-    client_shards_sizes = [[],[],[]] # number of pos and neg edges in train, val and test respectively
+def allocate_clientsubnodes(env_cfg, arg):
+    """ Distribute Subnodes to Clients """
+    subnodes_split, subnodes_list = [0], []
+    num_nodes = arg['num_nodes']
 
-    # train and validation have the same Edge_Index size
-    ei_train_size, ei_val_size, ei_test_size = train.edge_index.shape[1], val.edge_index.shape[1], test.edge_index.shape[1]
-    ei_train_split, ei_val_split, ei_test_split = [0], [0], [0]
+    if env_cfg.mode == "FLDGNN-LP":
+        # Shuffle node indices for subnode allocation
+        rand_node_idc = torch.randperm(num_nodes).tolist()
 
-    # train, validation and test have different Edge_Label size (= Edge_Label_Index size)
-    el_train_size, el_val_size, el_test_size = train.edge_label.shape[0], val.edge_label.shape[0], test.edge_label.shape[0]
-    el_train_split, el_val_split, el_test_split = [0], [0], [0]
+        if env_cfg.data_dist[0] == 'E': # Case 1: Equal Distribution in terms of Number of Nodes
+            subnode_eq = int(num_nodes / env_cfg.n_clients)
+            for i in range(env_cfg.n_clients):
+                subnodes_split.append((i+1) * subnode_eq)
+        elif env_cfg.data_dist[0] == 'N': # Case 2: Normal Distribution in terms of Number of Nodes
+            mu= num_nodes / env_cfg.n_clients
+            sigma = env_cfg.data_dist[1] * mu
+            node_shardsizes = generate_shard_sizes(env_cfg.n_clients, num_nodes, mu, sigma)
 
-    if env_cfg.shuffle: # Shuffle the data before splitting if necessary (Definitely have to, or else the first few snapshots will not have negative edges, vice versa for the last few snapshots)
-        # No need to shuffle edge_index and x, just need to shuffle edge_label and edge_label_index (should keep their correspondance as well)
-        train_rand_idc = torch.randperm(el_train_size).tolist()
-        val_rand_idc = torch.randperm(el_val_size).tolist()
-        test_rand_idc = torch.randperm(el_test_size).tolist()
+            last_point = 0
+            for split in node_shardsizes:
+                subnodes_split.append(last_point + int(split))
+                last_point += int(split)
 
-        train.edge_label = train.edge_label[train_rand_idc]
-        val.edge_label = val.edge_label[val_rand_idc]
-        test.edge_label = test.edge_label[test_rand_idc]
-        train.edge_label_index = train.edge_label_index[:, train_rand_idc]
-        val.edge_label_index = val.edge_label_index[:, val_rand_idc]
-        test.edge_label_index = test.edge_label_index[:, test_rand_idc]
+            subnodes_split[-1] = num_nodes
 
-
-    if env_cfg.data_dist[0] == 'E': # Case 1: Equal Distribution
-        ei_eq_train, ei_eq_val, ei_eq_test = int(ei_train_size / n_clients), int(ei_val_size / n_clients), int(ei_test_size / n_clients)
-        el_eq_train, el_eq_val, el_eq_test = int(el_train_size / n_clients), int(el_val_size / n_clients), int(el_test_size / n_clients)
         for i in range(env_cfg.n_clients):
-            ei_train_split.append((i+1) * ei_eq_train)
-            ei_val_split.append((i+1) * ei_eq_val)
-            ei_test_split.append((i+1) * ei_eq_test)
-            el_train_split.append((i+1) * el_eq_train)
-            el_val_split.append((i+1) * el_eq_val)
-            el_test_split.append((i+1) * el_eq_test)
+            client_subnodes = rand_node_idc[subnodes_split[i]: subnodes_split[i+1]]
+            client_subnodes.sort()
+            subnodes_list.append(client_subnodes)
 
-            client_shards_sizes[0].append(el_eq_train) # shard size is to record the number of pos and neg edges => edge_label size
-            client_shards_sizes[1].append(el_eq_val)
-            client_shards_sizes[2].append(el_eq_test)
-    elif env_cfg.data_dist[0] == 'N': # Case 2: Normal Distribution
-        # Consider Edge_Index
-        mu_train, mu_val, mu_test = ei_train_size/n_clients, ei_val_size/n_clients, ei_test_size/n_clients
-        sigma_train, sigma_val, sigma_test = env_cfg.data_dist[1]*mu_train, env_cfg.data_dist[1]*mu_val, env_cfg.data_dist[1]*mu_test
+    elif env_cfg.mode == "FLDGNN-NC":
+        if env_cfg.data_dist[0] == 'E': # Case 1: Equal Distribution in terms of Number of Nodes
+            rand_node_idc = torch.randperm(num_nodes).tolist()
+            subnode_eq = int(num_nodes / env_cfg.n_clients)
+            for i in range(env_cfg.n_clients):
+                subnodes_split.append((i+1) * subnode_eq)
 
-        train_shardsizes = generate_shard_sizes(n_clients, ei_train_size, mu_train, sigma_train)
-        val_shardsizes = generate_shard_sizes(n_clients, ei_val_size, mu_val, sigma_val)
-        test_shardsizes = generate_shard_sizes(n_clients, ei_test_size, mu_test, sigma_test)
+            for i in range(env_cfg.n_clients):
+                client_subnodes = rand_node_idc[subnodes_split[i]: subnodes_split[i+1]]
+                client_subnodes.sort()
+                subnodes_list.append(client_subnodes)
+        elif env_cfg.data_dist[0] == 'Label': # Case 2: Label-skew Distribution, nodes are divided by labels
+            y = arg['y']
+            unique_labels = torch.unique(y)
+            node_by_label = defaultdict(list)
+            node_indices = np.arange(num_nodes)
+            for node in node_indices:
+                node_by_label[y[node].item()].append(node)
 
-        # compose train and test partitions separately
-        last_point_train, last_point_val, last_point_test = 0, 0, 0
-        for s_train, s_val, s_test in zip(train_shardsizes, val_shardsizes, test_shardsizes):
-            ei_train_split.append(last_point_train + int(s_train))
-            last_point_train += int(s_train)
-            ei_val_split.append(last_point_val + int(s_val))
-            last_point_val += int(s_val)
-            ei_test_split.append(last_point_test + int(s_test))
-            last_point_test += int(s_test)
+            aval_perm = list(permutations(unique_labels.numpy(), 2)) # output all the possible permutation of 2 given the unique labels
 
-        # round up to pre-determined sizes
-        ei_train_split[-1], ei_val_split[-1], ei_test_split[-1] = ei_train_size, ei_val_size, ei_test_size
+            all_assigned_nodes = set()
+            subnodes_list = []
 
-        # Consider Edge_Label or Edge_Label_Index
-        mu_train, mu_val, mu_test = el_train_size/n_clients, el_val_size/n_clients, el_test_size/n_clients
-        sigma_train, sigma_val, sigma_test = env_cfg.data_dist[1]*mu_train, env_cfg.data_dist[1]*mu_val, env_cfg.data_dist[1]*mu_test
+            for i in range(env_cfg.n_clients):
+                idx = random.randrange(len(aval_perm)) # pick one permutation as the majority label pair
+                majority_labels = aval_perm.pop(idx)
+                pick_nodes = [] # all the available nodes for the client to choose from
+                for label in majority_labels:
+                    pick_nodes += node_by_label[label]
 
-        train_shardsizes = generate_shard_sizes(n_clients, el_train_size, mu_train, sigma_train)
-        val_shardsizes = generate_shard_sizes(n_clients, el_val_size, mu_val, sigma_val)
-        test_shardsizes = generate_shard_sizes(n_clients, el_test_size, mu_test, sigma_test)
+                pick_nodes = list(set(pick_nodes) - all_assigned_nodes)
+                majority_sample = math.floor(len(pick_nodes) * 0.8) # Client takes 80% of the majoirty data to form its dataset
+                other_samples = math.ceil(len(pick_nodes) * 0.2)    # For the remaining client data, we take from other labels
+                client_nodes = random.sample(pick_nodes, majority_sample)
+                all_assigned_nodes.update(client_nodes)
+                other_nodes = random.sample(np.setdiff1d(node_indices, list(all_assigned_nodes)).tolist(), other_samples)
+                all_assigned_nodes.update(other_nodes)
+                client_nodes = client_nodes + other_nodes
+                subnodes_list.append(client_nodes)
+                print(f'Client {i} has {len(client_nodes)} nodes')
 
-        # Use Edge_Label size to generate client_shard_sizes
-        client_shards_sizes[0] = train_shardsizes
-        client_shards_sizes[1] = val_shardsizes
-        client_shards_sizes[2] = test_shardsizes # will there be a problem that it is a numpy array?
+    return subnodes_list
 
-        # compose train, val and test partitions separately
-        last_point_train, last_point_val, last_point_test = 0, 0, 0
-        for s_train, s_val, s_test in zip(train_shardsizes, val_shardsizes, test_shardsizes):
-            el_train_split.append(last_point_train + int(s_train))
-            last_point_train += int(s_train)
-            el_val_split.append(last_point_val + int(s_val))
-            last_point_val += int(s_val)
-            el_test_split.append(last_point_test + int(s_test))
-            last_point_test += int(s_test)
+def get_random_clientdata(train, val, test, env_cfg, clients):
+    """ Build GNN federated datasets for each client by randomly allocating edges """
+    if env_cfg.mode == "FLDGNN-LP":
+        n_clients = env_cfg.n_clients
+        client_train_data, client_val_data, client_test_data = [], [], [] # list of FLGNNDatasets
+        client_shards_sizes = [] # number of pos and neg edges in train + val + test
 
-    # Allocate Dataset Instance
-    for i in range(env_cfg.n_clients):
-        client_train_data.append(FLGNNDataset(train.x, train.edge_index[:, ei_train_split[i]: ei_train_split[i+1]], train.edge_label_index[:, el_train_split[i]: el_train_split[i+1]],
-                                            train.edge_label[el_train_split[i]: el_train_split[i+1]], clients[i].prev_edge_index))
-        client_val_data.append(FLGNNDataset(val.x, val.edge_index[:, ei_val_split[i]: ei_val_split[i+1]], val.edge_label_index[:, el_val_split[i]: el_val_split[i+1]],
-                                            val.edge_label[el_val_split[i]: el_val_split[i+1]], clients[i].prev_edge_index))
-        client_test_data.append(FLGNNDataset(test.x, test.edge_index[:, ei_test_split[i]: ei_test_split[i+1]], test.edge_label_index[:, el_test_split[i]: el_test_split[i+1]],
-                                            test.edge_label[el_test_split[i]: el_test_split[i+1]], clients[i].prev_edge_index))
-                
-        # allocate the BaseDataset to clients
-        client_train_data[i].bind(clients[i])
-        client_val_data[i].bind(clients[i])
-        client_test_data[i].bind(clients[i])
+        # train and validation have the same Edge_Index size
+        ei_train_size, ei_val_size, ei_test_size = train.edge_index.shape[1], val.edge_index.shape[1], test.edge_index.shape[1]
+        ei_train_split, ei_val_split, ei_test_split = [0], [0], [0]
 
-        # record edge index for next snapshot
-        clients[i].prev_edge_index = train.edge_index[:, ei_train_split[i]: ei_train_split[i+1]]
+        # train, validation and test have different Edge_Label size (= Edge_Label_Index size)
+        el_train_size, el_val_size, el_test_size = train.edge_label.shape[0], val.edge_label.shape[0], test.edge_label.shape[0]
+        el_train_split, el_val_split, el_test_split = [0], [0], [0]
+
+        if env_cfg.shuffle: # Shuffle the data before splitting if necessary (Definitely have to, or else the first few snapshots will not have negative edges, vice versa for the last few snapshots)
+            # No need to shuffle edge_index and x, just need to shuffle edge_label and edge_label_index (should keep their correspondance as well)
+            train_rand_idc = torch.randperm(el_train_size).tolist()
+            val_rand_idc = torch.randperm(el_val_size).tolist()
+            test_rand_idc = torch.randperm(el_test_size).tolist()
+
+            train.edge_label = train.edge_label[train_rand_idc]
+            val.edge_label = val.edge_label[val_rand_idc]
+            test.edge_label = test.edge_label[test_rand_idc]
+            train.edge_label_index = train.edge_label_index[:, train_rand_idc]
+            val.edge_label_index = val.edge_label_index[:, val_rand_idc]
+            test.edge_label_index = test.edge_label_index[:, test_rand_idc]
+
+        if env_cfg.data_dist[0] == 'E': # Case 1: Equal Distribution
+            ei_eq_train, ei_eq_val, ei_eq_test = int(ei_train_size / n_clients), int(ei_val_size / n_clients), int(ei_test_size / n_clients)
+            el_eq_train, el_eq_val, el_eq_test = int(el_train_size / n_clients), int(el_val_size / n_clients), int(el_test_size / n_clients)
+            for i in range(env_cfg.n_clients):
+                ei_train_split.append((i+1) * ei_eq_train)
+                ei_val_split.append((i+1) * ei_eq_val)
+                ei_test_split.append((i+1) * ei_eq_test)
+                el_train_split.append((i+1) * el_eq_train)
+                el_val_split.append((i+1) * el_eq_val)
+                el_test_split.append((i+1) * el_eq_test)
+
+                client_shards_sizes.append(el_eq_train + el_eq_val + el_eq_test) # shard size is to record the number of pos and neg edges => edge_label size
+        elif env_cfg.data_dist[0] == 'N': # Case 2: Normal Distribution
+            # Consider Edge_Index
+            mu_train, mu_val, mu_test = ei_train_size/n_clients, ei_val_size/n_clients, ei_test_size/n_clients
+            sigma_train, sigma_val, sigma_test = env_cfg.data_dist[1]*mu_train, env_cfg.data_dist[1]*mu_val, env_cfg.data_dist[1]*mu_test
+
+            train_shardsizes = generate_shard_sizes(n_clients, ei_train_size, mu_train, sigma_train)
+            val_shardsizes = generate_shard_sizes(n_clients, ei_val_size, mu_val, sigma_val)
+            test_shardsizes = generate_shard_sizes(n_clients, ei_test_size, mu_test, sigma_test)
+
+            # compose train and test partitions separately
+            last_point_train, last_point_val, last_point_test = 0, 0, 0
+            for s_train, s_val, s_test in zip(train_shardsizes, val_shardsizes, test_shardsizes):
+                ei_train_split.append(last_point_train + int(s_train))
+                last_point_train += int(s_train)
+                ei_val_split.append(last_point_val + int(s_val))
+                last_point_val += int(s_val)
+                ei_test_split.append(last_point_test + int(s_test))
+                last_point_test += int(s_test)
+
+            # round up to pre-determined sizes
+            ei_train_split[-1], ei_val_split[-1], ei_test_split[-1] = ei_train_size, ei_val_size, ei_test_size
+
+            # Consider Edge_Label or Edge_Label_Index
+            mu_train, mu_val, mu_test = el_train_size/n_clients, el_val_size/n_clients, el_test_size/n_clients
+            sigma_train, sigma_val, sigma_test = env_cfg.data_dist[1]*mu_train, env_cfg.data_dist[1]*mu_val, env_cfg.data_dist[1]*mu_test
+
+            train_shardsizes = generate_shard_sizes(n_clients, el_train_size, mu_train, sigma_train)
+            val_shardsizes = generate_shard_sizes(n_clients, el_val_size, mu_val, sigma_val)
+            test_shardsizes = generate_shard_sizes(n_clients, el_test_size, mu_test, sigma_test)
+
+            # Use Edge_Label size to generate client_shard_sizes
+            client_shards_sizes.append(train_shardsizes + val_shardsizes + test_shardsizes)
+
+            # compose train, val and test partitions separately
+            last_point_train, last_point_val, last_point_test = 0, 0, 0
+            for s_train, s_val, s_test in zip(train_shardsizes, val_shardsizes, test_shardsizes):
+                el_train_split.append(last_point_train + int(s_train))
+                last_point_train += int(s_train)
+                el_val_split.append(last_point_val + int(s_val))
+                last_point_val += int(s_val)
+                el_test_split.append(last_point_test + int(s_test))
+                last_point_test += int(s_test)
+
+        # Allocate Dataset Instance
+        for i in range(env_cfg.n_clients):
+            client_train_data.append(FLLPDataset(train.x, train.edge_index[:, ei_train_split[i]: ei_train_split[i+1]], train.edge_label_index[:, el_train_split[i]: el_train_split[i+1]],
+                                                train.edge_label[el_train_split[i]: el_train_split[i+1]], clients[i].prev_edge_index))
+            client_val_data.append(FLLPDataset(val.x, val.edge_index[:, ei_val_split[i]: ei_val_split[i+1]], val.edge_label_index[:, el_val_split[i]: el_val_split[i+1]],
+                                                val.edge_label[el_val_split[i]: el_val_split[i+1]], clients[i].prev_edge_index))
+            client_test_data.append(FLLPDataset(test.x, test.edge_index[:, ei_test_split[i]: ei_test_split[i+1]], test.edge_label_index[:, el_test_split[i]: el_test_split[i+1]],
+                                                test.edge_label[el_test_split[i]: el_test_split[i+1]], clients[i].prev_edge_index))
+                    
+            # allocate the BaseDataset to clients
+            client_train_data[i].bind(clients[i])
+            client_val_data[i].bind(clients[i])
+            client_test_data[i].bind(clients[i])
+
+            # record edge index for next snapshot
+            clients[i].prev_edge_index = train.edge_index[:, ei_train_split[i]: ei_train_split[i+1]]
 
     fed_data_train = FLFedDataset(client_train_data)
     fed_data_val = FLFedDataset(client_val_data)
@@ -594,25 +687,26 @@ def get_random_FLGNN_datasets(train, val, test, env_cfg, clients, from_file=None
 
     return fed_data_train, fed_data_val, fed_data_test, client_shards_sizes
 
-def get_effi_FLGNN_datasets(train, val, test, env_cfg, clients):
-    """ Build GNN federated datasets for each client """
-    client_train_data, client_val_data, client_test_data = [], [], [] # list of FLGNNDatasets
-    client_shards_sizes = [[],[],[]] # number of pos and neg edges in train, val and test respectively
+def get_effi_clientdata(train, val, test, env_cfg, clients, subnode_list):
+    """
+        A more efficient way to learn graphs through meaningful edge splitting. Given subnodes of each clients to start with, allocate relevant edges to the client for each snapshot
+    """
+    client_train_data, client_val_data, client_test_data = [], [], [] # list of FLLPDatasets
+    # Build GNN federated datasets for each client
+    client_shards_sizes = [] # number of pos and neg edges in train + val + test
 
-    """ Allocate Edges according Subnodes """
-    # Allocate Dataset Instance
+    # Allocate Edges according Subnodes
     for i in range(env_cfg.n_clients):
+        clients[i].subnodes = subnode_list[i]
         subnodes_tensor = torch.tensor(clients[i].subnodes)
         ei_train_idc, ei_val_idc, ei_test_idc = torch.where(torch.isin(train.edge_index[1], subnodes_tensor))[0], torch.where(torch.isin(val.edge_index[1], subnodes_tensor))[0], torch.where(torch.isin(test.edge_index[1], subnodes_tensor))[0]
         el_train_idc, el_val_idc, el_test_idc = torch.where(torch.isin(train.edge_label_index[1], subnodes_tensor))[0], torch.where(torch.isin(val.edge_label_index[1], subnodes_tensor))[0], torch.where(torch.isin(test.edge_label_index[1], subnodes_tensor))[0]
         
-        client_shards_sizes[0].append(len(el_train_idc))
-        client_shards_sizes[1].append(len(el_val_idc))
-        client_shards_sizes[2].append(len(el_test_idc))
+        client_shards_sizes.append(len(el_train_idc)+len(el_val_idc)+len(el_test_idc))
 
-        client_train_data.append(FLGNNDataset(train.x, train.edge_index[:, ei_train_idc], train.edge_label_index[:, el_train_idc], train.edge_label[el_train_idc], clients[i].prev_edge_index))
-        client_val_data.append(FLGNNDataset(val.x, val.edge_index[:, ei_val_idc], val.edge_label_index[:, el_val_idc], val.edge_label[el_val_idc], clients[i].prev_edge_index))
-        client_test_data.append(FLGNNDataset(test.x, test.edge_index[:, ei_test_idc], test.edge_label_index[:, el_test_idc], test.edge_label[el_test_idc], clients[i].prev_edge_index))
+        client_train_data.append(FLLPDataset(train.x, train.edge_index[:, ei_train_idc], train.edge_label_index[:, el_train_idc], train.edge_label[el_train_idc], clients[i].prev_edge_index))
+        client_val_data.append(FLLPDataset(val.x, val.edge_index[:, ei_val_idc], val.edge_label_index[:, el_val_idc], val.edge_label[el_val_idc], clients[i].prev_edge_index))
+        client_test_data.append(FLLPDataset(test.x, test.edge_index[:, ei_test_idc], test.edge_label_index[:, el_test_idc], test.edge_label[el_test_idc], clients[i].prev_edge_index))
                 
         # allocate the BaseDataset to clients
         client_train_data[i].bind(clients[i])
@@ -622,15 +716,80 @@ def get_effi_FLGNN_datasets(train, val, test, env_cfg, clients):
         # record edge index for next snapshot
         clients[i].prev_edge_index = train.edge_index[:, ei_train_idc]
 
-    client_shards_sizes[0] = np.array(client_shards_sizes[0])
-    client_shards_sizes[1] = np.array(client_shards_sizes[1])
-    client_shards_sizes[2] = np.array(client_shards_sizes[2])
+    client_shards_sizes = np.array(client_shards_sizes)
 
     fed_data_train = FLFedDataset(client_train_data)
     fed_data_val = FLFedDataset(client_val_data)
     fed_data_test = FLFedDataset(client_test_data)
 
     return fed_data_train, fed_data_val, fed_data_test, client_shards_sizes
+
+def get_nc_clientdata(env_cfg, t, data, clients, subnode_list, mode):
+    """ 
+        Partition data in train, val and test according to different scenarios:
+            real-life: clients do not have t+1 data to validation (train and val both in time t)
+            test-temporal: clients test the models on generalising future performance (val and test both in time t+1)
+    """
+    client_train_data, client_val_data, client_test_data = [], [], [] # list of FLGNNDatasets
+    client_shard_sizes = []
+    g_0 = data[t]
+    g_1 = data[t+1]
+    data_size = g_0.num_nodes
+    for i in range(env_cfg.n_clients):
+        subnodes = subnode_list[i]
+        num_nodes = len(subnodes)
+        clients[i].subnodes = subnodes
+        perm = torch.tensor(subnodes)
+        # perm = torch.randperm(num_nodes)
+
+        # Split nodes into train, val and test
+        if mode == "real-life":
+            train_ratio, val_ratio = 0.75, 0.25
+            train_boundary = math.floor(num_nodes * train_ratio)
+            val_boundary = math.floor(num_nodes * (train_ratio + val_ratio))
+            train_idx, _ = torch.sort(perm[:train_boundary])
+            val_idx, _ = torch.sort(perm[train_boundary:val_boundary])
+            train_adj_idx = torch.where(torch.isin(g_0.edge_index[1], train_idx))[0]
+            val_adj_idx = torch.where(torch.isin(g_0.edge_index[1], val_idx))[0]
+
+            client_train_data.append(FLNCDataset(g_0.x[train_idx], train_idx, g_0.edge_index[:, train_adj_idx], clients[i].prev_edge_index, g_0.y[train_idx])) # Only training need previous edges
+            client_val_data.append(FLNCDataset(g_0.x[val_idx], val_idx, g_0.edge_index[:, val_adj_idx], None, g_0.y[val_idx]))
+            client_test_data.append(FLNCDataset(g_1.x, torch.arange(g_1.num_nodes), g_1.edge_index, None, g_1.y))
+
+            print("train idx", train_idx, train_idx.shape)
+
+            clients[i].prev_edge_index = g_0.edge_index[:, train_adj_idx]
+            # clients[i].prev_ne = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(train_boundary)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(train_boundary)])]
+        elif mode == 'test-temporal':
+            val_ratio, test_ratio = 0.5, 0.5
+            val_boundary = math.floor(num_nodes * val_ratio)
+            test_boundary = math.floor(num_nodes * (val_ratio + test_ratio))
+            val_idx = sorted(perm[:val_boundary])
+            test_idx = sorted(perm[val_boundary:test_boundary])
+            val_adj_idx = torch.where(torch.isin(g_1.edge_index[1], val_idx))[0]
+            test_adj_idx = torch.where(torch.isin(g_1.edge_index[1], test_idx))[0]
+
+            client_train_data.append(FLNCDataset(g_0.x, torch.arange(g_0.num_nodes), g_0.edge_index, clients[i].prev_edge_index, g_0.y)) # Only training need previous edges
+            client_val_data.append(FLNCDataset(g_1.x[val_idx], val_idx, g_1.edge_index[:, val_adj_idx], None, g_1.y[val_idx]))
+            client_test_data.append(FLNCDataset(g_1.x[test_idx], test_idx, g_1.edge_index[:, test_adj_idx], None, g_1.y[test_idx]))
+
+            clients[i].prev_edge_index = g_0.edge_index
+            # clients[i].prev_ne = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
+        else:
+            print(">E Invalid Split mode. Options: ['real-life', 'test-temporal]")
+            exit(-1)
+
+        # Allocate the BaseDataset to clients
+        client_train_data[i].bind(clients[i])
+        client_val_data[i].bind(clients[i])
+        client_test_data[i].bind(clients[i])
+        client_shard_sizes.append(num_nodes)
+
+    fed_data_train = FLFedDataset(client_train_data)
+    fed_data_val = FLFedDataset(client_val_data)
+    fed_data_test = FLFedDataset(client_test_data)
+
+    return data_size, client_shard_sizes, fed_data_train, fed_data_val, fed_data_test
 
 def generate_shard_sizes(n_clients, total_size, mu, sigma):
     # Generate random sizes with mean and std deviation

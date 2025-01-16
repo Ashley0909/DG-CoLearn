@@ -197,9 +197,21 @@ class MLmodelResNet(nn.Module):
         x = self.fc(x)
         return x
     
+class ReshapeH():
+    def __init__(self, empty_h):
+        self.empty_h = empty_h
+
+    def reshape_to_fill(self, h, subnodes, layer):
+        if subnodes == None: # only NC will have subnodes
+            return h
+        
+        reshaped = self.empty_h[layer]
+        reshaped[subnodes] = h
+
+        return reshaped
 
 class ROLANDGNN(torch.nn.Module):
-    def __init__(self, device, input_dim, num_nodes, dropout=0.0, update='moving', loss=nn.BCEWithLogitsLoss):
+    def __init__(self, device, input_dim, num_nodes, output_dim, dropout=0.0, update='moving', loss=nn.BCEWithLogitsLoss):
         
         super(ROLANDGNN, self).__init__()
         #Architecture: 
@@ -210,11 +222,13 @@ class ROLANDGNN(torch.nn.Module):
         self.device = device
         hidden_conv_1 = 64
         hidden_conv_2 = 32
+        empty_h = [torch.zeros((num_nodes, hidden_conv_1)).to(self.device), torch.zeros((num_nodes, hidden_conv_2)).to(self.device)]
         self.preprocess1 = Linear(input_dim, 256).to(self.device)
         self.preprocess2 = Linear(256, 128).to(self.device)
         self.conv1 = GCNConv(128, hidden_conv_1).to(self.device)
         self.conv2 = GCNConv(hidden_conv_1, hidden_conv_2).to(self.device)
-        self.postprocess1 = Linear(hidden_conv_2, 2).to(self.device)
+        self.postprocess1 = Linear(hidden_conv_2, output_dim).to(self.device)
+        self.reshape = ReshapeH(empty_h)
         
         #Initialize the loss function to BCEWithLogitsLoss
         self.loss_fn = nn.BCEWithLogitsLoss()
@@ -234,8 +248,6 @@ class ROLANDGNN(torch.nn.Module):
         else:
             assert(update>=0 and update <=1)
             self.tau = torch.Tensor([update]).to(self.device)
-        # self.previous_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv_1)] for _ in range(num_nodes)]),\
-        #                             torch.Tensor([[0 for _ in range(hidden_conv_2)] for _ in range(num_nodes)])]
         self.previous_embeddings = [torch.zeros((num_nodes, hidden_conv_1)).to(self.device),
                                     torch.zeros((num_nodes, hidden_conv_2)).to(self.device)]
         
@@ -246,7 +258,7 @@ class ROLANDGNN(torch.nn.Module):
         self.conv2.reset_parameters()
         self.postprocess1.reset_parameters()
 
-    def forward(self, x, edge_index, edge_label_index, previous_embeddings=None, num_current_edges=None, num_previous_edges=None):        
+    def forward(self, x, edge_index, task_type, edge_label_index=None, subnodes=None, previous_embeddings=None, num_current_edges=None, num_previous_edges=None):        
         #You do not need all the parameters to be different to None in test phase
         #You can just use the saved previous embeddings and tau
         if previous_embeddings is not None: #None if test
@@ -272,6 +284,9 @@ class ROLANDGNN(torch.nn.Module):
         h = self.conv1(h, edge_index)
         h = F.leaky_relu(h,inplace=True)
         h = F.dropout(h, p=self.dropout,inplace=True)
+
+        #Reshape h for NC (clients have different number of nodes)
+        h = self.reshape.reshape_to_fill(h, subnodes, 0)
 
         #Embedding Update after first layer
         if self.update=='gru':
@@ -299,15 +314,21 @@ class ROLANDGNN(torch.nn.Module):
       
         current_embeddings[1] = h.clone()
 
-        #HADAMARD MLP
-        h_src = h[edge_label_index[0]].to(self.device)
-        h_dst = h[edge_label_index[1]].to(self.device)
-        h_hadamard = torch.mul(h_src, h_dst) #hadamard product
-        h = self.postprocess1(h_hadamard)
-        h = torch.sum(h.clone(), dim=-1).clone()
+        #HADAMARD MLP (For Link Prediction)
+        if task_type == "LP":
+            h_src = h[edge_label_index[0]].to(self.device)
+            h_dst = h[edge_label_index[1]].to(self.device)
+            h_hadamard = torch.mul(h_src, h_dst) #hadamard product
+            h = self.postprocess1(h_hadamard)
+            out = torch.sum(h.clone(), dim=-1).clone()
+        elif task_type == "NC":
+            out = self.postprocess1(h)
+        else:
+            print('E> Invalid task type specified. Options are {LP, NC}')
+            exit(-1)
         
         #return both 
         #i) the predictions for the current snapshot
         #ii) the embeddings of current snapshot
 
-        return h, current_embeddings
+        return out, current_embeddings

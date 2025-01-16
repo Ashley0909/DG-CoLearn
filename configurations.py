@@ -85,29 +85,29 @@ def init_config(task2run, pick_C, crash_prob, bw_set):
         # ref: https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ 
         env_cfg = EnvSettings(n_clients=5, n_rounds=100, n_epochs=3, batch_size=5, train_frac=0.7, shuffle=False, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, dev='cpu', showplot=False, bw_set=bw_set, max_T=830)
-        task_cfg = TaskSettings(task_type='Reg', dataset='Boston', path='data/boston_housing.csv', in_dim=12, out_dim=1, optimizer='SGD', loss='mse', lr=1e-4, lr_decay=1.0)
+        task_cfg = TaskSettings(task_type='Reg', dataset='boston', path='data/boston_housing.csv', in_dim=12, out_dim=1, optimizer='SGD', loss='mse', lr=1e-4, lr_decay=1.0)
     elif task2run == 'mnist':
         ''' MNIST digits classification task settings (3s per epoch on GPU)'''
         env_cfg = EnvSettings(n_clients=50, n_rounds=100, n_epochs=5, batch_size=40, train_frac=6.0/7.0, shuffle=False, pick_frac=pick_C, benign_ratio=1.0, data_dist=('E', None), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='CNN', dataset='mnist', path='data/MNIST/', in_dim=None, out_dim=None, optimizer='SGD', loss='nllLoss', lr=1e-3, lr_decay=1.0)
-    elif task2run == 'cifar10' or task2run == 'cifar100':
+    elif task2run in ['cifar10', 'cifar100']:
         env_cfg = EnvSettings(n_clients=50, n_rounds=10, n_epochs=5, batch_size=20, train_frac=6.0/7.0, shuffle=False, pick_frac=pick_C, benign_ratio=0.6, data_dist=('E', None), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
         if task2run == 'cifar10':
             task_cfg = TaskSettings(task_type='ResNet', dataset=task2run, num_classes=10, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='nllLoss', lr=1e-2, lr_decay=5e-4)
         else:    
             task_cfg = TaskSettings(task_type='ResNet', dataset=task2run, num_classes=100, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='nllLoss', lr=1e-2, lr_decay=5e-4)
-    elif task2run == 'bitcoinOTC':
+    elif task2run in ['bitcoinOTC', 'UCI']:
         env_cfg = EnvSettings(n_clients=2, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.5, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='LP', dataset='bitcoinOTC', path='data/bitcoinOTC/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-3, lr_decay=5e-3)
-    elif task2run == 'UCI':
-        env_cfg = EnvSettings(n_clients=2, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.5, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
+        task_cfg = TaskSettings(task_type='LP', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-3, lr_decay=5e-3)
+    elif task2run in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
+        env_cfg = EnvSettings(n_clients=2, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.75, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('Label', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='LP', dataset='UCI', path='data/CollegeMsg/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-3, lr_decay=5e-3)
+        task_cfg = TaskSettings(task_type='NC', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='ce', lr=1e-3, lr_decay=5e-3)
     else:
-        print('[Err] Invalid task name provided. Options are {boston, mnist, cifar10, cifar100, bitcoinOTC, UCI}')
+        print('[Err] Invalid task name provided. Options are {boston, mnist, cifar10, cifar100, bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}')
         exit(0)
 
     return env_cfg, task_cfg
@@ -137,11 +137,11 @@ def init_FLBackdoor_clients(num_clients, br):
     
     return clients, cm_map, mali_map
 
-def init_GNN_clients(num_clients, last_ne, weights, subnodes_list):
+def init_GNN_clients(num_clients, last_ne, weights):
     clients = []
     cm_map = {}
     for i in range(num_clients):
-        clients.append(EdgeDevice(id=f'client_{i}', prev_ne=last_ne, weights=weights, subnodes=subnodes_list[i]))
+        clients.append(EdgeDevice(id=f'client_{i}', prev_ne=last_ne, weights=weights, subnodes=None))
         cm_map[f'client_{i}'] = i
 
     return clients, cm_map
@@ -162,7 +162,10 @@ def init_global_model(env_cfg, task_cfg):
     elif task_cfg.task_type == 'ResNet':
         model = MLmodelResNet(BasicBlock, [2, 2, 2, 2], num_classes=task_cfg.num_classes).to(device)
     elif task_cfg.task_type == 'LP':
-        model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, num_nodes=task_cfg.out_dim, update='gru').to(device)
+        model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, output_dim=2, num_nodes=task_cfg.out_dim, update='gru').to(device)
+        model.reset_parameters()
+    elif task_cfg.task_type == 'NC':
+        model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, output_dim=task_cfg.num_classes, num_nodes=task_cfg.out_dim, update='gru').to(device)
         model.reset_parameters()
     torch.set_default_dtype(torch.float32)
     return model

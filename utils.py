@@ -295,22 +295,30 @@ def share_embeddings(embeddings, weights):
 
     return embeddings
 
-def prediction(pred_score, true_l):
+def lp_prediction(pred_score, true_l):
     pred = pred_score.clone()
     pred = torch.where(pred > 0.5, 1, 0)
     pred = pred.detach().cpu().numpy()
     pred_score = pred_score.detach().cpu().numpy()
 
-    # true = np.ones_like(pred)
-    true = true_l
-    true = true.cpu().numpy()
+    true = true_l.cpu().numpy()
     acc = accuracy_score(true, pred)
     ap = average_precision_score(true, pred_score)
-    f1 = f1_score(true, pred, average='macro')
+    macro_f1 = f1_score(true, pred, average='macro')
     macro_auc = roc_auc_score(true, pred_score, average='macro')
     micro_auc = roc_auc_score(true, pred_score, average='micro')
 
-    return acc, ap, f1, macro_auc, micro_auc
+    return acc, ap, macro_f1, macro_auc, micro_auc
+
+def nc_prediction(pred_score, true_l):
+    pred = pred_score.argmax(dim=1).detach().cpu().numpy
+    true = true_l.cpu().numpy()
+
+    acc = accuracy_score(true, pred)
+    macro_f1 = f1_score(true, pred, average='macro')
+    micro_f1 = f1_score(true, pred, average='micro')
+
+    return acc, macro_f1, micro_f1
 
 def compute_mrr(pred_score, true_l):
     sorted_indices = torch.argsort(pred_score, descending=True)

@@ -10,7 +10,7 @@ import torch.optim as optim
 
 from sklearn.metrics import average_precision_score
 
-from utils import get_exclusive_edges, prediction, compute_mrr
+from utils import get_exclusive_edges, lp_prediction, compute_mrr, nc_prediction
 from plot_graphs import draw_graph, plot_h
 
 class FLClient:
@@ -251,6 +251,8 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
         loss_func = nn.NLLLoss()
     elif task_cfg.loss == 'bce':
         loss_func = nn.BCEWithLogitsLoss()  # By default, it shows the average loss per data point (reduction='mean')
+    elif task_cfg.loss == 'ce':
+        loss_func = nn.CrossEntropyLoss()
 
     # One optimizer for each model (re-instantiate optimizers to clear any possible momentum
     optimizers = []
@@ -263,13 +265,18 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             print('Err> Invalid optimizer %s specified' % task_cfg.optimizer)
 
     # Begin an epoch of training
-    if task_cfg.task_type == 'LP':
+    if task_cfg.task_type in ['LP', 'NC']:
         for data in fdl.fbd_list: # Traverse the data of each client
             client = data.location
             model_id = cm_map[client.id]
             if model_id not in client_ids: # neglect non-participants
                 continue
-            x, edge_index, edge_label_index, edge_label = data.x.to(device), data.edge_index.to(device), data.edge_label_index.to(device), data.y.to(device)
+            
+            x, edge_index = data.x.to(device), data.edge_index.to(device)
+            if task_cfg.task_type == 'LP':
+                edge_label_index, edge_label = data.edge_label_index.to(device), data.y.to(device)
+            else:
+                node_label, subnodes = data.y.to(device), data.subnodes.to(device)
 
             model = models[model_id]
             optimizer = optimizers[model_id]
@@ -282,14 +289,17 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             else:
                 new_edge_index = edge_index
 
-            if (snapshot + round + epoch) == 0:  # Draw graphs
-                draw_graph(edge_index=edge_index, name='original', round=round, ss=snapshot, client=model_id)
+            # if (snapshot + round + epoch) == 0:  # Draw graphs (Too big to draw in NC for now)
+            #     draw_graph(edge_index=edge_index, name='original', round=round, ss=snapshot, client=model_id)
 
             if round == 0 and epoch == 0:
                 print("size of graph", new_edge_index.shape[1])
                 print("Shrink in graph size", edge_index.shape[1] - new_edge_index.shape[1])
 
-            predicted_y, client.curr_ne = model(x, new_edge_index, edge_label_index, client.prev_ne)
+            if task_cfg.task_type == 'LP':
+                predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, edge_label_index, client.prev_ne)
+            else:
+                predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, subnodes=subnodes, previous_embeddings=client.prev_ne)
 
             """ Compute the Weights for Combining Node Embedding (Only need to do it once in First Round First Epoch) """
             if (epoch + round) == 0:
@@ -300,10 +310,13 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
                 client.weights = weight
 
             # Train with complete data set
-            # predicted_y, client.curr_ne = model(x, edge_index, edge_label_index, client.prev_ne)
+            # predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, client.prev_ne)
 
             # Compute Loss
-            loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
+            if task_cfg.task_type == 'LP':
+                loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
+            else:
+                loss = loss_func(predicted_y[subnodes], node_label)
             loss.backward(retain_graph=True)  # Use backpropagation to compute gradients
             optimizer.step() # Update weights based on computed gradients
             
@@ -353,32 +366,42 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
         loss_func = nn.NLLLoss(reduction='sum')
     elif task_cfg.loss == 'bce':
         loss_func = nn.BCEWithLogitsLoss()
+    elif task_cfg.loss == 'ce':
+        loss_func = nn.CrossEntropyLoss()
 
     for m in range(env_cfg.n_clients):
         models[m].eval()   # Pytorch makes sure it is in evaluation mode
 
     with torch.no_grad():  # Don't need to compute gradients bc testing don't require updating weights
-        if task_cfg.task_type == 'LP':
+        if task_cfg.task_type in ['LP', 'NC']:
             count = 0.0 # only for getting metrics, since each client only has one batch (so dont need count for accuracy)
-            metrics = {'ap': 0.0, 'f1': 0.0, 'macro_auc': 0.0, 'micro_auc': 0.0, 'mrr': 0.0}
+            metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0,  'macro_auc': 0.0, 'micro_auc': 0.0, 'mrr': 0.0}
             for data in fdl.fbd_list:
-                x, edge_index, edge_label_index, edge_label = data.x.to(device), data.edge_index.to(device), data.edge_label_index.to(device), data.y.to(device)
+                x, edge_index = data.x.to(device), data.edge_index.to(device)
+                if task_cfg.task_type == 'LP':
+                    edge_label_index, edge_label = data.edge_label_index.to(device), data.y.to(device)
+                else:
+                    node_label = data.y.to(device)
                 model_id = cm_map[data.location.id]
                 if model_id not in client_ids: # neglect non-participants
                     continue
 
                 model = models[model_id]
-                predicted_y, _ = model(x, edge_index, edge_label_index)
+                if task_cfg.task_type == 'LP':
+                    predicted_y, _ = model(x, edge_index, task_cfg.task_type, edge_label_index)
+                    loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
+                    acc, ap, macro_f1, macro_auc, micro_auc = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
+                    mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
+                    metrics['mrr'] += mrr
+                    metrics['ap'], metrics['macro_f1'], metrics['macro_auc'], metrics['micro_auc'] = metrics['ap'] + ap, metrics['macro_f1'] + macro_f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
+                else:
+                    predicted_y, _ = model(x, edge_index, task_cfg.task_type)
+                    loss = loss_func(predicted_y, node_label)
+                    acc, macro_f1, micro_f1 = nc_prediction(predicted_y, node_label)
+                    metrics['macro_f1'], metrics['micro_f1'] = metrics['macro_f1'] + macro_f1, metrics['macro_f1'] + micro_f1
 
-                # Compute Loss
-                loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
+                # Compute Loss and other metrics
                 client_test_loss[model_id] += loss.detach().item()
-
-                # Compute other metrics
-                acc, ap, f1, macro_auc, micro_auc = prediction(predicted_y, edge_label.type_as(predicted_y))
-                mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
-                metrics['mrr'] += mrr
-                metrics['ap'], metrics['f1'], metrics['macro_auc'], metrics['micro_auc'] = metrics['ap'] + ap, metrics['f1'] + f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
                 client_test_acc[model_id] += acc
                 count += 1
 
@@ -420,6 +443,8 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
         loss_func = nn.NLLLoss(reduction='sum')
     elif task_cfg.loss == 'bce':
         loss_func = nn.BCEWithLogitsLoss()
+    elif task_cfg.loss == 'ce':
+        loss_func = nn.CrossEntropyLoss()
 
     # Initialize evaluation mode
     global_model.eval()
@@ -427,26 +452,37 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
     # Local evaluation, batch-wise
     accuracy = 0.0
     count = 0
-    metrics = {'ap': 0.0, 'f1': 0.0, 'macro_auc': 0.0, 'micro_auc': 0.0, 'mrr': 0.0}
+    metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'macro_auc': 0.0, 'micro_auc': 0.0, 'mrr': 0.0}
 
-    if task_cfg.task_type == 'LP':
+    if task_cfg.task_type in ['LP', 'NC']:
         for data in fdl.fbd_list:
-            x, edge_index, edge_label_index, edge_label = data.x.to(device), data.edge_index.to(device), data.edge_label_index.to(device), data.y.to(device)
+            x, edge_index = data.x.to(device), data.edge_index.to(device)
+            if task_cfg.task_type == 'LP':
+                edge_label_index, edge_label = data.edge_label_index.to(device), data.y.to(device)
+            else:
+                node_label = data.y.to(device)
+
             model_id = cm_map[data.location.id]
             if model_id not in client_ids: # neglect non-participants
                 continue
 
-            predicted_y, _ = global_model(x, edge_index, edge_label_index)
+            if task_cfg.task_type == 'LP':
+                predicted_y, _ = global_model(x, edge_index, edge_label_index, task_cfg.task_type)
+                loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
+                acc, ap, macro_f1, macro_auc, micro_auc = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
+                mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
+                metrics['mrr'] += mrr
+                accuracy, metrics['ap'], metrics['macro_f1'], metrics['macro_auc'], metrics['micro_auc'] = accuracy + acc, metrics['ap'] + ap, metrics['macro_f1'] + macro_f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
+            else:
+                predicted_y, _ = global_model(x, edge_index, task_cfg.task_type)
+                loss = loss_func(predicted_y, node_label)
+                acc, macro_f1, micro_f1 = nc_prediction(predicted_y, node_label)
+                accuracy, metrics['macro_f1'], metrics['micro_f1'] = accuracy + acc, metrics['macro_f1'] + macro_f1, metrics['macro_f1'] + micro_f1
+
             # Compute Loss
-            loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
             if not torch.isnan(loss).any():
                 test_sum_loss[model_id] += loss.detach().item()
 
-            # Compute other metrics
-            mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
-            metrics['mrr'] += mrr
-            acc, ap, f1, macro_auc, micro_auc = prediction(predicted_y, edge_label.type_as(predicted_y))
-            accuracy, metrics['ap'], metrics['f1'], metrics['macro_auc'], metrics['micro_auc'] = accuracy + acc, metrics['ap'] + ap, metrics['f1'] + f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
             count += 1
         metrics = {key: value / count for key, value in metrics.items()}
         

@@ -739,51 +739,56 @@ def get_nc_clientdata(env_cfg, t, data, clients, subnode_list, mode):
     g_1 = data[t+1]
     data_size = g_0.num_nodes
     for i in range(env_cfg.n_clients):
-        subnodes = subnode_list[i]
+        subnodes = sorted(subnode_list[i])
         num_nodes = len(subnodes)
         clients[i].subnodes = subnodes
         perm = torch.tensor(subnodes) # Get the global index
+        shuffled_indices = torch.randperm(perm.size(0))
+        shuff_perm = perm[shuffled_indices]  # Use the permutation to shuffle perm
         # perm = torch.randperm(num_nodes) # Get the local index
+
+        glob_to_loc = {node: i for i, node in enumerate(subnodes)} # create mapping
 
         # Split nodes into train, val and test
         if mode == "real-life":
             train_ratio, val_ratio = 0.75, 0.25
             train_boundary = math.floor(num_nodes * train_ratio)
             val_boundary = math.floor(num_nodes * (train_ratio + val_ratio))
-            train_idx, _ = torch.sort(perm[:train_boundary])
-            val_idx, _ = torch.sort(perm[train_boundary:val_boundary])
-            train_adj_idx = torch.where(torch.isin(g_0.edge_index[1], train_idx) & torch.isin(g_0.edge_index[0], train_idx))[0]
-            val_adj_idx = torch.where(torch.isin(g_0.edge_index[1], val_idx) & torch.isin(g_0.edge_index[0], val_idx))[0]
+            train_idx, _ = torch.sort(shuff_perm[:train_boundary])
+            val_idx, _ = torch.sort(shuff_perm[train_boundary:val_boundary])
 
-            train_edge_index, local_train_idx = localise_idx(g_0.edge_index, subnodes, train_idx)
+            # Localise indices
+            train_edge_index, local_train_idx = localise_idx(glob_to_loc, g_0.edge_index, train_idx)
+            val_edge_index, local_val_idx = localise_idx(glob_to_loc, g_0.edge_index, val_idx)
+            test_edge_index, local_test_idx = localise_idx(glob_to_loc, g_1.edge_index, perm)
+            print(f'Client {i} has {len(local_train_idx)} training nodes, {len(local_val_idx)} validation nodes, {num_nodes} testing nodes')
 
-            client_train_data.append(FLNCDataset(g_0.x[train_idx], local_train_idx, train_edge_index, clients[i].prev_edge_index, g_0.y[train_idx])) # Only training need previous edges and local id for NE exchange
-            client_val_data.append(FLNCDataset(g_0.x[val_idx], val_idx, g_0.edge_index[:, val_adj_idx], None, g_0.y[val_idx]))
-            client_test_data.append(FLNCDataset(g_1.x, torch.arange(g_1.num_nodes), g_1.edge_index, None, g_1.y))
-
-            clients[i].prev_edge_index = g_0.edge_index[:, train_adj_idx]
+            client_train_data.append(FLNCDataset(g_0.x[train_idx], local_train_idx, train_edge_index, clients[i].prev_edge_index, g_0.y[train_idx])) # Only training need previous edges
+            client_val_data.append(FLNCDataset(g_0.x[val_idx], local_val_idx, val_edge_index, None, g_0.y[val_idx]))
+            client_test_data.append(FLNCDataset(g_1.x[perm], local_test_idx, test_edge_index, None, g_1.y[perm]))
+ 
         elif mode == 'test-temporal':
             val_ratio, test_ratio = 0.5, 0.5
             val_boundary = math.floor(num_nodes * val_ratio)
             test_boundary = math.floor(num_nodes * (val_ratio + test_ratio))
-            val_idx = sorted(perm[:val_boundary])
-            test_idx = sorted(perm[val_boundary:test_boundary])
-            val_adj_idx = torch.where(torch.isin(g_1.edge_index[1], val_idx))[0]
-            test_adj_idx = torch.where(torch.isin(g_1.edge_index[1], test_idx))[0]
+            val_idx = sorted(shuff_perm[:val_boundary])
+            test_idx = sorted(shuff_perm[val_boundary:test_boundary])
+            
+            train_edge_index, local_train_idx = localise_idx(glob_to_loc, g_0.edge_index, perm)
+            val_edge_index, local_val_idx = localise_idx(glob_to_loc, g_1.edge_index, val_idx)
+            test_edge_index, local_test_idx = localise_idx(glob_to_loc, g_1.edge_index, test_idx)
+            print(f'Client {i} has {len(local_train_idx)} training nodes, {len(local_val_idx)} validation nodes, {num_nodes} testing nodes')
 
-            train_edge_index = g_0.edge_index[:, subnodes]
+            client_train_data.append(FLNCDataset(g_0.x[perm], local_train_idx, train_edge_index, clients[i].prev_edge_index, g_0.y[perm])) # Only training need previous edges (corrected: each client only has their subnode graph as training, not the whole graph)
+            client_val_data.append(FLNCDataset(g_1.x[val_idx], local_val_idx, val_edge_index, None, g_1.y[val_idx]))
+            client_test_data.append(FLNCDataset(g_1.x[test_idx], local_test_idx, test_edge_index, None, g_1.y[test_idx]))
 
-            client_train_data.append(FLNCDataset(g_0.x[subnodes], torch.arange(num_nodes), train_edge_index, clients[i].prev_edge_index, g_0.y[subnodes])) # Only training need previous edges (corrected: each client only has their subnode graph as training, not the whole graph)
-            client_val_data.append(FLNCDataset(g_1.x[val_idx], val_idx, g_1.edge_index[:, val_adj_idx], None, g_1.y[val_idx]))
-            client_test_data.append(FLNCDataset(g_1.x[test_idx], test_idx, g_1.edge_index[:, test_adj_idx], None, g_1.y[test_idx]))
-
-            clients[i].prev_edge_index = g_0.edge_index
         else:
             print(">E Invalid Split mode. Options: ['real-life', 'test-temporal']")
             exit(-1)
 
-        # Compute Weights for each client
-        clients[-1].weights = clients[i].compute_weights(train_edge_index)
+        clients[i].weights = clients[i].compute_weights(train_edge_index) # Compute Weights for each client
+        clients[i].prev_edge_index = train_edge_index # Clients get new edge index in training by comparing with prev_edge_index
 
         # Allocate the BaseDataset to clients
         client_train_data[i].bind(clients[i])

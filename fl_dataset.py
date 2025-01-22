@@ -755,9 +755,9 @@ def get_nc_clientdata(env_cfg, t, data, clients, subnode_list, mode):
             train_adj_idx = torch.where(torch.isin(g_0.edge_index[1], train_idx) & torch.isin(g_0.edge_index[0], train_idx))[0]
             val_adj_idx = torch.where(torch.isin(g_0.edge_index[1], val_idx) & torch.isin(g_0.edge_index[0], val_idx))[0]
 
-            # train_edge_index, local_train_idx = localise_idx(g_0.edge_index, subnodes, train_idx)
+            train_edge_index, local_train_idx = localise_idx(g_0.edge_index, subnodes, train_idx)
 
-            client_train_data.append(FLNCDataset(g_0.x[train_idx], train_idx, g_0.edge_index[:, train_adj_idx], clients[i].prev_edge_index, g_0.y[train_idx])) # Only training need previous edges
+            client_train_data.append(FLNCDataset(g_0.x[train_idx], local_train_idx, train_edge_index, clients[i].prev_edge_index, g_0.y[train_idx])) # Only training need previous edges and local id for NE exchange
             client_val_data.append(FLNCDataset(g_0.x[val_idx], val_idx, g_0.edge_index[:, val_adj_idx], None, g_0.y[val_idx]))
             client_test_data.append(FLNCDataset(g_1.x, torch.arange(g_1.num_nodes), g_1.edge_index, None, g_1.y))
 
@@ -771,7 +771,9 @@ def get_nc_clientdata(env_cfg, t, data, clients, subnode_list, mode):
             val_adj_idx = torch.where(torch.isin(g_1.edge_index[1], val_idx))[0]
             test_adj_idx = torch.where(torch.isin(g_1.edge_index[1], test_idx))[0]
 
-            client_train_data.append(FLNCDataset(g_0.x, torch.arange(g_0.num_nodes), g_0.edge_index, clients[i].prev_edge_index, g_0.y)) # Only training need previous edges
+            train_edge_index = g_0.edge_index[:, subnodes]
+
+            client_train_data.append(FLNCDataset(g_0.x[subnodes], torch.arange(num_nodes), train_edge_index, clients[i].prev_edge_index, g_0.y[subnodes])) # Only training need previous edges (corrected: each client only has their subnode graph as training, not the whole graph)
             client_val_data.append(FLNCDataset(g_1.x[val_idx], val_idx, g_1.edge_index[:, val_adj_idx], None, g_1.y[val_idx]))
             client_test_data.append(FLNCDataset(g_1.x[test_idx], test_idx, g_1.edge_index[:, test_adj_idx], None, g_1.y[test_idx]))
 
@@ -779,6 +781,9 @@ def get_nc_clientdata(env_cfg, t, data, clients, subnode_list, mode):
         else:
             print(">E Invalid Split mode. Options: ['real-life', 'test-temporal']")
             exit(-1)
+
+        # Compute Weights for each client
+        clients[-1].weights = clients[i].compute_weights(train_edge_index)
 
         # Allocate the BaseDataset to clients
         client_train_data[i].bind(clients[i])

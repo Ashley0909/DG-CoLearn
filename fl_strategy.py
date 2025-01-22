@@ -163,8 +163,8 @@ def run_FL(env_cfg, task_cfg, global_mod, cm_map, data_size, fed_data_train, fed
             cache = copy.deepcopy(local_models) # Since the first epoch changes everything
             selected_ids = temp_make_ids
 
-         reporting_train_loss = train(local_models, selected_ids, env_cfg, cm_map, fed_data_train, task_cfg, reporting_train_loss, rd, epoch, snapshot=snapshot, verbose=True)
-         reporting_test_loss, reporting_test_acc, localtest_metrics = local_test(local_models, selected_ids, task_cfg, env_cfg, cm_map, fed_data_test, reporting_test_loss, reporting_test_acc, rd)
+         reporting_train_loss = train(local_models, selected_ids, env_cfg, cm_map, fed_data_train, task_cfg, reporting_train_loss, rd, epoch, verbose=True)
+         reporting_test_loss, reporting_test_acc, localtest_metrics = local_test(local_models, selected_ids, task_cfg, env_cfg, cm_map, fed_data_test, reporting_test_loss, reporting_test_acc)
          test_loss_average = np.mean(np.array(reporting_test_loss)[np.array(reporting_test_loss) != 0.0])
 
       print("Local Epoch", epoch, "training losses", reporting_train_loss, "test metrics", localtest_metrics)
@@ -282,7 +282,7 @@ def run_FedAssets(env_cfg, task_cfg, global_mod, cm_map, data_size, fed_data_tra
       # Local Training
       for epoch in range(env_cfg.n_epochs):
          reporting_train_loss = train(local_models, train_ids, env_cfg, cm_map, fed_data_train, task_cfg, reporting_train_loss, rd, epoch, verbose=True)
-         reporting_test_loss, reporting_test_acc, _ = local_test(local_models, train_ids, task_cfg, env_cfg, cm_map, fed_data_test, reporting_test_loss, reporting_test_acc, rd)
+         reporting_test_loss, reporting_test_acc, _ = local_test(local_models, train_ids, task_cfg, env_cfg, cm_map, fed_data_test, reporting_test_loss, reporting_test_acc)
 
       # print("Local Epoch", epoch, "training losses", reporting_train_loss, "test accuracy", reporting_test_acc)
       print("Local Epoch", epoch, "test accuracy", reporting_test_acc)
@@ -350,10 +350,8 @@ def run_dylp(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       print("Round", rd)
 
       for epoch in range(env_cfg.n_epochs // 2):
-         print("train")
-         train_loss = train(local_models, client_ids, env_cfg, cm_map, fed_data_train, task_cfg, train_loss, rd, epoch, snapshot, verbose=True)
-         print("local test")
-         val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc, rd)
+         train_loss = train(local_models, client_ids, env_cfg, cm_map, fed_data_train, task_cfg, train_loss, rd, epoch, verbose=True)
+         val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
          # Update metrics data
          val_ap.append(val_metrics['ap'])
          val_ap_fig.data[0].y = val_ap  # Update y for Val AP Fig
@@ -377,8 +375,8 @@ def run_dylp(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
          # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
 
       for epoch in range(env_cfg.n_epochs // 2, env_cfg.n_epochs):
-         train_loss = train(local_models, client_ids, env_cfg, cm_map, fed_data_train, task_cfg, train_loss, rd, epoch, snapshot, verbose=True)
-         val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc, rd)
+         train_loss = train(local_models, client_ids, env_cfg, cm_map, fed_data_train, task_cfg, train_loss, rd, epoch, verbose=True)
+         val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
          # Update metrics data
          val_ap.append(val_metrics['ap'])
          val_ap_fig.data[0].y = val_ap  # Update y for Val AP Fig

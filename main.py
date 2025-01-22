@@ -46,7 +46,7 @@ def main():
 
         effi_allocation = True # If prefer time efficiency edge allocation among clients in LP
         if effi_allocation or task_mode == "FLDGNN-NC":
-            subnodes_list = allocate_clientsubnodes(env_cfg, arg) # Allocate subnodes for clients that applies to all snapshots
+            subnodes_list = allocate_clientsubnodes(env_cfg, arg, clients) # Allocate subnodes for clients that applies to all snapshots
 
         # Configure Plot to plot global model performance
         x_labels = []

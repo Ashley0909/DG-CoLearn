@@ -138,6 +138,8 @@ def init_FLBackdoor_clients(num_clients, br):
     return clients, cm_map, mali_map
 
 def init_GNN_clients(num_clients, last_ne, weights):
+    """ In NC, last_ne is None to start with, since each clients have different subnodes thus different last_ne shapes """
+    """ In LP, last_ne is the same for each client, with shape [total_num_nodes, 64] and [total_num_nodes, 32] """
     clients = []
     cm_map = {}
     for i in range(num_clients):

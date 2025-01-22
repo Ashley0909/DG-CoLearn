@@ -269,6 +269,7 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
         for data in fdl.fbd_list: # Traverse the data of each client
             client = data.location
             model_id = cm_map[client.id]
+            print("Client", client.id)
             if model_id not in client_ids: # neglect non-participants
                 continue
             
@@ -381,8 +382,9 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                 if task_cfg.task_type == 'LP':
                     edge_label_index, edge_label = data.edge_label_index.to(device), data.y.to(device)
                 else:
-                    node_label = data.y.to(device)
+                    node_label, subnodes = data.y.to(device), data.subnodes.to(device)
                 model_id = cm_map[data.location.id]
+                print("Client", data.location.id)
                 if model_id not in client_ids: # neglect non-participants
                     continue
 
@@ -395,9 +397,9 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                     metrics['mrr'] += mrr
                     metrics['ap'], metrics['macro_f1'], metrics['macro_auc'], metrics['micro_auc'] = metrics['ap'] + ap, metrics['macro_f1'] + macro_f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
                 else:
-                    predicted_y, _ = model(x, edge_index, task_cfg.task_type)
-                    loss = loss_func(predicted_y, node_label)
-                    acc, macro_f1, micro_f1 = nc_prediction(predicted_y, node_label)
+                    predicted_y, _ = model(x, edge_index, task_cfg.task_type, subnodes=subnodes)
+                    loss = loss_func(predicted_y[subnodes], node_label)
+                    acc, macro_f1, micro_f1 = nc_prediction(predicted_y[subnodes], node_label)
                     metrics['macro_f1'], metrics['micro_f1'] = metrics['macro_f1'] + macro_f1, metrics['macro_f1'] + micro_f1
 
                 # Compute Loss and other metrics
@@ -460,7 +462,7 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
             if task_cfg.task_type == 'LP':
                 edge_label_index, edge_label = data.edge_label_index.to(device), data.y.to(device)
             else:
-                node_label = data.y.to(device)
+                node_label, subnodes = data.y.to(device), data.subnodes.to(device)
 
             model_id = cm_map[data.location.id]
             if model_id not in client_ids: # neglect non-participants
@@ -474,9 +476,9 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
                 metrics['mrr'] += mrr
                 accuracy, metrics['ap'], metrics['macro_f1'], metrics['macro_auc'], metrics['micro_auc'] = accuracy + acc, metrics['ap'] + ap, metrics['macro_f1'] + macro_f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
             else:
-                predicted_y, _ = global_model(x, edge_index, task_cfg.task_type)
-                loss = loss_func(predicted_y, node_label)
-                acc, macro_f1, micro_f1 = nc_prediction(predicted_y, node_label)
+                predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, subnodes=subnodes)
+                loss = loss_func(predicted_y[subnodes], node_label)
+                acc, macro_f1, micro_f1 = nc_prediction(predicted_y[subnodes], node_label)
                 accuracy, metrics['macro_f1'], metrics['micro_f1'] = accuracy + acc, metrics['macro_f1'] + macro_f1, metrics['macro_f1'] + micro_f1
 
             # Compute Loss

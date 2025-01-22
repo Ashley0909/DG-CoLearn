@@ -15,7 +15,7 @@ from torch_geometric.utils import negative_sampling
 from itertools import permutations
 
 from fl_clients import FLClient, FLBackdoorClient, EdgeDevice
-from utils import sample_dirichlet, normalize, process_data
+from utils import sample_dirichlet, normalize, process_data, localise_idx
 
 class FLBaseDataset:
     def __init__(self, x, y, client=None):
@@ -259,10 +259,9 @@ def load_nc_data(task_cfg):
     assert adjs.shape[1] == adjs.shape[2] == feature.shape[0] == label.shape[0]
     assert adjs.shape[0] == feature.shape[1]
     num_timesteps = adjs.shape[0]
-    hidden_conv1, hidden_conv2 = 64, 32
     num_nodes = feature.shape[0]
     print("total number of nodes", num_nodes)
-    last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
+    # last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
     weights = torch.zeros(num_nodes)
     task_cfg.in_dim = feature.shape[2]
     task_cfg.out_dim = num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
@@ -282,7 +281,7 @@ def load_nc_data(task_cfg):
         graph.x = feat
         graph.y = label
 
-    return num_timesteps, graph_snapshots, {'last_embeddings': last_embeddings, 'weights': weights, 'num_nodes': num_nodes, 'y': label}
+    return num_timesteps, graph_snapshots, {'last_embeddings': None, 'weights': weights, 'num_nodes': num_nodes, 'y': label}
 
 def partition_lp_data(mode, num_snapshots, data):
     """ Partition data in train, val and test according to different scenarios:
@@ -507,7 +506,7 @@ def get_clientdata(train_x, train_y, test_x, test_y, env_cfg, task_cfg, clients,
 
     return fed_data_train, fed_data_test, client_shards_sizes
 
-def allocate_clientsubnodes(env_cfg, arg):
+def allocate_clientsubnodes(env_cfg, arg, clients):
     """ Distribute Subnodes to Clients """
     subnodes_split, subnodes_list = [0], []
     num_nodes = arg['num_nodes']
@@ -578,6 +577,10 @@ def allocate_clientsubnodes(env_cfg, arg):
                 client_nodes = client_nodes + other_nodes
                 subnodes_list.append(client_nodes)
                 print(f'Client {i} has {len(client_nodes)} nodes')
+                
+                # Set previous embedding for each client (In NC, prev embedding shape varies among clients)
+                hidden_conv1, hidden_conv2 = 64, 32
+                clients[i].prev_ne = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(len(client_nodes))]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(len(client_nodes))])] # Set the PE shape of each client to be [#subnodes, in_dim] respectively
 
     return subnodes_list
 
@@ -739,8 +742,8 @@ def get_nc_clientdata(env_cfg, t, data, clients, subnode_list, mode):
         subnodes = subnode_list[i]
         num_nodes = len(subnodes)
         clients[i].subnodes = subnodes
-        perm = torch.tensor(subnodes)
-        # perm = torch.randperm(num_nodes)
+        perm = torch.tensor(subnodes) # Get the global index
+        # perm = torch.randperm(num_nodes) # Get the local index
 
         # Split nodes into train, val and test
         if mode == "real-life":
@@ -749,17 +752,16 @@ def get_nc_clientdata(env_cfg, t, data, clients, subnode_list, mode):
             val_boundary = math.floor(num_nodes * (train_ratio + val_ratio))
             train_idx, _ = torch.sort(perm[:train_boundary])
             val_idx, _ = torch.sort(perm[train_boundary:val_boundary])
-            train_adj_idx = torch.where(torch.isin(g_0.edge_index[1], train_idx))[0]
-            val_adj_idx = torch.where(torch.isin(g_0.edge_index[1], val_idx))[0]
+            train_adj_idx = torch.where(torch.isin(g_0.edge_index[1], train_idx) & torch.isin(g_0.edge_index[0], train_idx))[0]
+            val_adj_idx = torch.where(torch.isin(g_0.edge_index[1], val_idx) & torch.isin(g_0.edge_index[0], val_idx))[0]
+
+            # train_edge_index, local_train_idx = localise_idx(g_0.edge_index, subnodes, train_idx)
 
             client_train_data.append(FLNCDataset(g_0.x[train_idx], train_idx, g_0.edge_index[:, train_adj_idx], clients[i].prev_edge_index, g_0.y[train_idx])) # Only training need previous edges
             client_val_data.append(FLNCDataset(g_0.x[val_idx], val_idx, g_0.edge_index[:, val_adj_idx], None, g_0.y[val_idx]))
             client_test_data.append(FLNCDataset(g_1.x, torch.arange(g_1.num_nodes), g_1.edge_index, None, g_1.y))
 
-            print("train idx", train_idx, train_idx.shape)
-
             clients[i].prev_edge_index = g_0.edge_index[:, train_adj_idx]
-            # clients[i].prev_ne = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(train_boundary)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(train_boundary)])]
         elif mode == 'test-temporal':
             val_ratio, test_ratio = 0.5, 0.5
             val_boundary = math.floor(num_nodes * val_ratio)
@@ -774,9 +776,8 @@ def get_nc_clientdata(env_cfg, t, data, clients, subnode_list, mode):
             client_test_data.append(FLNCDataset(g_1.x[test_idx], test_idx, g_1.edge_index[:, test_adj_idx], None, g_1.y[test_idx]))
 
             clients[i].prev_edge_index = g_0.edge_index
-            # clients[i].prev_ne = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
         else:
-            print(">E Invalid Split mode. Options: ['real-life', 'test-temporal]")
+            print(">E Invalid Split mode. Options: ['real-life', 'test-temporal']")
             exit(-1)
 
         # Allocate the BaseDataset to clients

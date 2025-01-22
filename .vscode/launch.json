@@ -12,6 +12,7 @@
             "console": "integratedTerminal",
             "args": ["0.0", "5", "1.0", "Reddit", "FLDGNN-NC"],
             // "args": ["0.0", "5", "1.0", "bitcoinOTC", "FLDGNN-LP"],
+            "justMyCode": false
         }
     ]
 }

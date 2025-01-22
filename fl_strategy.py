@@ -350,7 +350,9 @@ def run_dylp(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       print("Round", rd)
 
       for epoch in range(env_cfg.n_epochs // 2):
+         print("train")
          train_loss = train(local_models, client_ids, env_cfg, cm_map, fed_data_train, task_cfg, train_loss, rd, epoch, snapshot, verbose=True)
+         print("local test")
          val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc, rd)
          # Update metrics data
          val_ap.append(val_metrics['ap'])
@@ -367,9 +369,9 @@ def run_dylp(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       aggre_weights = torch.stack(aggre_weights, dim=0)
 
       print("Share Embeddings")
-      # shared_embeddings = share_embeddings(trained_embeddings, aggre_weights)
-      shared_embeddings, time_taken = time_cpu(share_embeddings, trained_embeddings, aggre_weights)
-      print(f"Time Taken for Sharing Embedding: {time_taken:.6f} seconds")
+      shared_embeddings = share_embeddings(trained_embeddings, aggre_weights)
+      # shared_embeddings, time_taken = time_cpu(share_embeddings, trained_embeddings, aggre_weights)
+      # print(f"Time Taken for Sharing Embedding: {time_taken:.6f} seconds")
       for c in range(env_cfg.n_clients):
          clients[c].update_embeddings(shared_embeddings[c])
          # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)

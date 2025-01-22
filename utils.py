@@ -311,7 +311,7 @@ def lp_prediction(pred_score, true_l):
     return acc, ap, macro_f1, macro_auc, micro_auc
 
 def nc_prediction(pred_score, true_l):
-    pred = pred_score.argmax(dim=1).detach().cpu().numpy
+    pred = pred_score.argmax(dim=1).detach().cpu().numpy()
     true = true_l.cpu().numpy()
 
     acc = accuracy_score(true, pred)
@@ -331,3 +331,14 @@ def compute_mrr(pred_score, true_l):
     mrr = reciprocal_ranks.mean().item()
 
     return mrr
+
+def localise_idx(edge_index, subnodes, train_idx):
+    """ To relabel node indices in training data """
+    glob_to_loc = {node: i for i, node in enumerate(subnodes)} # create mapping
+
+    # use mapping to relabel indices
+    local_ei = torch.tensor([[glob_to_loc[src], glob_to_loc[dst]] for src, dst in edge_index.T if src in glob_to_loc and dst in glob_to_loc]).T
+
+    local_train = torch.tensor(glob_to_loc[train_idx])
+
+    return local_ei, local_train

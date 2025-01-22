@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -202,10 +204,11 @@ class ReshapeH():
         self.empty_h = empty_h
 
     def reshape_to_fill(self, h, subnodes, layer):
-        if subnodes == None: # only NC will have subnodes
+        if h.shape == self.empty_h[layer].shape: # only NC will have misaligned NE
             return h
         
-        reshaped = self.empty_h[layer]
+        # reshaped = self.empty_h[layer]
+        reshaped = copy.deepcopy(self.empty_h[layer])
         reshaped[subnodes] = h
 
         return reshaped
@@ -225,8 +228,8 @@ class ROLANDGNN(torch.nn.Module):
         empty_h = [torch.zeros((num_nodes, hidden_conv_1)).to(self.device), torch.zeros((num_nodes, hidden_conv_2)).to(self.device)]
         self.preprocess1 = Linear(input_dim, 256).to(self.device)
         self.preprocess2 = Linear(256, 128).to(self.device)
-        self.conv1 = GCNConv(128, hidden_conv_1).to(self.device)
-        self.conv2 = GCNConv(hidden_conv_1, hidden_conv_2).to(self.device)
+        self.conv1 = GCNConv(128, hidden_conv_1, add_self_loops=False).to(self.device)
+        self.conv2 = GCNConv(hidden_conv_1, hidden_conv_2, add_self_loops=False).to(self.device)
         self.postprocess1 = Linear(hidden_conv_2, output_dim).to(self.device)
         self.reshape = ReshapeH(empty_h)
         
@@ -287,6 +290,9 @@ class ROLANDGNN(torch.nn.Module):
 
         #Reshape h for NC (clients have different number of nodes)
         h = self.reshape.reshape_to_fill(h, subnodes, 0)
+
+        print("Done Reshape")
+        # print(self.previous_embeddings[0].clone())
 
         #Embedding Update after first layer
         if self.update=='gru':

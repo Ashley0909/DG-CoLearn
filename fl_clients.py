@@ -37,6 +37,13 @@ class EdgeDevice:
     def send_weights(self):
         return self.weights
     
+    def compute_weights(self, edge_index, device="cuda:0"):
+        weight = self.weights.to(device)
+        weight[torch.unique(edge_index)] = 1       # Include the node itself
+        pred_count = torch.bincount(edge_index[1]) # Count the occurrance of the second row of edge_index (dst nodes)
+        weight[:len(pred_count)] += pred_count         # bincount only shows from 0 to the max node in edge_index[1], so could be shorter than weights
+        self.weights = weight
+    
     def update_embeddings(self, shared_ne): # update the previous NE for GRU integration after sharing, or for next snapshot learning 
         self.prev_ne = shared_ne
 

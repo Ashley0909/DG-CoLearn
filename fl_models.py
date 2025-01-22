@@ -266,6 +266,7 @@ class ROLANDGNN(torch.nn.Module):
         #You can just use the saved previous embeddings and tau
         if previous_embeddings is not None: #None if test
             self.previous_embeddings = [previous_embeddings[0].clone().to(self.device),previous_embeddings[1].clone().to(self.device)]
+            train = True
         if self.update=='moving' and num_current_edges is not None and num_previous_edges is not None: #None if test
             #compute moving average parameter
             self.tau = torch.Tensor([num_previous_edges / (num_previous_edges + num_current_edges)]).clone().to(self.device) # tau -- past weight
@@ -292,16 +293,16 @@ class ROLANDGNN(torch.nn.Module):
         h = self.reshape.reshape_to_fill(h, subnodes, 0)
 
         print("Done Reshape")
-        # print(self.previous_embeddings[0].clone())
 
-        #Embedding Update after first layer
-        if self.update=='gru':
-            h = self.gru1(h, self.previous_embeddings[0].clone()).detach()
-        elif self.update=='mlp':
-            hin = torch.cat((h,self.previous_embeddings[0].clone()),dim=1)
-            h = self.mlp1(hin).detach()
-        else:
-            h = (self.tau * self.previous_embeddings[0].clone() + (1-self.tau) * h.clone()).detach()
+        #Embedding Update after first layer (only when training)
+        if train == True:
+            if self.update=='gru':
+                h = self.gru1(h, self.previous_embeddings[0].clone()).detach()
+            elif self.update=='mlp':
+                hin = torch.cat((h,self.previous_embeddings[0].clone()),dim=1)
+                h = self.mlp1(hin).detach()
+            else:
+                h = (self.tau * self.previous_embeddings[0].clone() + (1-self.tau) * h.clone()).detach()
     
         current_embeddings[0] = h.clone()
         #GraphConv2
@@ -309,15 +310,16 @@ class ROLANDGNN(torch.nn.Module):
         h = F.leaky_relu(h,inplace=True)
         h = F.dropout(h, p=self.dropout,inplace=True)
 
-        #Embedding Update after second layer
-        if self.update=='gru':
-            h = self.gru2(h, self.previous_embeddings[1].clone()).detach()
-        elif self.update=='mlp':
-            hin = torch.cat((h,self.previous_embeddings[1].clone()),dim=1)
-            h = self.mlp2(hin).detach()
-        else:
-            h = (self.tau * self.previous_embeddings[1].clone() + (1-self.tau) * h.clone()).detach()
-      
+        #Embedding Update after second layer (only when training)
+        if train == True:
+            if self.update=='gru':
+                h = self.gru2(h, self.previous_embeddings[1].clone()).detach()
+            elif self.update=='mlp':
+                hin = torch.cat((h,self.previous_embeddings[1].clone()),dim=1)
+                h = self.mlp2(hin).detach()
+            else:
+                h = (self.tau * self.previous_embeddings[1].clone() + (1-self.tau) * h.clone()).detach()
+    
         current_embeddings[1] = h.clone()
 
         #HADAMARD MLP (For Link Prediction)

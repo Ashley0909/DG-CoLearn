@@ -332,13 +332,27 @@ def compute_mrr(pred_score, true_l):
 
     return mrr
 
-def localise_idx(edge_index, subnodes, train_idx):
-    """ To relabel node indices in training data """
-    glob_to_loc = {node: i for i, node in enumerate(subnodes)} # create mapping
-
+def localise_idx(glob_to_loc, edge_index, split_idx):
+    """ To relabel node indices in split data, split = {train, val, test} """
     # use mapping to relabel indices
-    local_ei = torch.tensor([[glob_to_loc[src], glob_to_loc[dst]] for src, dst in edge_index.T if src in glob_to_loc and dst in glob_to_loc]).T
+    local_idx = torch.tensor([glob_to_loc[idx.item()] for idx in split_idx])
 
-    local_train = torch.tensor(glob_to_loc[train_idx])
+    # local_ei = torch.tensor([[glob_to_loc[src.item()], glob_to_loc[dst.item()]] for src, dst in edge_index.T if src in split_idx and dst in split_idx]).T  # Very slow approach to get edge_index
 
-    return local_ei, local_train
+    # Mask to keep only edges where both src and dst are in split_idx
+    src, dst = edge_index  # Separate edge_index into source and destination nodes
+    split_idx_set = set(split_idx.tolist())  # Convert to set for faster lookups
+    mask = torch.tensor([s in split_idx_set and d in split_idx_set for s, d in zip(src.tolist(), dst.tolist())])
+
+    # Apply the mask to filter edge_index
+    filtered_src = src[mask]
+    filtered_dst = dst[mask]
+
+    # Convert global indices to local indices using glob_to_loc
+    local_src = torch.tensor([glob_to_loc[s.item()] for s in filtered_src])
+    local_dst = torch.tensor([glob_to_loc[d.item()] for d in filtered_dst])
+
+    # Combine filtered local indices into local edge index
+    local_ei = torch.stack([local_src, local_dst])
+
+    return local_ei, local_idx

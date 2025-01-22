@@ -37,7 +37,7 @@ class EdgeDevice:
     def send_weights(self):
         return self.weights
     
-    def compute_weights(self, edge_index, device="cuda:0"):
+    def compute_weights(self, edge_index, device="cpu"):
         weight = self.weights.to(device)
         weight[torch.unique(edge_index)] = 1       # Include the node itself
         pred_count = torch.bincount(edge_index[1]) # Count the occurrance of the second row of edge_index (dst nodes)
@@ -235,7 +235,7 @@ def batch_sum_accuracy(predicted_y, labels, loss):
 
     return accuracy, count
 
-def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, round, epoch, snapshot=None, verbose=True):
+def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, round, epoch, verbose=True):
     device = env_cfg.device
     if len(client_ids) == 0:
         return last_loss_rep
@@ -276,7 +276,6 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
         for data in fdl.fbd_list: # Traverse the data of each client
             client = data.location
             model_id = cm_map[client.id]
-            print("Client", client.id)
             if model_id not in client_ids: # neglect non-participants
                 continue
             
@@ -284,7 +283,7 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             if task_cfg.task_type == 'LP':
                 edge_label_index, edge_label = data.edge_label_index.to(device), data.y.to(device)
             else:
-                node_label, subnodes = data.y.to(device), data.subnodes.to(device)
+                node_label, train_nodes = data.y.to(device), data.subnodes.to(device) # data.subnode is the client's training nodes
 
             model = models[model_id]
             optimizer = optimizers[model_id]
@@ -307,10 +306,11 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             if task_cfg.task_type == 'LP':
                 predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, edge_label_index, client.prev_ne)
             else:
-                predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, subnodes=subnodes, previous_embeddings=client.prev_ne)
+                model.customise_pe(len(client.subnodes))  # Customise so that each client's PE has different shape
+                predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, subnodes=train_nodes, previous_embeddings=client.prev_ne)
 
             """ Compute the Weights for Combining Node Embedding (Only need to do it once in First Round First Epoch) """
-            if (epoch + round) == 0:
+            if (epoch + round) == 0 and task_cfg.task_type == 'LP': # In NC, we only did this when creating nodes
                 weight = client.weights.to(device)
                 weight[torch.unique(new_edge_index)] = 1       # Include the node itself
                 pred_count = torch.bincount(new_edge_index[1]) # Count the occurrance of the second row of edge_index (dst nodes)
@@ -324,7 +324,7 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             if task_cfg.task_type == 'LP':
                 loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
             else:
-                loss = loss_func(predicted_y[subnodes], node_label)
+                loss = loss_func(predicted_y[train_nodes], node_label)
             loss.backward(retain_graph=True)  # Use backpropagation to compute gradients
             optimizer.step() # Update weights based on computed gradients
             
@@ -355,7 +355,7 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
 
     return client_train_loss
 
-def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep, last_acc_rep, round):
+def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep, last_acc_rep):
     if not client_ids:
         return last_loss_rep, last_acc_rep, None
     
@@ -389,9 +389,8 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                 if task_cfg.task_type == 'LP':
                     edge_label_index, edge_label = data.edge_label_index.to(device), data.y.to(device)
                 else:
-                    node_label, subnodes = data.y.to(device), data.subnodes.to(device)
+                    node_label, val_nodes = data.y.to(device), data.subnodes.to(device)
                 model_id = cm_map[data.location.id]
-                print("Client", data.location.id)
                 if model_id not in client_ids: # neglect non-participants
                     continue
 
@@ -404,9 +403,9 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                     metrics['mrr'] += mrr
                     metrics['ap'], metrics['macro_f1'], metrics['macro_auc'], metrics['micro_auc'] = metrics['ap'] + ap, metrics['macro_f1'] + macro_f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
                 else:
-                    predicted_y, _ = model(x, edge_index, task_cfg.task_type, subnodes=subnodes)
-                    loss = loss_func(predicted_y[subnodes], node_label)
-                    acc, macro_f1, micro_f1 = nc_prediction(predicted_y[subnodes], node_label)
+                    predicted_y, _ = model(x, edge_index, task_cfg.task_type, subnodes=val_nodes)
+                    loss = loss_func(predicted_y[val_nodes], node_label)
+                    acc, macro_f1, micro_f1 = nc_prediction(predicted_y[val_nodes], node_label)
                     metrics['macro_f1'], metrics['micro_f1'] = metrics['macro_f1'] + macro_f1, metrics['macro_f1'] + micro_f1
 
                 # Compute Loss and other metrics

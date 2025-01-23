@@ -787,7 +787,7 @@ def get_nc_clientdata(env_cfg, t, data, clients, subnode_list, mode):
             print(">E Invalid Split mode. Options: ['real-life', 'test-temporal']")
             exit(-1)
 
-        clients[i].weights = clients[i].compute_weights(train_edge_index) # Compute Weights for each client
+        clients[i].compute_weights(train_edge_index) # Compute Weights for each client
         clients[i].prev_edge_index = train_edge_index # Clients get new edge index in training by comparing with prev_edge_index
 
         # Allocate the BaseDataset to clients

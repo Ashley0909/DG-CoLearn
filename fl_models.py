@@ -227,8 +227,8 @@ class ROLANDGNN(torch.nn.Module):
         hidden_conv_2 = 32
         self.preprocess1 = Linear(input_dim, 256).to(self.device)
         self.preprocess2 = Linear(256, 128).to(self.device)
-        self.conv1 = GCNConv(128, hidden_conv_1, add_self_loops=False).to(self.device)
-        self.conv2 = GCNConv(hidden_conv_1, hidden_conv_2, add_self_loops=False).to(self.device)
+        self.conv1 = GCNConv(128, hidden_conv_1).to(self.device) #, add_self_loops=False
+        self.conv2 = GCNConv(hidden_conv_1, hidden_conv_2).to(self.device) #, add_self_loops=False
         self.postprocess1 = Linear(hidden_conv_2, output_dim).to(self.device)
         
         #Initialize the loss function to BCEWithLogitsLoss

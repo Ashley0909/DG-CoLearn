@@ -9,7 +9,7 @@ class EnvSettings:
 
     """
 
-    def __init__(self, n_clients, n_rounds, n_epochs, batch_size, train_frac, shuffle, pick_frac, benign_ratio, data_dist, perf_dist, crash_dist, keep_best, device, showplot, bw_set, max_T):
+    def __init__(self, n_clients, n_rounds, n_epochs, batch_size, train_frac, shuffle, pick_frac, benign_ratio, data_dist, client_dist, perf_dist, crash_dist, keep_best, device, showplot, bw_set, max_T):
         self.mode = None
         self.n_clients = n_clients
         self.n_rounds = n_rounds
@@ -21,6 +21,7 @@ class EnvSettings:
         self.pick_frac = pick_frac # fraction of clients picked for training
         self.benign_ratio = benign_ratio # fraction of benign clients
         self.data_dist = data_dist # local data distribution [(E, None): equal-sized / (N, sig): Normal, mu = total_size/n_clients, sigma = sig * mu / (X, None): Exponential] / (D, alpha): Dirichlet
+        self.client_dist = client_dist # Same data distribution options, for client data splitting
         self.perf_dist = perf_dist # client performance distribution [same as above]
         self.crash_dist = crash_dist # client crash probability distri. [(E, prob): equal prob to crash, (U, (low, high)): Uniform distribution]
         self.keep_best = keep_best # keep best global model if True
@@ -83,27 +84,27 @@ def init_config(task2run, pick_C, crash_prob, bw_set):
     if task2run == 'boston':
         ''' Boston housing regression settings (ms per epoch)'''
         # ref: https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ 
-        env_cfg = EnvSettings(n_clients=5, n_rounds=100, n_epochs=3, batch_size=5, train_frac=0.7, shuffle=False, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
+        env_cfg = EnvSettings(n_clients=5, n_rounds=100, n_epochs=3, batch_size=5, train_frac=0.7, shuffle=False, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), client_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, dev='cpu', showplot=False, bw_set=bw_set, max_T=830)
         task_cfg = TaskSettings(task_type='Reg', dataset='boston', path='data/boston_housing.csv', in_dim=12, out_dim=1, optimizer='SGD', loss='mse', lr=1e-4, lr_decay=1.0)
     elif task2run == 'mnist':
         ''' MNIST digits classification task settings (3s per epoch on GPU)'''
-        env_cfg = EnvSettings(n_clients=50, n_rounds=100, n_epochs=5, batch_size=40, train_frac=6.0/7.0, shuffle=False, pick_frac=pick_C, benign_ratio=1.0, data_dist=('E', None), perf_dist=('X', None), crash_dist=('E', crash_prob),
+        env_cfg = EnvSettings(n_clients=50, n_rounds=100, n_epochs=5, batch_size=40, train_frac=6.0/7.0, shuffle=False, pick_frac=pick_C, benign_ratio=1.0, data_dist=('E', None), client_dist=('E', None), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='CNN', dataset='mnist', path='data/MNIST/', in_dim=None, out_dim=None, optimizer='SGD', loss='nllLoss', lr=1e-3, lr_decay=1.0)
     elif task2run in ['cifar10', 'cifar100']:
-        env_cfg = EnvSettings(n_clients=50, n_rounds=10, n_epochs=5, batch_size=20, train_frac=6.0/7.0, shuffle=False, pick_frac=pick_C, benign_ratio=0.6, data_dist=('E', None), perf_dist=('X', None), crash_dist=('E', crash_prob),
+        env_cfg = EnvSettings(n_clients=50, n_rounds=10, n_epochs=5, batch_size=20, train_frac=6.0/7.0, shuffle=False, pick_frac=pick_C, benign_ratio=0.6, data_dist=('E', None), client_dist=('E', None), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
         if task2run == 'cifar10':
             task_cfg = TaskSettings(task_type='ResNet', dataset=task2run, num_classes=10, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='nllLoss', lr=1e-2, lr_decay=5e-4)
         else:    
             task_cfg = TaskSettings(task_type='ResNet', dataset=task2run, num_classes=100, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='nllLoss', lr=1e-2, lr_decay=5e-4)
     elif task2run in ['bitcoinOTC', 'UCI']:
-        env_cfg = EnvSettings(n_clients=2, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.5, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
+        env_cfg = EnvSettings(n_clients=2, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.5, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), client_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-3, lr_decay=5e-3)
     elif task2run in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
-        env_cfg = EnvSettings(n_clients=2, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.75, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('Label', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
+        env_cfg = EnvSettings(n_clients=2, n_rounds=2, n_epochs=30, batch_size=20, train_frac=0.75, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('Min_Cut', None), client_dist=('Label', None), perf_dist=('X', None), crash_dist=('E', crash_prob),
                               keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='NC', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='ce', lr=1e-3, lr_decay=5e-3)
     else:

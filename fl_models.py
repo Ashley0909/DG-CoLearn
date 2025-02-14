@@ -296,7 +296,8 @@ class ROLANDGNN(torch.nn.Module):
         h = F.dropout(h, p=self.dropout,inplace=True)
 
         #Reshape h for NC (clients have different number of nodes)
-        h = self.reshape.reshape_to_fill(h, subnodes)
+        if task_type == "NC":
+            h = self.reshape.reshape_to_fill(h, subnodes)
 
         #Embedding Update after first layer (only when training)
         if train == True:

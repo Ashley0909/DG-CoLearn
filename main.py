@@ -5,10 +5,11 @@ import time
 import numpy as np
 from datetime import datetime
 
-from fl_strategy import run_FL,run_FedAssets,run_dylp
+from fl_strategy import run_FL,run_FedAssets,run_dygl
 from configurations import init_config, init_FL_clients, init_global_model, init_FLBackdoor_clients, init_GNN_clients
 from utils import Logger
-from fl_dataset import FLDataLoader, get_clientdata, get_random_clientdata, get_effi_clientdata, load_data, load_lp_data, load_nc_data, allocate_clientsubnodes, get_nc_clientdata
+from flgnn_dataset import load_gnndata, get_gnn_clientdata
+from fl_dataset import FLDataLoader, get_clientdata, load_data
 from fl_clients import generate_clients_perf, generate_clients_crash_prob, generate_crash_trace
 from plot_graphs import configure_plotly, time_gpu
 
@@ -29,24 +30,18 @@ def main():
     env_cfg.mode = task_mode
 
     # Load Data
-    if task_mode == "FLDGNN-LP":
-        num_snapshots, train_list, val_list, test_list, data_size, arg = load_lp_data(task_cfg)
-    elif task_mode == "FLDGNN-NC":
-        num_snapshots, data, arg = load_nc_data(task_cfg)
+    if task_mode in ["FLDGNN-LP", "FLDGNN-NC"]:
+        num_snapshots, train_list, val_list, test_list, data_size, arg = load_gnndata(task_cfg)
     else:
         train_x, train_y, test_x, test_y, data_size = load_data(task_cfg, env_cfg)
     
     # Create a list of information per snapshots in FLDGNN
     if task_mode in ["FLDGNN-LP", "FLDGNN-NC"]:
-        sys.stdout = Logger('FLDGNN')
+        # sys.stdout = Logger('FLDGNN')
         print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
 
         clients, cindexmap = init_GNN_clients(env_cfg.n_clients, arg['last_embeddings'], arg['weights']) # Stay the same for all snapshots
         glob_model = init_global_model(env_cfg, task_cfg)
-
-        effi_allocation = True # If prefer time efficiency edge allocation among clients in LP
-        if effi_allocation or task_mode == "FLDGNN-NC":
-            subnodes_list = allocate_clientsubnodes(env_cfg, arg, clients) # Allocate subnodes for clients that applies to all snapshots
 
         # Configure Plot to plot global model performance
         x_labels = []
@@ -59,19 +54,12 @@ def main():
         # if not os.path.exists(directory):
         #     os.makedirs(directory)
 
-        for i in range(num_snapshots-1):
-            print("Snapshot", i)            
-            if task_mode == "FLDGNN-LP":
-                if effi_allocation:
-                    fed_data_train, fed_data_val, fed_data_test, client_shard_sizes = get_effi_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients, subnodes_list)
-                else:
-                    fed_data_train, fed_data_val, fed_data_test, client_shard_sizes = get_random_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients)
-                glob_model, _, _, val_fig, test_ap_fig, test_ap = run_dylp(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, i, client_shard_sizes, data_size[i], test_ap_fig, test_ap)
+        for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
+            print("Snapshot", i)
+            fed_data_train, fed_data_val, fed_data_test, client_shard_sizes = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients)
+            glob_model, _, _, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
+                                                                       i, client_shard_sizes, data_size[i], test_ap_fig, test_ap)
 
-            if task_mode == "FLDGNN-NC":
-                data_size, client_shard_sizes, fed_data_train, fed_data_val, fed_data_test = get_nc_clientdata(env_cfg, i, data=data, clients=clients, subnode_list=subnodes_list, mode='real-life')
-                glob_model, _, _, val_fig, test_ap_fig, test_ap = run_dylp(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, i, client_shard_sizes, data_size, test_ap_fig, test_ap)
-            
             for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
                 c.update_embeddings(c.curr_ne)
 

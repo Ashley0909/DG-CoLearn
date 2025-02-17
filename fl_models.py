@@ -204,10 +204,9 @@ class ReshapeH():
         self.empty_h = empty_h
 
     def reshape_to_fill(self, h, subnodes):
-        if h.shape == self.empty_h.shape: # only NC will have misaligned NE
+        if h.shape == self.empty_h.shape:
             return h
         
-        # reshaped = self.empty_h[layer]
         reshaped = copy.deepcopy(self.empty_h)
         reshaped[subnodes] = h
 
@@ -250,6 +249,9 @@ class ROLANDGNN(torch.nn.Module):
             assert(update>=0 and update <=1)
             self.tau = torch.Tensor([update]).to(self.device)
         self.previous_embeddings = [torch.zeros((num_nodes, hidden_conv_1)).to(self.device), torch.zeros((num_nodes, hidden_conv_2)).to(self.device)]
+
+        empty_h = torch.zeros((num_nodes, 64)).to(self.device)
+        self.reshape = ReshapeH(empty_h)
         
     def reset_parameters(self):
         self.preprocess1.reset_parameters()
@@ -257,13 +259,6 @@ class ROLANDGNN(torch.nn.Module):
         self.conv1.reset_parameters()
         self.conv2.reset_parameters()
         self.postprocess1.reset_parameters()
-
-    def customise_pe(self, num_nodes):
-        empty_h = torch.zeros((num_nodes, 64)).to(self.device) # To reshape after the 1st conv layer
-        self.reshape = ReshapeH(empty_h)
-
-        self.previous_embeddings = [torch.zeros((num_nodes, 64)).to(self.device), torch.zeros((num_nodes, 32)).to(self.device)]
-
 
     def forward(self, x, edge_index, task_type, edge_label_index=None, subnodes=None, previous_embeddings=None, num_current_edges=None, num_previous_edges=None):        
         #You do not need all the parameters to be different to None in test phase
@@ -295,9 +290,8 @@ class ROLANDGNN(torch.nn.Module):
         h = F.leaky_relu(h,inplace=True)
         h = F.dropout(h, p=self.dropout,inplace=True)
 
-        #Reshape h for NC (clients have different number of nodes)
-        if task_type == "NC":
-            h = self.reshape.reshape_to_fill(h, subnodes)
+        #Reshape h since clients have different number of nodes
+        h = self.reshape.reshape_to_fill(h, subnodes)
 
         #Embedding Update after first layer (only when training)
         if train == True:

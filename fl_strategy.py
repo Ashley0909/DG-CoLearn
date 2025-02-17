@@ -315,7 +315,7 @@ def run_FedAssets(env_cfg, task_cfg, global_mod, cm_map, data_size, fed_data_tra
    
    return best_model, best_round, best_loss
 
-def run_dylp(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap):
+def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap):
    # Initialise
    global_model = global_mod
    local_models = [None for _ in range(env_cfg.n_clients)]

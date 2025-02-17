@@ -281,7 +281,7 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             
             x, edge_index = data.x.to(device), data.edge_index.to(device)
             if task_cfg.task_type == 'LP':
-                edge_label_index, edge_label = data.edge_label_index.to(device), data.y.to(device)
+                edge_label_index, edge_label, train_nodes = data.edge_label_index.to(device), data.y.to(device), data.subnodes.to(device)
             else:
                 node_label, train_nodes = data.y.to(device), data.subnodes.to(device) # data.subnode is the client's training nodes
 
@@ -304,9 +304,9 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
                 print("Shrink in graph size", edge_index.shape[1] - new_edge_index.shape[1])
 
             if task_cfg.task_type == 'LP':
-                predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, edge_label_index, client.prev_ne)
+                predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
             else:
-                model.customise_pe(len(client.subnodes))  # Customise so that each client's PE has different shape
+                # model.customise_pe(len(client.subnodes))  # Customise so that each client's PE has different shape
                 predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, subnodes=train_nodes, previous_embeddings=client.prev_ne)
 
             """ Compute the Weights for Combining Node Embedding (Only need to do it once in First Round First Epoch) """
@@ -387,7 +387,7 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
             for data in fdl.fbd_list:
                 x, edge_index = data.x.to(device), data.edge_index.to(device)
                 if task_cfg.task_type == 'LP':
-                    edge_label_index, edge_label = data.edge_label_index.to(device), data.y.to(device)
+                    edge_label_index, edge_label, val_nodes = data.edge_label_index.to(device), data.y.to(device), data.subnodes.to(device)
                 else:
                     node_label, val_nodes = data.y.to(device), data.subnodes.to(device)
                 model_id = cm_map[data.location.id]
@@ -396,7 +396,7 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
 
                 model = models[model_id]
                 if task_cfg.task_type == 'LP':
-                    predicted_y, _ = model(x, edge_index, task_cfg.task_type, edge_label_index)
+                    predicted_y, _ = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=val_nodes)
                     loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
                     acc, ap, macro_f1, macro_auc, micro_auc = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
                     mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))

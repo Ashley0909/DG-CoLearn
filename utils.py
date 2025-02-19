@@ -277,7 +277,21 @@ def get_exclusive_edges(current, prev):
     exclusive_mask = ~np.any(mask, axis=1)
 
     exclusive_current = current[:, exclusive_mask]
-    return exclusive_current
+
+    # Now get all the edges inside the 2-hop neighbourhoods of newly added edges
+    new_nodes = torch.unique(exclusive_current)
+
+    mask_1hop = torch.isin(current[0], new_nodes) | torch.isin(current[1], new_nodes)
+    one_hop_edges = current[:, mask_1hop]
+
+    one_hop_nodes = torch.unique(one_hop_edges)
+    mask_2hop = torch.isin(current[0], one_hop_nodes) | torch.isin(current[1], one_hop_nodes)
+    two_hop_edges = current[:, mask_2hop]
+
+    if two_hop_edges is None:
+        print('>E No edges left to train')
+
+    return two_hop_edges
 
 def share_embeddings(embeddings, weights):
     temp_embeddings = copy.deepcopy(embeddings)

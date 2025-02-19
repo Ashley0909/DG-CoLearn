@@ -1,21 +1,12 @@
-import os
-import copy
 import numpy as np
 import random
-import math
 import torch
-from collections import defaultdict
 from PIL import Image
 from torchvision import transforms
 from torchvision import datasets as torch_datasets
-from torch_geometric import datasets as torchgeometric_datasets
-from torch_geometric.data import Data
-from torch_geometric.transforms import RandomLinkSplit
-from torch_geometric.utils import negative_sampling
-from itertools import permutations
 
-from fl_clients import FLClient, FLBackdoorClient, EdgeDevice
-from utils import sample_dirichlet, normalize, process_data, localise_idx
+from fl_clients import FLClient, FLBackdoorClient
+from utils import sample_dirichlet, normalize
 
 class FLBaseDataset:
     def __init__(self, x, y, client=None):

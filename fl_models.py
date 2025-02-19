@@ -226,8 +226,8 @@ class ROLANDGNN(torch.nn.Module):
         hidden_conv_2 = 32
         self.preprocess1 = Linear(input_dim, 256).to(self.device)
         self.preprocess2 = Linear(256, 128).to(self.device)
-        self.conv1 = GCNConv(128, hidden_conv_1).to(self.device) #, add_self_loops=False
-        self.conv2 = GCNConv(hidden_conv_1, hidden_conv_2).to(self.device) #, add_self_loops=False
+        self.conv1 = GCNConv(128, hidden_conv_1).to(self.device)
+        self.conv2 = GCNConv(hidden_conv_1, hidden_conv_2).to(self.device)
         self.postprocess1 = Linear(hidden_conv_2, output_dim).to(self.device)
         
         #Initialize the loss function to BCEWithLogitsLoss
@@ -303,7 +303,7 @@ class ROLANDGNN(torch.nn.Module):
             else:
                 h = (self.tau * self.previous_embeddings[0].clone() + (1-self.tau) * h.clone()).detach()
     
-        current_embeddings[0] = h.clone()
+        current_embeddings[0] = h.clone().to(self.device)
         #GraphConv2
         h = self.conv2(h, edge_index)
         h = F.leaky_relu(h,inplace=True)
@@ -319,7 +319,7 @@ class ROLANDGNN(torch.nn.Module):
             else:
                 h = (self.tau * self.previous_embeddings[1].clone() + (1-self.tau) * h.clone()).detach()
     
-        current_embeddings[1] = h.clone()
+        current_embeddings[1] = h.clone().to(self.device)
 
         #HADAMARD MLP (For Link Prediction)
         if task_type == "LP":

@@ -192,19 +192,21 @@ def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_
 
     ei_mask = node_mask[data.edge_index[0]] & node_mask[data.edge_index[1]]
     subgraph_ei = data.edge_index[:, ei_mask]
-    
-    if tvt_mode == "train":
-        clients[client_idx].compute_weights(subgraph_ei) # Compute Weights for each client
-        clients[client_idx].prev_edge_index = subgraph_ei # Clients get new edge index in training by comparing with prev_edge_index
 
     if task_type == "FLDGNN-LP":
         # Also get Edge Label
         el_mask = node_mask[data.edge_label_index[0]] & node_mask[data.edge_label_index[1]]
 
-        return FLLPDataset(data.x[node_mask], subnodes, data.edge_index[:, ei_mask], data.edge_label_index[:, el_mask], data.edge_label[el_mask], clients[client_idx].prev_edge_index, clients[client_idx])
+        fed_data =  FLLPDataset(data.x[node_mask], subnodes, data.edge_index[:, ei_mask], data.edge_label_index[:, el_mask], data.edge_label[el_mask], clients[client_idx].prev_edge_index, clients[client_idx])
 
     elif task_type == "FLDGNN-NC":
-        return FLNCDataset(data.x[node_mask], subnodes, data.edge_index[:, ei_mask], clients[client_idx].prev_edge_index, data.y[node_mask], clients[client_idx])
+        fed_data = FLNCDataset(data.x[node_mask], subnodes, data.edge_index[:, ei_mask], clients[client_idx].prev_edge_index, data.y[node_mask], clients[client_idx])
+    
+    if tvt_mode == "train":
+        clients[client_idx].compute_weights(subgraph_ei) # Compute Weights for each client
+        clients[client_idx].prev_edge_index = subgraph_ei # Clients get new edge index in training by comparing with prev_edge_index
+    
+    return fed_data
 
 def metis_partition(edge_index, num_nodes, num_parts, prev_partition=None):
     """ Stay consistent partition for TVT, so prev_partition is to record the partition of training data """
@@ -219,6 +221,7 @@ def metis_partition(edge_index, num_nodes, num_parts, prev_partition=None):
 
     # Run METIS for initial partitioning
     _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
+    # _, partitioning_labels = metis.part_graph(adjacency_list, num_parts, objtype='vol', minconn=True)
 
     # If previous partition exists, maintain consistency
     if prev_partition is not None:

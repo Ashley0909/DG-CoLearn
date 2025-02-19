@@ -37,7 +37,7 @@ def main():
     
     # Create a list of information per snapshots in FLDGNN
     if task_mode in ["FLDGNN-LP", "FLDGNN-NC"]:
-        # sys.stdout = Logger('FLDGNN')
+        sys.stdout = Logger('FLDGNN')
         print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
 
         clients, cindexmap = init_GNN_clients(env_cfg.n_clients, arg['last_embeddings'], arg['weights']) # Stay the same for all snapshots

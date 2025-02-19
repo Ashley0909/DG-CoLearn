@@ -7,7 +7,7 @@ import random
 from utils import share_embeddings
 from fl_clients import distribute_models, select_clients_FCFM, select_clients_randomly, version_filter, train, local_test, global_test
 from configurations import EventHandler
-from fl_aggregations import safa_aggregate, fedassets_aggregate
+from fl_aggregations import safa_aggregate, fedassets_aggregate, gnn_aggregate
 from plot_graphs import configure_plotly, time_cpu
 
 def get_cross_rounders(clients_est_round_T_train, max_round_interval):
@@ -319,14 +319,14 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
    # Initialise
    global_model = global_mod
    local_models = [None for _ in range(env_cfg.n_clients)]
-   cache = [None for _ in range(env_cfg.n_clients)]
+   cache = [None for _ in range(env_cfg.n_clients)] # stores the local model trained in each snapshot (only this snapshot)
    client_ids = list(range(env_cfg.n_clients))
 
    distribute_models(global_model, local_models, client_ids)
 
-   # Assume all clients who has edges involved participate in all training rounds
+   # Assign all clients who has edges involved participate in all training rounds
    client_ids = sample_clients(fed_data_train, cm_map)
-   print("Participanting Clients:", client_ids)
+   print("Participating Clients:", client_ids)
 
    best_round = -1
    best_loss = float('inf')
@@ -359,7 +359,8 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       """ Share Node Embedding after training for the first half of epochs """
       trained_embeddings = []
       aggre_weights = []
-      for c in range(env_cfg.n_clients):
+      for c in range(len(client_ids)):
+         print("client", c)
          # plot_h(matrix=clients[c].curr_ne[1], path='ne1_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Trained Node Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
          trained_embeddings.append(clients[c].send_embeddings())
          aggre_weights.append(clients[c].send_weights())
@@ -370,7 +371,7 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       shared_embeddings = share_embeddings(trained_embeddings, aggre_weights)
       # shared_embeddings, time_taken = time_cpu(share_embeddings, trained_embeddings, aggre_weights)
       # print(f"Time Taken for Sharing Embedding: {time_taken:.6f} seconds")
-      for c in range(env_cfg.n_clients):
+      for c in range(len(client_ids)):
          clients[c].update_embeddings(shared_embeddings[c])
          # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
 
@@ -383,9 +384,9 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
 
       # Aggregate Local Models
       update_cloud_cache(cache, local_models, client_ids)
-      global_model = safa_aggregate(cache, client_shard_sizes, data_size)
+      # global_model = safa_aggregate(cache, client_shard_sizes, data_size)
+      global_model = gnn_aggregate(cache, client_shard_sizes, data_size, client_ids)
       print("Aggregated Model")
-      
       # Global Test
       global_loss, global_acc, global_metrics = global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fed_data_test, rd)
       overall_loss = np.array(global_loss)[np.array(global_loss) != 0.0].sum() / data_size
@@ -407,5 +408,4 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
          global_model = best_model
          overall_loss = best_loss
          global_acc = best_acc
-
    return best_model, best_round, best_loss, val_ap_fig, test_ap_fig, test_ap

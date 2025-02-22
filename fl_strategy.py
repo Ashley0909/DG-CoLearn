@@ -358,14 +358,10 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
 
       """ Share Node Embedding after training for the first half of epochs """
       trained_embeddings = []
-      aggre_weights = []
       for c in range(len(client_ids)):
          print("client", c)
          # plot_h(matrix=clients[c].curr_ne[1], path='ne1_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Trained Node Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
          trained_embeddings.append(clients[c].send_embeddings())
-         aggre_weights.append(clients[c].send_weights())
-
-      aggre_weights = torch.stack(aggre_weights, dim=0)
 
       print("Share Embeddings")
       shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment)

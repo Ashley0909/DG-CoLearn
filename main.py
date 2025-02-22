@@ -40,7 +40,7 @@ def main():
         sys.stdout = Logger('FLDGNN')
         print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
 
-        clients, cindexmap = init_GNN_clients(env_cfg.n_clients, arg['last_embeddings'], arg['weights']) # Stay the same for all snapshots
+        clients, cindexmap = init_GNN_clients(env_cfg.n_clients, arg['last_embeddings']) # Stay the same for all snapshots
         glob_model = init_global_model(env_cfg, task_cfg)
 
         # Configure Plot to plot global model performance

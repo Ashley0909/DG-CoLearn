@@ -23,48 +23,18 @@ class FLBackdoorClient:
         self.malicious = malicious
 
 class EdgeDevice:
-    def __init__(self, id, prev_ne, weights, subnodes):
+    def __init__(self, id, prev_ne, subnodes):
         self.id = id
         self.prev_ne = prev_ne
         self.curr_ne = prev_ne # same stucture as prev_ne store 0-hop , 1-hop and 2-hop
         self.prev_edge_index = None
-        self.weights = weights
         self.subnodes = subnodes
 
     def send_embeddings(self): # send the current trained NE for sharing
         return self.curr_ne
-    
-    def send_weights(self):
-        return self.weights
-    
-    def compute_weights(self, edge_index, device="cuda:0"):
-        weight = copy.deepcopy(self.weights.to(device))
-        weight[torch.unique(edge_index)] = 1       # Include the node itself
-        pred_count = torch.bincount(edge_index[1]).to(device) # Count the occurrance of the second row of edge_index (dst nodes)
-        weight[:len(pred_count)] += pred_count         # bincount only shows from 0 to the max node in edge_index[1], so could be shorter than weights
-        self.weights = weight
 
     def update_embeddings(self, shared_ne): # update the previous NE for GRU integration after sharing, or for next snapshot learning 
         self.prev_ne = shared_ne
-
-class FogDevice:
-    def __init__(self):
-        self.shared_ne = None
-
-    def get_ideal_embeddings(self, embeddings, weights):
-        temp_embeddings = copy.deepcopy(embeddings)
-        avg = torch.sum(weights, dim=0, keepdim=False)
-
-        for i in range(len(weights)): # for each client
-            indices = (weights[i] == 1).nonzero(as_tuple=True)[0]
-            for l in range(2): # 2 conv layers
-                for j in range(len(weights)):
-                    if j != i:
-                        mul = temp_embeddings[j][l][indices] * weights[j][indices][:, None]
-                        embeddings[i][l][indices] += mul
-                embeddings[i][l][indices] /= avg[indices][:, None] # Take average
-
-        return embeddings
 
 def distribute_models(global_model, local_models, client_ids):
     for id in client_ids:
@@ -309,14 +279,6 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             else:
                 # model.customise_pe(len(client.subnodes))  # Customise so that each client's PE has different shape
                 predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, subnodes=train_nodes, previous_embeddings=client.prev_ne)
-
-            """ Compute the Weights for Combining Node Embedding (Only need to do it once in First Round First Epoch) """
-            if (epoch + round) == 0 and task_cfg.task_type == 'LP': # In NC, we only did this when creating nodes
-                weight = client.weights.to(device)
-                weight[torch.unique(new_edge_index)] = 1       # Include the node itself
-                pred_count = torch.bincount(new_edge_index[1]) # Count the occurrance of the second row of edge_index (dst nodes)
-                weight[:len(pred_count)] += pred_count         # bincount only shows from 0 to the max node in edge_index[1], so could be shorter than weights
-                client.weights = weight
 
             # Train with complete data set
             # predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, client.prev_ne)

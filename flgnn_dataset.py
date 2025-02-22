@@ -81,7 +81,6 @@ def load_gnndata(task_cfg):
         label = 2 # positive or negative edges
         hidden_conv1, hidden_conv2 = 128, 128 #64, 32
         last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]),torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
-        weights = torch.zeros(data[0].num_nodes)
         task_cfg.in_dim = data[0].num_node_features
         task_cfg.out_dim = data[0].num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
 
@@ -97,7 +96,6 @@ def load_gnndata(task_cfg):
         print("total number of nodes", num_nodes)
         hidden_conv1, hidden_conv2 = 128, 128 #64, 32
         last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
-        weights = torch.zeros(num_nodes)
         task_cfg.in_dim = feature.shape[2]
         task_cfg.out_dim = num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
 
@@ -119,7 +117,7 @@ def load_gnndata(task_cfg):
     """ Split each snapshot into train, val and test """
     train_list, val_list, test_list, data_size = partition_data(task_cfg.task_type, num_snapshots, data) # data_size is to record the number of training data (#edge/#node)
 
-    return num_snapshots, train_list, val_list, test_list, data_size, {'last_embeddings': last_embeddings, 'weights': weights, 'num_nodes': data[0].num_nodes, 'y': label}
+    return num_snapshots, train_list, val_list, test_list, data_size, {'last_embeddings': last_embeddings, 'num_nodes': data[0].num_nodes, 'y': label}
 
 def partition_data(task_type, num_snapshots, data):
     """ Partition data in train using t, val using t+1 and test using t+2 """
@@ -223,7 +221,6 @@ def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_
         fed_data = FLNCDataset(data.x[node_mask], subnodes, data.edge_index[:, ei_mask], clients[client_idx].prev_edge_index, data.y[node_mask], clients[client_idx])
     
     if tvt_mode == "train":
-        clients[client_idx].compute_weights(subgraph_ei) # Compute Weights for each client
         clients[client_idx].prev_edge_index = subgraph_ei # Clients get new edge index in training by comparing with prev_edge_index
     
     return fed_data

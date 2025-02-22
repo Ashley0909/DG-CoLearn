@@ -294,23 +294,6 @@ def get_exclusive_edges(current, prev):
 
     return two_hop_edges
 
-def share_embeddings(embeddings, weights):
-    # According to what has been proved, the server can compute the ideal node embeddings according to the cross client edges and L-1 hop NE
-    temp_embeddings = copy.deepcopy(embeddings)
-    total = torch.sum(weights, dim=0, keepdim=False)
-
-    for i in range(len(weights)): # for each client
-        indices = (weights[i] > 0).nonzero(as_tuple=True)[0]
-        for l in range(2): # 2 conv layers
-            embeddings[i][l][indices] *= weights[i][indices][:, None]
-            for j in range(len(weights)): # for another client
-                if j != i:
-                    mul = temp_embeddings[j][l][indices] * weights[j][indices][:, None]
-                    embeddings[i][l][indices] += mul
-            embeddings[i][l][indices] /= total[indices][:, None] # Take average
-
-    return embeddings
-
 def node_embedding_update_sum(start_node, ccn, k):
     '''
     Function to return the contribution of each neighbouring node to start node and its hop embedding
@@ -397,28 +380,3 @@ def compute_mrr(pred_score, true_l):
     mrr = reciprocal_ranks.mean().item()
 
     return mrr
-
-def localise_idx(glob_to_loc, edge_index, split_idx):
-    """ To relabel node indices in split data, split = {train, val, test} """
-    # use mapping to relabel indices
-    local_idx = torch.tensor([glob_to_loc[idx.item()] for idx in split_idx])
-
-    # local_ei = torch.tensor([[glob_to_loc[src.item()], glob_to_loc[dst.item()]] for src, dst in edge_index.T if src in split_idx and dst in split_idx]).T  # Very slow approach to get edge_index
-
-    # Mask to keep only edges where both src and dst are in split_idx
-    src, dst = edge_index  # Separate edge_index into source and destination nodes
-    split_idx_set = set(split_idx.tolist())  # Convert to set for faster lookups
-    mask = torch.tensor([s in split_idx_set and d in split_idx_set for s, d in zip(src.tolist(), dst.tolist())])
-
-    # Apply the mask to filter edge_index
-    filtered_src = src[mask]
-    filtered_dst = dst[mask]
-
-    # Convert global indices to local indices using glob_to_loc
-    local_src = torch.tensor([glob_to_loc[s.item()] for s in filtered_src])
-    local_dst = torch.tensor([glob_to_loc[d.item()] for d in filtered_dst])
-
-    # Combine filtered local indices into local edge index
-    local_ei = torch.stack([local_src, local_dst])
-
-    return local_ei, local_idx

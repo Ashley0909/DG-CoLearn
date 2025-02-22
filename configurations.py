@@ -138,12 +138,12 @@ def init_FLBackdoor_clients(num_clients, br):
     
     return clients, cm_map, mali_map
 
-def init_GNN_clients(num_clients, last_ne, weights):
+def init_GNN_clients(num_clients, last_ne):
     """ last_ne is the same for each client, with shape [total_num_nodes, hidden_conv_1] and [total_num_nodes, hidden_conv_2] """
     clients = []
     cm_map = {}
     for i in range(num_clients):
-        clients.append(EdgeDevice(id=f'client_{i}', prev_ne=last_ne, weights=weights, subnodes=None))
+        clients.append(EdgeDevice(id=f'client_{i}', prev_ne=last_ne, subnodes=None))
         cm_map[f'client_{i}'] = i
 
     return clients, cm_map

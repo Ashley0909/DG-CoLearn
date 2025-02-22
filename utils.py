@@ -10,6 +10,7 @@ from torch_geometric.data import Data
 import sys
 import datetime
 import random
+from collections import deque
 
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import f1_score, accuracy_score
@@ -294,6 +295,7 @@ def get_exclusive_edges(current, prev):
     return two_hop_edges
 
 def share_embeddings(embeddings, weights):
+    # According to what has been proved, the server can compute the ideal node embeddings according to the cross client edges and L-1 hop NE
     temp_embeddings = copy.deepcopy(embeddings)
     total = torch.sum(weights, dim=0, keepdim=False)
 
@@ -308,6 +310,56 @@ def share_embeddings(embeddings, weights):
             embeddings[i][l][indices] /= total[indices][:, None] # Take average
 
     return embeddings
+
+def node_embedding_update_sum(start_node, ccn, k):
+    '''
+    Function to return the contribution of each neighbouring node to start node and its hop embedding
+    Inputs:
+    1) start_node -> node we wish to find contribution for next node embedding
+    2) ccn -> defaultdict(list) of cross client nodes
+    3) k -> Hop we wish to find embedding of start_node for
+
+    Output:
+    list of tuples corresponding to (node required, hop) for vector embedding update
+    '''
+    embeddings_required = []
+    dq = deque([(start_node, k, {start_node})])
+    while dq:
+        node, hop, nodes_visited = dq.popleft()
+        embeddings_required.append([node, hop])
+
+        for neigh in ccn[node]:
+            if neigh not in nodes_visited and hop>0:
+                dq.append((neigh, hop-1, nodes_visited|{neigh}))
+
+    return embeddings_required
+
+def get_global_embedding(embeddings, ccn, node_client_map):
+    '''
+    Function to return the global embedding to update the client's local embeddings, using the formula:
+    1 hop NE of node i => NE1[i] + SUM(NE0[j]) for j in ccn[i]
+    2 hop NE of node i => NE2[i] + SUM(NE1[j] + NE0[j] + NE0[i]) for j in ccn[i] + SUM(NE0[k]) for k in ccn[j]
+
+    Inputs:
+    1) embeddings -> list of 0-hop, 1-hop and 2-hop NE of each client
+    2) ccn -> defaultdict(list) of cross client nodes
+    3) node_client_map -> the client each node is assigned for training
+
+    Output:
+    list of 0-hop, 1-hop and 2-hop Global NE 
+    '''
+    hop_embeddings = []
+    for hop in range(3):
+        hop_matrix = []
+        for node in range(len(node_client_map)):
+            node_embdedding_sum = node_embedding_update_sum(node, ccn, hop)
+            final_embedding = torch.zeros(embeddings[0][0][0].shape).to("cuda:0")
+            for update_node, k in node_embdedding_sum:
+                final_embedding += embeddings[node_client_map[update_node]][k][update_node]
+            hop_matrix.append(final_embedding)
+        hop_embeddings.append(hop_matrix)
+
+    return hop_embeddings
 
 def lp_prediction(pred_score, true_l):
     pred = pred_score.clone()

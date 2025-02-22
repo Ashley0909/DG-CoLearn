@@ -56,9 +56,9 @@ def main():
 
         for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
             print("Snapshot", i)
-            fed_data_train, fed_data_val, fed_data_test, client_shard_sizes = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients)
+            fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, ccn_dict, node_assignment = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients)
             glob_model, _, _, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
-                                                                       i, client_shard_sizes, data_size[i], test_ap_fig, test_ap)
+                                                                       i, client_shard_sizes, data_size[i], test_ap_fig, test_ap, ccn_dict, node_assignment)
 
             for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
                 c.update_embeddings(c.curr_ne)

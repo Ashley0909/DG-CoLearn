@@ -26,7 +26,7 @@ class EdgeDevice:
     def __init__(self, id, prev_ne, weights, subnodes):
         self.id = id
         self.prev_ne = prev_ne
-        self.curr_ne = prev_ne # same stucture as prev_ne
+        self.curr_ne = prev_ne # same stucture as prev_ne store 0-hop , 1-hop and 2-hop
         self.prev_edge_index = None
         self.weights = weights
         self.subnodes = subnodes
@@ -51,7 +51,7 @@ class FogDevice:
     def __init__(self):
         self.shared_ne = None
 
-    def share_embeddings(self, embeddings, weights):
+    def get_ideal_embeddings(self, embeddings, weights):
         temp_embeddings = copy.deepcopy(embeddings)
         avg = torch.sum(weights, dim=0, keepdim=False)
 

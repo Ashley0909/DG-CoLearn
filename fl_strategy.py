@@ -4,7 +4,7 @@ import copy
 import torch
 import random
 
-from utils import share_embeddings
+from utils import get_global_embedding
 from fl_clients import distribute_models, select_clients_FCFM, select_clients_randomly, version_filter, train, local_test, global_test
 from configurations import EventHandler
 from fl_aggregations import safa_aggregate, fedassets_aggregate, gnn_aggregate
@@ -315,7 +315,7 @@ def run_FedAssets(env_cfg, task_cfg, global_mod, cm_map, data_size, fed_data_tra
    
    return best_model, best_round, best_loss
 
-def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap):
+def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment):
    # Initialise
    global_model = global_mod
    local_models = [None for _ in range(env_cfg.n_clients)]
@@ -368,11 +368,11 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       aggre_weights = torch.stack(aggre_weights, dim=0)
 
       print("Share Embeddings")
-      shared_embeddings = share_embeddings(trained_embeddings, aggre_weights)
+      shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment)
       # shared_embeddings, time_taken = time_cpu(share_embeddings, trained_embeddings, aggre_weights)
       # print(f"Time Taken for Sharing Embedding: {time_taken:.6f} seconds")
       for c in range(len(client_ids)):
-         clients[c].update_embeddings(shared_embeddings[c])
+         clients[c].update_embeddings(shared_embeddings)
          # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
 
       for epoch in range(env_cfg.n_epochs // 2, env_cfg.n_epochs):

@@ -222,8 +222,8 @@ class ROLANDGNN(torch.nn.Module):
             #HadamardMLP as link prediction decoder
         
         self.device = device
-        hidden_conv_1 = 64
-        hidden_conv_2 = 32
+        hidden_conv_1 = 128 #64
+        hidden_conv_2 = 128 #32
         self.preprocess1 = Linear(input_dim, 256).to(self.device)
         self.preprocess2 = Linear(256, 128).to(self.device)
         self.conv1 = GCNConv(128, hidden_conv_1).to(self.device)
@@ -246,11 +246,11 @@ class ROLANDGNN(torch.nn.Module):
             self.mlp1 = Linear(hidden_conv_1*2, hidden_conv_1).to(self.device)
             self.mlp2 = Linear(hidden_conv_2*2, hidden_conv_2).to(self.device)
         else:
-            assert(update>=0 and update <=1)
+            assert(0<=update<=1)
             self.tau = torch.Tensor([update]).to(self.device)
         self.previous_embeddings = [torch.zeros((num_nodes, hidden_conv_1)).to(self.device), torch.zeros((num_nodes, hidden_conv_2)).to(self.device)]
 
-        empty_h = torch.zeros((num_nodes, 64)).to(self.device)
+        empty_h = torch.zeros((num_nodes, hidden_conv_1)).to(self.device)
         self.reshape = ReshapeH(empty_h)
         
     def reset_parameters(self):
@@ -274,7 +274,7 @@ class ROLANDGNN(torch.nn.Module):
         if not isinstance(self.update, str):
             self.tau = torch.Tensor([self.update]).to(self.device)
         
-        current_embeddings = [torch.Tensor([]).to(self.device),torch.Tensor([]).to(self.device)]
+        current_embeddings = [torch.Tensor([]).to(self.device),torch.Tensor([]).to(self.device),torch.Tensor([]).to(self.device)]
         
         #Preprocess text
         h = self.preprocess1(x)
@@ -284,14 +284,20 @@ class ROLANDGNN(torch.nn.Module):
         h = F.leaky_relu(h,inplace=True)
         h = F.dropout(h, p=self.dropout, inplace=True)
 
+        #Reshape h since clients have different number of nodes
+        h = self.reshape.reshape_to_fill(h, subnodes)
+
+        #Embedding Update after preprocessing (only when training) (newly added)
+        h = self.gru1(h, self.previous_embeddings[0].clone()).detach()
+
+        """ Obtain 0-hop NE """
+        current_embeddings[0] = h.clone().to(self.device)
+
         #GRAPHCONV
         #GraphConv1
         h = self.conv1(h, edge_index)
         h = F.leaky_relu(h,inplace=True)
         h = F.dropout(h, p=self.dropout,inplace=True)
-
-        #Reshape h since clients have different number of nodes
-        h = self.reshape.reshape_to_fill(h, subnodes)
 
         #Embedding Update after first layer (only when training)
         if train == True:
@@ -303,7 +309,7 @@ class ROLANDGNN(torch.nn.Module):
             else:
                 h = (self.tau * self.previous_embeddings[0].clone() + (1-self.tau) * h.clone()).detach()
     
-        current_embeddings[0] = h.clone().to(self.device)
+        current_embeddings[1] = h.clone().to(self.device)
         #GraphConv2
         h = self.conv2(h, edge_index)
         h = F.leaky_relu(h,inplace=True)
@@ -319,7 +325,7 @@ class ROLANDGNN(torch.nn.Module):
             else:
                 h = (self.tau * self.previous_embeddings[1].clone() + (1-self.tau) * h.clone()).detach()
     
-        current_embeddings[1] = h.clone().to(self.device)
+        current_embeddings[2] = h.clone().to(self.device)
 
         #HADAMARD MLP (For Link Prediction)
         if task_type == "LP":

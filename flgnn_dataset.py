@@ -2,12 +2,13 @@ import os
 import copy
 import numpy as np
 import torch
-import metis
+import pymetis
 from torch_geometric import datasets as torchgeometric_datasets
 from torch_geometric.data import Data
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 
+from collections import defaultdict
 from fl_clients import EdgeDevice
 from utils import sample_dirichlet, normalize, process_data, localise_idx
 
@@ -78,8 +79,8 @@ def load_gnndata(task_cfg):
 
         num_snapshots = len(data)
         label = 2 # positive or negative edges
-        hidden_conv1, hidden_conv2 = 64, 32
-        last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]),torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
+        hidden_conv1, hidden_conv2 = 128, 128 #64, 32
+        last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]),torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
         weights = torch.zeros(data[0].num_nodes)
         task_cfg.in_dim = data[0].num_node_features
         task_cfg.out_dim = data[0].num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
@@ -94,8 +95,8 @@ def load_gnndata(task_cfg):
         num_snapshots = adjs.shape[0]
         num_nodes = feature.shape[0]
         print("total number of nodes", num_nodes)
-        hidden_conv1, hidden_conv2 = 64, 32
-        last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
+        hidden_conv1, hidden_conv2 = 128, 128 #64, 32
+        last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
         weights = torch.zeros(num_nodes)
         task_cfg.in_dim = feature.shape[2]
         task_cfg.out_dim = num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
@@ -157,12 +158,31 @@ def partition_data(task_type, num_snapshots, data):
     
     return train_list, val_list, test_list, data_size
 
+
+def get_cut_edges(node_assignment, coo_format):
+    '''
+    Takes as input:
+    1) node_assignment where i th index refers to node i and node_assignment[i] is client it's assigned to
+    2) coo_format = 2d list where first list is start edges and
+    
+    '''
+
+    ccn_dict = defaultdict(list)
+    for start_node, end_node in zip(coo_format[0], coo_format[1]):
+        if node_assignment[start_node] != node_assignment[end_node]:
+            ccn_dict[start_node].append(end_node)
+            ccn_dict[end_node].append(start_node)
+    return ccn_dict
+
+
 def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients):
     """ First allocate subnodes to clients, then allocate TVT to each client according to subnodes """
     num_subgraphs = len(clients)
     train_subgraphs = metis_partition(train_data.edge_index, train_data.num_nodes, num_subgraphs, None)
     val_subgraphs = metis_partition(val_data.edge_index, val_data.num_nodes, num_subgraphs, train_subgraphs)
     test_subgraphs = metis_partition(test_data.edge_index, test_data.num_nodes, num_subgraphs, val_subgraphs)
+
+    cc_edges_train = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
 
     client_sizes = [] # the training data size of each client (used for weighted aggregation)
     client_train, client_val, client_test = [], [], []
@@ -184,7 +204,7 @@ def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients):
     fed_val = FLFedDataset(client_val)
     fed_test = FLFedDataset(client_test)
 
-    return fed_train, fed_val, fed_test, client_sizes
+    return fed_train, fed_val, fed_test, client_sizes, cc_edges_train, train_subgraphs
             
 def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_mode, task_type):
     node_mask = (subgraph_label == client_idx)
@@ -220,7 +240,7 @@ def metis_partition(edge_index, num_nodes, num_parts, prev_partition=None):
         adjacency_list[dst].append(src)
 
     # Run METIS for initial partitioning
-    _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
+    _, partitioning_labels = pymetis.part_graph(num_parts, adjacency_list, contiguous=True)
     # _, partitioning_labels = metis.part_graph(adjacency_list, num_parts, objtype='vol', minconn=True)
 
     # If previous partition exists, maintain consistency

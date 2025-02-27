@@ -310,6 +310,10 @@ def node_embedding_update_sum(start_node, ccn, k):
     while dq:
         node, hop, nodes_visited = dq.popleft()
         embeddings_required.append([node, hop])
+        if hop > 1 and node == start_node:
+            embeddings_required += [[node, 0]]  * len(ccn[node]) # count the times 1-hop ccn visits itself
+        elif hop > 1:
+            embeddings_required += [[node, 0]] # add 0-hop whenever it is visited
 
         for neigh in ccn[node]:
             if neigh not in nodes_visited and hop>0:

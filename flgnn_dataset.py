@@ -2,7 +2,7 @@ import os
 import copy
 import numpy as np
 import torch
-import pymetis
+import metis
 from torch_geometric import datasets as torchgeometric_datasets
 from torch_geometric.data import Data
 from torch_geometric.transforms import RandomLinkSplit
@@ -10,7 +10,7 @@ from torch_geometric.utils import to_undirected
 
 from collections import defaultdict
 from fl_clients import EdgeDevice
-from utils import sample_dirichlet, normalize, process_data, localise_idx
+from utils import sample_dirichlet, normalize, process_data
 
 class FLLPDataset:
     def __init__(self, x, subnodes, edge_index, edge_label_index, edge_label, previous_edge_index, client=None):
@@ -169,7 +169,7 @@ def get_cut_edges(node_assignment, coo_format):
     for start_node, end_node in zip(coo_format[0], coo_format[1]):
         if node_assignment[start_node] != node_assignment[end_node]:
             ccn_dict[start_node].append(end_node)
-            ccn_dict[end_node].append(start_node)
+            # ccn_dict[end_node].append(start_node)
     return ccn_dict
 
 
@@ -231,14 +231,15 @@ def metis_partition(edge_index, num_nodes, num_parts, prev_partition=None):
     undirected_ei = to_undirected(edge_index)
 
     # Build adjacency list
-    adjacency_list = [[] for _ in range(num_nodes)]
+    adjacency_list = [set() for _ in range(num_nodes)]
     for src, dst in undirected_ei.t().tolist():
-        adjacency_list[src].append(dst)
-        adjacency_list[dst].append(src)
+        adjacency_list[src].add(dst)
+        adjacency_list[dst].add(src)
 
+    adjacency_list = [list(neigh) for neigh in adjacency_list]
     # Run METIS for initial partitioning
-    _, partitioning_labels = pymetis.part_graph(num_parts, adjacency_list, contiguous=True)
-    # _, partitioning_labels = metis.part_graph(adjacency_list, num_parts, objtype='vol', minconn=True)
+    # _, partitioning_labels = pymetis.part_graph(num_parts, adjacency_list)
+    _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
 
     # If previous partition exists, maintain consistency
     if prev_partition is not None:

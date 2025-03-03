@@ -1,5 +1,6 @@
 import os
 import copy
+from collections import defaultdict
 import numpy as np
 import torch
 import metis
@@ -8,9 +9,9 @@ from torch_geometric.data import Data
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 
-from collections import defaultdict
 from fl_clients import EdgeDevice
-from utils import sample_dirichlet, normalize, process_data
+from utils import process_data
+from graph_partition import our_gpa
 
 class FLLPDataset:
     def __init__(self, x, subnodes, edge_index, edge_label_index, edge_label, previous_edge_index, client=None):
@@ -164,7 +165,6 @@ def get_cut_edges(node_assignment, coo_format):
     2) coo_format = 2d list where first list is start edges and
     
     '''
-
     ccn_dict = defaultdict(list)
     for start_node, end_node in zip(coo_format[0], coo_format[1]):
         if node_assignment[start_node] != node_assignment[end_node]:
@@ -176,9 +176,9 @@ def get_cut_edges(node_assignment, coo_format):
 def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients):
     """ First allocate subnodes to clients, then allocate TVT to each client according to subnodes """
     num_subgraphs = len(clients)
-    train_subgraphs = metis_partition(train_data.edge_index, train_data.num_nodes, num_subgraphs, None)
-    val_subgraphs = metis_partition(val_data.edge_index, val_data.num_nodes, num_subgraphs, train_subgraphs)
-    test_subgraphs = metis_partition(test_data.edge_index, test_data.num_nodes, num_subgraphs, val_subgraphs)
+    train_subgraphs = graph_partition(train_data.edge_index, train_data.num_nodes, num_subgraphs, label=train_data.y, prev_partition=None)
+    val_subgraphs = graph_partition(val_data.edge_index, val_data.num_nodes, num_subgraphs, label=train_data.y, prev_partition=train_subgraphs)
+    test_subgraphs = graph_partition(test_data.edge_index, test_data.num_nodes, num_subgraphs, label=train_data.y, prev_partition=val_subgraphs)
 
     cc_edges_train = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
 
@@ -225,8 +225,18 @@ def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_
     
     return fed_data
 
-def metis_partition(edge_index, num_nodes, num_parts, prev_partition=None):
-    """ Stay consistent partition for TVT, so prev_partition is to record the partition of training data """
+def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', label=None, prev_partition=None):
+    """ 
+    Stay consistent partition for TVT, so prev_partition is to record the partition of training data
+
+    Inputs:
+    1. edge_index: COO format of edges
+    2. num_nodes: Number of Nodes in the data
+    3. num_parts: Number of desired subgraphs
+    4. partition_type: Type of Partitioning Algorithm (Options={'Metis', 'Ours'}) (Default='Ours')
+    5. labels: Node Labels or Edge Labels to help our graph partitioning (Defaulf=None)
+    6. prev_partition: Partitioning Labels of training or validation for consistency if there exists (Default=None)
+    """
     # Convert graph to undirected for METIS partitioning
     undirected_ei = to_undirected(edge_index)
 
@@ -237,9 +247,14 @@ def metis_partition(edge_index, num_nodes, num_parts, prev_partition=None):
         adjacency_list[dst].add(src)
 
     adjacency_list = [list(neigh) for neigh in adjacency_list]
-    # Run METIS for initial partitioning
-    # _, partitioning_labels = pymetis.part_graph(num_parts, adjacency_list)
-    _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
+
+    if partition_type == 'Metis':
+        _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
+    elif partition_type == 'Ours':
+        partitioning_labels = our_gpa(adjacency_list, node_labels=label, K=num_parts)
+    else:
+        print('E> Invalid partitioning algorithm specified. Options are {Metis, Ours}')
+        exit(-1)
 
     # If previous partition exists, maintain consistency
     if prev_partition is not None:

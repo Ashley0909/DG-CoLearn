@@ -164,6 +164,7 @@ def get_cut_edges(node_assignment, coo_format):
     1) node_assignment where i th index refers to node i and node_assignment[i] is client it's assigned to
     2) coo_format = 2d list where first list is start edges and
     
+    Output: Dictionary of lists, ith key is the start node and ith value is the list of cutting nodes connecting it
     '''
     ccn_dict = defaultdict(list)
     for start_node, end_node in zip(coo_format[0], coo_format[1]):

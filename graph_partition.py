@@ -21,14 +21,18 @@ def component_nodes(node, adj_list):
 def get_all_connected_components(adj_list):
     connected_components = []
     visited = set()
+    isolated_nodes = []
     
     for node in range(len(adj_list)):
         if node not in visited:
             cc = component_nodes(node, adj_list)
-            connected_components.append(cc)
+            if len(cc) == 1: # Isolated nodes
+                isolated_nodes.append(next(iter(cc)))
+            else:
+                connected_components.append(cc)
             visited |= cc
 
-    return connected_components
+    return connected_components, isolated_nodes
 
 def connect_graphs(splittable_cc, adj_list):
     '''Link all the connected components.'''
@@ -76,19 +80,21 @@ def bfs_shortest_paths(adj_list, start):
 
     return dist
 
-def all_pairs_shortest_paths(adj_list):
+def all_pairs_shortest_paths(adj_list, isolated_nodes=[]):
     """Computes shortest paths between all pairs using BFS (for unweighted graphs)."""
-    return [bfs_shortest_paths(adj_list, node) for node in range(len(adj_list))]
+    return [bfs_shortest_paths(adj_list, node) if node not in isolated_nodes else None for node in range(len(adj_list))]
 
-def find_k_furthest_nodes(adj_list, k):
+def find_k_furthest_nodes(adj_list, k, isolated_nodes=[]):
     """Finds k nodes that are maximally distant from each other."""
-    dist = all_pairs_shortest_paths(adj_list)
+    dist = all_pairs_shortest_paths(adj_list, isolated_nodes)
     n = len(adj_list)
 
     # Step 1: Find the two most distant nodes (graph diameter endpoints)
     max_dist = -1
     best_pair = None
-    for u, v in itertools.combinations(range(n), 2):
+    valid_nodes = [node for node in range(n) if node not in isolated_nodes]
+
+    for u, v in itertools.combinations(valid_nodes, 2):
         if dist[u][v] > max_dist:
             max_dist = dist[u][v]
             best_pair = (u, v)
@@ -96,11 +102,11 @@ def find_k_furthest_nodes(adj_list, k):
     selected = list(best_pair)  # Start with the two furthest nodes
 
     # Step 2: Iteratively select the node maximizing the minimum distance to the current set
-    while len(selected) < k:
+    while len(selected) < k and len(selected) < len(valid_nodes):
         best_node = None
         max_min_dist = -1
 
-        for node in range(n):
+        for node in valid_nodes:
             if node in selected:
                 continue
             min_dist = min(dist[node][s] for s in selected)  # Distance to closest selected node
@@ -222,18 +228,14 @@ def our_gpa(adj_list, node_labels=None, K=2):
     nodes_visited = set()
 
     # Identify all connected components
-    connected_components = get_all_connected_components(adj_list)
-
-    # for i, iso in enumerate(isolated_nodes):
-    #     node_to_allocated_subgraph[next(iter(iso))] = {i%K}
-
+    connected_components, isolated_nodes = get_all_connected_components(adj_list)
     adj_list, synthetic_edges = connect_graphs(connected_components, adj_list)
 
-    roots = find_k_furthest_nodes(adj_list, K)
-    # if len(isolated_nodes) == 0:
-    #     roots = find_k_furthest_nodes(adj_list, K)
-    # else:
-    #     roots = get_k_furthest_nodes(adj_list, isolated_nodes[0], K)
+    # Allocate all isolated nodes first
+    for i, iso in enumerate(isolated_nodes):
+        node_to_allocated_subgraph[iso] = {i%K}
+
+    roots = find_k_furthest_nodes(adj_list, K, isolated_nodes)
 
     # BFS outward from each root node
     level_queue = [(root_node, i) for i, root_node in enumerate(roots)]
@@ -251,7 +253,7 @@ def our_gpa(adj_list, node_labels=None, K=2):
             if len(subgraph_allocated) == 1:
                 previous_level_subgraph[next(iter(subgraph_allocated))].add(node)
 
-        # Resolve conflicts with your weighting scheme
+        # Resolve conflicts with our weighting scheme
         for node, subgraph_allocated in node_to_allocated_subgraph.items():
             if len(subgraph_allocated) > 1: # conflict case
                 best_subgraph = resolve_conflicts(node, adj_list, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels)

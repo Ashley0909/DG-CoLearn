@@ -344,7 +344,8 @@ def get_global_embedding(embeddings, ccn, node_client_map):
             for update_node, k in node_embdedding_sum:
                 final_embedding += embeddings[node_client_map[update_node]][k][update_node]
             hop_matrix.append(final_embedding)
-        hop_embeddings.append(hop_matrix)
+        stack = torch.stack(hop_matrix)
+        hop_embeddings.append(stack)
 
     return hop_embeddings
 

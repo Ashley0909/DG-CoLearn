@@ -321,20 +321,23 @@ def node_embedding_update_sum(start_node, ccn, k):
 
     return embeddings_required
 
-def get_global_embedding(embeddings, ccn, node_client_map):
+def get_global_embedding(embeddings, ccn, node_client_map, subnodes_union):
     '''
     Function to return the global embedding to update the client's local embeddings, using the formula:
     1 hop NE of node i => NE1[i] + SUM(NE0[j]) for j in ccn[i]
     2 hop NE of node i => NE2[i] + SUM(NE1[j] + NE0[j] + NE0[i]) for j in ccn[i] + SUM(NE0[k]) for k in ccn[j]
 
     Inputs:
-    1) embeddings -> list of 0-hop, 1-hop and 2-hop NE of each client
+    1) embeddings -> defaultdict(Tensor) of 0-hop, 1-hop and 2-hop NE of each client
     2) ccn -> defaultdict(list) of cross client nodes
     3) node_client_map -> the client each node is assigned for training
 
     Output:
     list of 0-hop, 1-hop and 2-hop Global NE 
     '''
+    if len(embeddings) == 1:
+        return embeddings[0] # Only one client
+    
     hop_embeddings = []
     for hop in range(3):
         hop_matrix = []
@@ -342,7 +345,8 @@ def get_global_embedding(embeddings, ccn, node_client_map):
             node_embdedding_sum = node_embedding_update_sum(node, ccn, hop)
             final_embedding = torch.zeros(embeddings[0][0][0].shape).to("cuda:0")
             for update_node, k in node_embdedding_sum:
-                final_embedding += embeddings[node_client_map[update_node]][k][update_node]
+                if update_node in subnodes_union:
+                    final_embedding += embeddings[node_client_map[update_node]][k][update_node]
             hop_matrix.append(final_embedding)
         stack = torch.stack(hop_matrix)
         hop_embeddings.append(stack)
@@ -385,3 +389,16 @@ def compute_mrr(pred_score, true_l):
     mrr = reciprocal_ranks.mean().item()
 
     return mrr
+
+def tensor_difference(A, B):
+    ''' Get the elements in A that are not in B. '''
+    # Transpose to shape (num_edges, 2) for row-wise comparison
+    A_T = A.t()
+    B_T = B.t()
+
+    # Find rows in A that are NOT in B
+    mask = ~torch.isin(A_T[:, None, :], B_T[None, :, :]).all(dim=2).any(dim=1)
+
+    A_diff = A_T[mask].t()
+
+    return A_diff

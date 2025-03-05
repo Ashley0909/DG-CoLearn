@@ -7,6 +7,7 @@ import seaborn as sns
 import plotly.graph_objects as go
 import time
 import torch
+from torch_geometric.utils import to_undirected
 
 def extract_accuracy_from_file(file_path):
     accuracies = []
@@ -55,20 +56,35 @@ def extract_edge_shapes_from_file(file_path):
     
     return edge_index, new_edge_index, relevant_edge
 
-def draw_graph(edge_index, name, round, ss, client):
-    if round == 0:
-        path = 'graph_output/'+'ss'+str(ss)+name+'client'+str(client)
 
-        # if not os.path.exists(path):
-        # Create a graph
-        dot = graphviz.Digraph()
+def draw_graph(edge_index, name, client=0):
+    path = 'graph_output/'+name+'client'+str(client)
 
-        # Add nodes and edges from tensor
-        for i in range(edge_index.shape[1]):
-            dot.edge(str(edge_index[0, i].item()), str(edge_index[1, i].item()))
+    # Create a graph
+    dot = graphviz.Graph()
 
-        # Render the graph
-        dot.render(path, format='png')
+    # Make edge index undirected
+    undirected_edge_index = to_undirected(edge_index)
+
+    # Add nodes and edges from tensor
+    for i in range(edge_index.shape[1]):
+        dot.edge(str(undirected_edge_index[0, i].item()), str(undirected_edge_index[1, i].item()))
+
+    # Render the graph
+    dot.render(path, format='png')
+
+def draw_adj_list(adj_list, subnodes, name):
+    path = 'graph_output/'+name
+
+    dot = graphviz.Graph(format='png')
+
+    # Add edges from adjacency list
+    for src in subnodes:
+        for dst in adj_list[src]:
+            if dst in subnodes:
+                dot.edge(str(src), str(dst))
+
+    dot.render(path, format='png')
 
 def plot_h(matrix, path, name, round="", vmin=None, vmax=None, anno=False, y_labels=None):
     submatrix = matrix[:30, :]

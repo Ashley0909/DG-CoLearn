@@ -259,29 +259,28 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             optimizer = optimizers[model_id]
             optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
 
-            # Train with only new/relevant edges
-            if data.previous_edge_index != None:
-                prev_edge_index = data.previous_edge_index.to(device)
-                new_edge_index = get_exclusive_edges(edge_index, prev_edge_index)
-                if round == 0 and epoch == 0:
-                    print("size of graph", new_edge_index.shape[1])
-                    print("Shrink in graph size", edge_index.shape[1] - new_edge_index.shape[1])
-            else:
-                new_edge_index = edge_index
-                if round == 0 and epoch == 0:
-                    print("size of graph", new_edge_index.shape[1])
-
-            # if (snapshot + round + epoch) == 0:  # Draw graphs (Too big to draw in NC for now)
-            #     draw_graph(edge_index=edge_index, name='original', round=round, ss=snapshot, client=model_id)
+            '''Train with only new/relevant edges'''
+            if round == 0 and epoch == 0:
+                draw_graph(edge_index=edge_index, name='current', client=model_id)
+            # if data.previous_edge_index != None:
+            #     prev_edge_index = data.previous_edge_index.to(device)
+            #     new_edge_index = get_exclusive_edges(edge_index, prev_edge_index)
+            #     if round == 0 and epoch == 0:
+            #         draw_graph(edge_index=prev_edge_index, name='previous', client=model_id)
+            #         draw_graph(edge_index=edge_index, name='current', client=model_id)
+            #         draw_graph(edge_index=new_edge_index, name='new', client=model_id)
+            #         print("size of graph", new_edge_index.shape[1])
+            #         print("Shrink in graph size", edge_index.shape[1] - new_edge_index.shape[1])
+            # else:
+            #     new_edge_index = edge_index
+            #     if round == 0 and epoch == 0:
+            #         print("size of graph", new_edge_index.shape[1])
 
             if task_cfg.task_type == 'LP':
-                predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
+                predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
             else:
                 # model.customise_pe(len(client.subnodes))  # Customise so that each client's PE has different shape
-                predicted_y, client.curr_ne = model(x, new_edge_index, task_cfg.task_type, subnodes=train_nodes, previous_embeddings=client.prev_ne)
-
-            # Train with complete data set
-            # predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, client.prev_ne)
+                predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, subnodes=train_nodes, previous_embeddings=client.prev_ne)
 
             # Compute Loss
             if task_cfg.task_type == 'LP':

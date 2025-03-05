@@ -10,8 +10,9 @@ from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 
 from fl_clients import EdgeDevice
-from utils import process_data
+from utils import process_data, tensor_difference
 from graph_partition import our_gpa
+from plot_graphs import draw_graph
 
 class FLLPDataset:
     def __init__(self, x, subnodes, edge_index, edge_label_index, edge_label, previous_edge_index, client=None):
@@ -157,7 +158,6 @@ def partition_data(task_type, num_snapshots, data):
     
     return train_list, val_list, test_list, data_size
 
-
 def get_cut_edges(node_assignment, coo_format):
     '''
     Takes as input:
@@ -173,13 +173,36 @@ def get_cut_edges(node_assignment, coo_format):
             # ccn_dict[end_node].append(start_node)
     return ccn_dict
 
-
-def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients):
-    """ First allocate subnodes to clients, then allocate TVT to each client according to subnodes """
+def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients, prev_nodes=0, prev_partition=None):
+    '''A function that first partition the graph to clients, then allocate edges to each clients accordingly.
+    
+    Hightlighted Inputs:
+    1. prev_nodes: number of node the test graph has recorded in the previous snapshot (Default=0)
+    2. prev_partition: the node allocation recorded in the previous snapshot (Default=None)
+    '''
+    print("Total number of edges", train_data.edge_index.shape[1])
+    draw_graph(train_data.edge_index, 'global')
+    
     num_subgraphs = len(clients)
-    train_subgraphs = graph_partition(train_data.edge_index, train_data.num_nodes, num_subgraphs, label=train_data.y, prev_partition=None)
-    val_subgraphs = graph_partition(val_data.edge_index, val_data.num_nodes, num_subgraphs, label=train_data.y, prev_partition=train_subgraphs)
-    test_subgraphs = graph_partition(test_data.edge_index, test_data.num_nodes, num_subgraphs, label=train_data.y, prev_partition=val_subgraphs)
+    train_subgraphs, train_nodes = graph_partition(train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y, prev_nodes=prev_nodes, prev_partition=prev_partition)
+    val_subgraphs, val_nodes = graph_partition(val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.y, prev_nodes=train_nodes, prev_partition=train_subgraphs)
+    test_subgraphs, test_nodes = graph_partition(test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.y, prev_nodes=val_nodes, prev_partition=val_subgraphs)
+
+    if env_cfg.mode == 'FLDGNN-LP': # For LP partition, split negative edges
+        train_neg_edges = tensor_difference(train_data.edge_label_index, train_data.edge_index)
+        val_neg_edges = tensor_difference(val_data.edge_label_index, val_data.edge_index)
+        test_neg_edges = tensor_difference(test_data.edge_label_index, test_data.edge_index)
+
+        neg_train_subgraphs, _ = graph_partition(train_neg_edges, train_data.num_nodes, num_subgraphs, node_label=train_data.y)
+        neg_val_subgraphs, _ = graph_partition(val_neg_edges, val_data.num_nodes, num_subgraphs, node_label=val_data.y)
+        neg_test_subgraphs, _ = graph_partition(test_neg_edges, test_data.num_nodes, num_subgraphs, node_label=test_data.y)
+
+        for train_nodes in torch.unique(train_neg_edges):
+            train_subgraphs[train_nodes] = neg_train_subgraphs[train_nodes]
+        for val_nodes in torch.unique(val_neg_edges):
+            val_subgraphs[val_nodes] = neg_val_subgraphs[val_nodes]
+        for test_nodes in torch.unique(test_neg_edges):
+            test_subgraphs[test_nodes] = neg_test_subgraphs[test_nodes]
 
     cc_edges_train = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
 
@@ -190,20 +213,21 @@ def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients):
     for i in range(num_subgraphs): # for each client, allocate subgraph
         single_train = construct_single_client_data(train_data, train_subgraphs, i, clients, "train", env_cfg.mode)
         client_train.append(single_train)
-        if env_cfg.mode == 'FLDGNN-LP':
-            client_sizes.append(single_train.ellength)
-        elif env_cfg.mode == 'FLDGNN-NC':
-            client_sizes.append(len(single_train.subnodes))
         single_val = construct_single_client_data(val_data, val_subgraphs, i, clients, "val", env_cfg.mode)
         client_val.append(single_val)
         single_test = construct_single_client_data(test_data, test_subgraphs, i, clients, "test", env_cfg.mode)
         client_test.append(single_test)
 
+        if env_cfg.mode == 'FLDGNN-LP':
+            client_sizes.append(single_train.ellength)
+        elif env_cfg.mode == 'FLDGNN-NC':
+            client_sizes.append(len(single_train.subnodes))
+
     fed_train = FLFedDataset(client_train)
     fed_val = FLFedDataset(client_val)
     fed_test = FLFedDataset(client_test)
 
-    return fed_train, fed_val, fed_test, client_sizes, cc_edges_train, train_subgraphs
+    return fed_train, fed_val, fed_test, client_sizes, cc_edges_train, test_subgraphs, test_nodes
             
 def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_mode, task_type):
     node_mask = (subgraph_label == client_idx)
@@ -213,9 +237,7 @@ def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_
     subgraph_ei = data.edge_index[:, ei_mask]
 
     if task_type == "FLDGNN-LP":
-        # Also get Edge Label
         el_mask = node_mask[data.edge_label_index[0]] & node_mask[data.edge_label_index[1]]
-
         fed_data =  FLLPDataset(data.x[node_mask], subnodes, data.edge_index[:, ei_mask], data.edge_label_index[:, el_mask], data.edge_label[el_mask], clients[client_idx].prev_edge_index, clients[client_idx])
 
     elif task_type == "FLDGNN-NC":
@@ -223,22 +245,32 @@ def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_
     
     if tvt_mode == "train":
         clients[client_idx].prev_edge_index = subgraph_ei # Clients get new edge index in training by comparing with prev_edge_index
+        clients[client_idx].subnodes = subnodes
     
     return fed_data
 
-def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', label=None, prev_partition=None):
+def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', node_label=None, prev_nodes=0, prev_partition=None):
     """ 
-    Stay consistent partition for TVT, so prev_partition is to record the partition of training data
+    Stay consistent partition for TVT, so prev_partition is to record the partition of testing data (the most recent snapshot)
 
     Inputs:
     1. edge_index: COO format of edges
-    2. num_nodes: Number of Nodes in the data
+    2. num_nodes: Number of nodes in the data
     3. num_parts: Number of desired subgraphs
     4. partition_type: Type of Partitioning Algorithm (Options={'Metis', 'Ours'}) (Default='Ours')
-    5. labels: Node Labels or Edge Labels to help our graph partitioning (Defaulf=None)
+    5. node_label: Node Labels in NC problems to help our graph partitioning (Default=None)
+    6. edge_label: Edge Labels in LP problems (Default=None)
     6. prev_partition: Partitioning Labels of training or validation for consistency if there exists (Default=None)
+
+    Outputs:
+    1. partitioning_labels: Tensor array of subgraph assignment of each node
+    2. num_nodes: Number of nodes in the data
     """
-    # Convert graph to undirected for METIS partitioning
+    # If previous partition exists, maintain consistency
+    if prev_partition is not None and num_nodes == prev_nodes:
+        return prev_partition, num_nodes
+
+    # Convert graph to undirected for partitioning
     undirected_ei = to_undirected(edge_index)
 
     # Build adjacency list
@@ -252,15 +284,9 @@ def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', lab
     if partition_type == 'Metis':
         _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
     elif partition_type == 'Ours':
-        partitioning_labels = our_gpa(adjacency_list, node_labels=label, K=num_parts)
+        partitioning_labels = our_gpa(adjacency_list, node_labels=node_label, K=num_parts)
     else:
         print('E> Invalid partitioning algorithm specified. Options are {Metis, Ours}')
         exit(-1)
 
-    # If previous partition exists, maintain consistency
-    if prev_partition is not None:
-        for node in range(num_nodes):
-            if prev_partition[node] is not None:
-                partitioning_labels[node] = prev_partition[node]
-
-    return torch.tensor(partitioning_labels)
+    return torch.tensor(partitioning_labels), num_nodes

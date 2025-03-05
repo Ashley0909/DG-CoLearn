@@ -37,7 +37,7 @@ def main():
     
     # Create a list of information per snapshots in FLDGNN
     if task_mode in ["FLDGNN-LP", "FLDGNN-NC"]:
-        # sys.stdout = Logger('FLDGNN')
+        # sys.stdout = Logger('fl_lp')
         print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
 
         clients, cindexmap = init_GNN_clients(env_cfg.n_clients, arg['last_embeddings']) # Stay the same for all snapshots
@@ -54,23 +54,19 @@ def main():
         # if not os.path.exists(directory):
         #     os.makedirs(directory)
 
+        node_assignment, num_nodes = None, 0
         for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
             print("Snapshot", i)
-            fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, ccn_dict, node_assignment = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients)
+            fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, ccn_dict, node_assignment, num_nodes = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients, num_nodes, node_assignment)
             glob_model, _, _, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
                                                                        i, client_shard_sizes, data_size[i], test_ap_fig, test_ap, ccn_dict, node_assignment)
 
             for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
                 c.update_embeddings(c.curr_ne)
 
-            # Plot result
-            # val_fig.show()
             # file_path = os.path.join(directory, "{}_SS{}.png".format(datetime.now().strftime("%Y%m%d_%H%M"), i))
             # val_fig.write_image(file_path)
-            if i > 20: # Stop after snapshot 6
-                # test_ap_fig.show()
-                # test_ap_fig.write_image("test_ap_plots/{}.png".format(datetime.now().strftime("%Y%m%d_%H%M")))
-                exit(-1)
+            # test_ap_fig.write_image("test_ap_plots/{}.png".format(datetime.now().strftime("%Y%m%d_%H%M")))
     else:
         # Create Clients
         if task_mode == 'FedAssets':

@@ -1,8 +1,9 @@
 import numpy as np
 import math
 import copy
-import torch
 import random
+import torch
+from collections import defaultdict
 
 from utils import get_global_embedding
 from fl_clients import distribute_models, select_clients_FCFM, select_clients_randomly, version_filter, train, local_test, global_test
@@ -41,10 +42,12 @@ def update_versions(versions, ids, rd):
       versions[id] = rd
 
 def sample_clients(data_list, cm_map):
-   # Select the clients who has edges in this snapshot
+   # Select the clients who has edges in this snapshot (even only with positive edges its fine)
    client_list = []
    for data in data_list:
       client = data.location
+      print("Client", cm_map[client.id])
+      print("postive edges", data.edge_index.shape[1], "negative edges", data.edge_label_index.shape[1] - data.edge_index.shape[1])
       if data.edge_index.shape[1] != 0:
          client_list.append(cm_map[client.id])
    return client_list
@@ -357,14 +360,15 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
          val_ap_fig.data[0].y = val_ap  # Update y for Val AP Fig
 
       """ Share Node Embedding after training for the first half of epochs """
-      trained_embeddings = []
-      for c in range(len(client_ids)):
-         print("client", c)
+      trained_embeddings = defaultdict(torch.Tensor)
+      subnodes_union = set()
+      for c in client_ids:
          # plot_h(matrix=clients[c].curr_ne[1], path='ne1_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Trained Node Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
-         trained_embeddings.append(clients[c].send_embeddings())
+         trained_embeddings[c] = clients[c].send_embeddings()
+         subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
 
       print("Share Embeddings")
-      shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment)
+      shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union)
       # shared_embeddings, time_taken = time_cpu(share_embeddings, trained_embeddings, aggre_weights)
       # print(f"Time Taken for Sharing Embedding: {time_taken:.6f} seconds")
       for c in range(len(client_ids)):
@@ -374,8 +378,7 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       for epoch in range(env_cfg.n_epochs // 2, env_cfg.n_epochs):
          train_loss = train(local_models, client_ids, env_cfg, cm_map, fed_data_train, task_cfg, train_loss, rd, epoch, verbose=True)
          val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
-         # Update metrics data
-         val_ap.append(val_metrics['ap'])
+         val_ap.append(val_metrics['ap']) # Update metric data
          val_ap_fig.data[0].y = val_ap  # Update y for Val AP Fig
 
       # Aggregate Local Models
@@ -389,8 +392,7 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       print('>   @Cloud> post-aggregation loss avg = ', overall_loss)
       print('>   @Cloud> accuracy = ', global_acc)
       print('>   @Cloud> Other Metrics = ', global_metrics)
-      # Update metrics data
-      test_ap.append(global_metrics['ap'])
+      test_ap.append(global_metrics['ap']) # Update metrics data
       test_ap_fig.data[0].y = test_ap  # Update y for Test AP Fig
 
       # Record Best Readings

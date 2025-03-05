@@ -25,7 +25,7 @@ def safa_aggregate(models, local_shards_sizes, data_size):
     return global_model
 
 def gnn_aggregate(models, local_shards_sizes, data_size, client_id):
-    # client_id are the clients who participated in this snapshot, we only aggregate them
+    '''Aggregate local GNN models to get global GNN model. `client_id` are the clients who participated in this snapshot, and we only aggregate them '''
     # Construct an empty global model using a local model
     global_model = copy.deepcopy(models[client_id[0]])
     global_model_params = global_model.state_dict()  # All the parameters of each layer in the model

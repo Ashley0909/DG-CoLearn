@@ -3,6 +3,8 @@ import copy
 import numpy as np
 import itertools
 
+from plot_graphs import draw_adj_list
+
 ''' Functions for Connected Components '''
 def component_nodes(node, adj_list):
     queue = deque([node])
@@ -58,9 +60,9 @@ def count_edges(adj_list, nodes_set, synthetic_edges):
     for node in nodes_set:
         for neighbor in adj_list[node]:
             if neighbor in nodes_set and (node, neighbor) not in synthetic_edges:
-                edge_count += 1  # Count edge
+                edge_count += 0.5  # Since edges are undirected, count half
 
-    return edge_count // 2  # Since edges are undirected, divide by 2
+    return edge_count
 
 
 ''' Functions for finding roots (by comparing shortest path of all pairs of nodes) '''
@@ -116,72 +118,14 @@ def find_k_furthest_nodes(adj_list, k, isolated_nodes=[]):
 
         selected.append(best_node)
 
-    return selected
-
-''' Function for finding root given a start node '''
-def bfs_longest_path(adj_list, start):
-    """Find the farthest node from start using BFS and return the node and distances."""
-    queue = deque([start])
-    distances = {start: 0}
-    farthest_node = start
-
-    while queue:
-        node = queue.popleft()
-        for neighbor in adj_list[node]:
-            if neighbor not in distances:  # Not visited
-                distances[neighbor] = distances[node] + 1
-                queue.append(neighbor)
-                farthest_node = neighbor  # Keep track of the last (farthest) node
-
-    return farthest_node, distances
-
-def get_k_furthest_nodes(adj_list, start, K):
-    """Find K nodes that are maximally separated from each other, starting from a given node."""
-    if K > len(adj_list):
-        raise ValueError("K is larger than the number of available nodes.")
-    
-    if isinstance(start, set):
-        start = next(iter(start))
-        print("start is", start)
-
-    # Step 1: Find the farthest node from the start
-    first_farthest, _ = bfs_longest_path(adj_list, start)
-    selected_nodes = [start, first_farthest]
-
-    # Step 2: Iteratively find the next farthest nodes
-    for _ in range(K - 2):
-        max_dist_node = None
-        max_min_distance = -1
-
-        for candidate in range(len(adj_list)):  # Check all possible nodes
-            if candidate in selected_nodes:
-                continue  # Skip already selected nodes
-            
-            # Compute the shortest distance to any of the already selected nodes
-            _, distances = bfs_longest_path(adj_list, candidate)
-            min_distance = min(distances[n] for n in selected_nodes if n in distances)
-
-            if min_distance > max_min_distance:
-                max_min_distance = min_distance
-                max_dist_node = candidate
-
-        if max_dist_node is not None:
-            selected_nodes.append(max_dist_node)
-
-    return selected_nodes
+    return selected[:k]
 
 ''' Function for resolving conflicting nodes '''
-def resolve_conflicts(node, adj_list, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels, isolated=False):
+def resolve_conflicts(node, adj_list, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels):
     best_subgraph, best_subgraph_score = None, 0
     for subgraph in subgraph_allocated: # compute score for given root
-        if isolated == False:
-            number_subgraph_edges = count_edges(adj_list, previous_level_subgraph[subgraph] - {node}, synthetic_edges)
-            number_neighbours = len(set(adj_list[node])&previous_level_subgraph[subgraph])
-
-            cut_edge_score = (1/(1 + len(adj_list[node]) - number_neighbours))
-            edge_balanced_score = (1/(1+number_subgraph_edges))
-        else:
-            cut_edge_score, edge_balanced_score = 0,0
+        number_subgraph_edges = count_edges(adj_list, list(previous_level_subgraph[subgraph] - {node}), synthetic_edges)
+        number_neighbours = len(set(adj_list[node])&previous_level_subgraph[subgraph])
         
         if node_labels is not None: # Add labels classification score
             alpha, beta = 0.1, 0.1
@@ -194,12 +138,13 @@ def resolve_conflicts(node, adj_list, subgraph_allocated, previous_level_subgrap
 
             label_occurrence = label_counts[node_labels[node]]
             occurrence_score = beta / (1+label_occurrence)
-            node_score = label_diversity_score + occurrence_score
+            node_label_score = label_diversity_score + occurrence_score
         else:
-            node_score = 0
+            node_label_score = 0
 
-        score = cut_edge_score + edge_balanced_score + node_score
-
+        cut_edge_score = (1/(1 + len(adj_list[node]) - number_neighbours))
+        edge_balanced_score = (1/(1+number_subgraph_edges))
+        score = cut_edge_score + edge_balanced_score + node_label_score
         if score > best_subgraph_score:
             best_subgraph = subgraph
             best_subgraph_score = score
@@ -240,7 +185,6 @@ def our_gpa(adj_list, node_labels=None, K=2):
     # BFS outward from each root node
     level_queue = [(root_node, i) for i, root_node in enumerate(roots)]
 
-    c = 0
     while level_queue:
         nodes_visited_this_level = set()
 
@@ -272,7 +216,5 @@ def our_gpa(adj_list, node_labels=None, K=2):
                     next_level.append([neighbour, node_subgraph])
 
         level_queue = copy.deepcopy(next_level)
-        c += 1
-    print(c)
         
     return [node_to_allocated_subgraph[i].pop() for i in range(len(node_to_allocated_subgraph))]

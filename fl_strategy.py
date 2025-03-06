@@ -46,8 +46,6 @@ def sample_clients(data_list, cm_map):
    client_list = []
    for data in data_list:
       client = data.location
-      print("Client", cm_map[client.id])
-      print("postive edges", data.edge_index.shape[1], "negative edges", data.edge_label_index.shape[1] - data.edge_index.shape[1])
       if data.edge_index.shape[1] != 0:
          client_list.append(cm_map[client.id])
    return client_list
@@ -333,7 +331,7 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
 
    best_round = -1
    best_loss = float('inf')
-   best_acc = -1.0
+   best_acc, best_ap = -1.0, -1.0
    best_model = None
    train_loss = [0.0 for _ in range(env_cfg.n_clients)]
    val_loss = [0.0 for _ in range(env_cfg.n_clients)]
@@ -368,7 +366,7 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
          subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
 
       print("Share Embeddings")
-      shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union)
+      shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union, client_ids[0])
       # shared_embeddings, time_taken = time_cpu(share_embeddings, trained_embeddings, aggre_weights)
       # print(f"Time Taken for Sharing Embedding: {time_taken:.6f} seconds")
       for c in range(len(client_ids)):
@@ -389,6 +387,7 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       # Global Test
       global_loss, global_acc, global_metrics = global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fed_data_test, rd)
       overall_loss = np.array(global_loss)[np.array(global_loss) != 0.0].sum() / data_size
+      global_ap = global_metrics['ap']
       print('>   @Cloud> post-aggregation loss avg = ', overall_loss)
       print('>   @Cloud> accuracy = ', global_acc)
       print('>   @Cloud> Other Metrics = ', global_metrics)
@@ -396,9 +395,11 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
       test_ap_fig.data[0].y = test_ap  # Update y for Test AP Fig
 
       # Record Best Readings
-      if overall_loss < best_loss:
+      # if overall_loss < best_loss:
+      if global_ap > best_ap:
          best_loss = overall_loss
          best_acc = global_acc
+         best_ap = global_ap
          best_model = global_model
          best_round = rd
       
@@ -406,4 +407,6 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
          global_model = best_model
          overall_loss = best_loss
          global_acc = best_acc
-   return best_model, best_round, best_loss, val_ap_fig, test_ap_fig, test_ap
+         global_ap = best_ap
+
+   return best_model, best_round, best_ap, val_ap_fig, test_ap_fig, test_ap

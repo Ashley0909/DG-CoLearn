@@ -321,7 +321,7 @@ def node_embedding_update_sum(start_node, ccn, k):
 
     return embeddings_required
 
-def get_global_embedding(embeddings, ccn, node_client_map, subnodes_union):
+def get_global_embedding(embeddings, ccn, node_client_map, subnodes_union, first_parti_client):
     '''
     Function to return the global embedding to update the client's local embeddings, using the formula:
     1 hop NE of node i => NE1[i] + SUM(NE0[j]) for j in ccn[i]
@@ -343,7 +343,7 @@ def get_global_embedding(embeddings, ccn, node_client_map, subnodes_union):
         hop_matrix = []
         for node in range(len(node_client_map)):
             node_embdedding_sum = node_embedding_update_sum(node, ccn, hop)
-            final_embedding = torch.zeros(embeddings[0][0][0].shape).to("cuda:0")
+            final_embedding = torch.zeros(embeddings[first_parti_client][0][0].shape).to("cuda:0")
             for update_node, k in node_embdedding_sum:
                 if update_node in subnodes_union:
                     final_embedding += embeddings[node_client_map[update_node]][k][update_node]
@@ -363,10 +363,10 @@ def lp_prediction(pred_score, true_l):
     acc = accuracy_score(true, pred)
     ap = average_precision_score(true, pred_score)
     macro_f1 = f1_score(true, pred, average='macro')
-    macro_auc = roc_auc_score(true, pred_score, average='macro')
-    micro_auc = roc_auc_score(true, pred_score, average='micro')
+    # macro_auc = roc_auc_score(true, pred_score, average='macro')
+    # micro_auc = roc_auc_score(true, pred_score, average='micro')
 
-    return acc, ap, macro_f1, macro_auc, micro_auc
+    return acc, ap, macro_f1
 
 def nc_prediction(pred_score, true_l):
     pred = pred_score.argmax(dim=1).detach().cpu().numpy()
@@ -390,15 +390,21 @@ def compute_mrr(pred_score, true_l):
 
     return mrr
 
-def tensor_difference(A, B):
-    ''' Get the elements in A that are not in B. '''
-    # Transpose to shape (num_edges, 2) for row-wise comparison
-    A_T = A.t()
-    B_T = B.t()
+def generate_neg_edges(edge_index, node_range:torch.Tensor, num_neg_samples:int=None):
+    ''' Generate `num_neg_samples` negative edges from pairs in `node_range` where they do not exist in `edge_index`'''
+    existing_edges = set(map(tuple, edge_index.t().tolist()))  # Convert edge_index to set for fast lookup
+    allowed_nodes = node_range.tolist()  # Ensure it's a list for indexing
 
-    # Find rows in A that are NOT in B
-    mask = ~torch.isin(A_T[:, None, :], B_T[None, :, :]).all(dim=2).any(dim=1)
+    if num_neg_samples is None:
+        num_neg_samples = edge_index.size(1)  # Default: same number as positive edges
 
-    A_diff = A_T[mask].t()
+    neg_edges = set()
 
-    return A_diff
+    while len(neg_edges) < num_neg_samples:
+        src, dst = random.choice(allowed_nodes), random.choice(allowed_nodes)
+        if src != dst and (src, dst) not in existing_edges:
+            neg_edges.add((src, dst))
+
+    neg_edge_index = torch.tensor(list(neg_edges)).t()  # Convert back to tensor shape (2, num_neg_samples)
+    
+    return neg_edge_index

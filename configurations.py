@@ -100,12 +100,10 @@ def init_config(task2run, pick_C, crash_prob, bw_set):
         else:    
             task_cfg = TaskSettings(task_type='ResNet', dataset=task2run, num_classes=100, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='nllLoss', lr=1e-2, lr_decay=5e-4)
     elif task2run in ['bitcoinOTC', 'UCI']:
-        env_cfg = EnvSettings(n_clients=5, n_rounds=10, n_epochs=50, batch_size=20, train_frac=0.5, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('N', 0.3), client_dist=('N', 0.3), perf_dist=('X', None), crash_dist=('E', crash_prob),
-                              keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
+        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=50, perf_dist=('X', None), crash_dist=('E', crash_prob), keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-3, lr_decay=5e-3)
     elif task2run in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
-        env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=50, batch_size=20, train_frac=0.75, shuffle=True, pick_frac=pick_C, benign_ratio=1.0, data_dist=('Min_Cut', None), client_dist=('Label', None), perf_dist=('X', None), crash_dist=('E', crash_prob),
-                              keep_best=True, device='gpu', showplot=False, bw_set=bw_set, max_T=5600)
+        env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=50, perf_dist=('X', None), crash_dist=('E', crash_prob), keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='NC', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='ce', lr=1e-0, lr_decay=5e-3)
     else:
         print('[Err] Invalid task name provided. Options are {boston, mnist, cifar10, cifar100, bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}')

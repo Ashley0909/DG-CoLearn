@@ -37,7 +37,7 @@ def main():
     
     # Create a list of information per snapshots in FLDGNN
     if task_mode in ["FLDGNN-LP", "FLDGNN-NC"]:
-        # sys.stdout = Logger('fl_lp')
+        sys.stdout = Logger('fl_lp')
         print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
 
         clients, cindexmap = init_GNN_clients(env_cfg.n_clients, arg['last_embeddings']) # Stay the same for all snapshots
@@ -55,12 +55,13 @@ def main():
         #     os.makedirs(directory)
 
         node_assignment, num_nodes = None, 0
-        for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
+        for i in range(24,-1,-1): # only (num_snapshots - 2) training rounds because of TVT split
             print("Snapshot", i)
             fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, ccn_dict, node_assignment, num_nodes = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients, num_nodes, node_assignment)
-            glob_model, _, _, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
+            glob_model, best_round, best_ap, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
                                                                        i, client_shard_sizes, data_size[i], test_ap_fig, test_ap, ccn_dict, node_assignment)
-
+            print("Snapshot Ends. Best Round:", best_round, "Best AP:", best_ap)
+            print("=============")
             for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
                 c.update_embeddings(c.curr_ne)
 

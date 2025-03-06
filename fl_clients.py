@@ -260,8 +260,6 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
 
             '''Train with only new/relevant edges'''
-            if round == 0 and epoch == 0:
-                draw_graph(edge_index=edge_index, name='current', client=model_id)
             # if data.previous_edge_index != None:
             #     prev_edge_index = data.previous_edge_index.to(device)
             #     new_edge_index = get_exclusive_edges(edge_index, prev_edge_index)
@@ -345,7 +343,7 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
     with torch.no_grad():  # Don't need to compute gradients bc testing don't require updating weights
         if task_cfg.task_type in ['LP', 'NC']:
             count = 0.0 # only for getting metrics, since each client only has one batch (so dont need count for accuracy)
-            metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0,  'macro_auc': 0.0, 'micro_auc': 0.0, 'mrr': 0.0}
+            metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0}
             for data in fdl.fbd_list:
                 x, edge_index = data.x.to(device), data.edge_index.to(device)
                 if task_cfg.task_type == 'LP':
@@ -360,10 +358,10 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                 if task_cfg.task_type == 'LP':
                     predicted_y, _ = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=val_nodes)
                     loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
-                    acc, ap, macro_f1, macro_auc, micro_auc = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
+                    acc, ap, macro_f1 = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
                     mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
                     metrics['mrr'] += mrr
-                    metrics['ap'], metrics['macro_f1'], metrics['macro_auc'], metrics['micro_auc'] = metrics['ap'] + ap, metrics['macro_f1'] + macro_f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
+                    metrics['ap'], metrics['macro_f1'] = metrics['ap'] + ap, metrics['macro_f1'] + macro_f1
                 else:
                     predicted_y, _ = model(x, edge_index, task_cfg.task_type, subnodes=val_nodes)
                     loss = loss_func(predicted_y[val_nodes], node_label)
@@ -422,7 +420,7 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
     # Local evaluation, batch-wise
     accuracy = 0.0
     count = 0
-    metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'macro_auc': 0.0, 'micro_auc': 0.0, 'mrr': 0.0}
+    metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0}
 
     if task_cfg.task_type in ['LP', 'NC']:
         for data in fdl.fbd_list:
@@ -439,10 +437,10 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
             if task_cfg.task_type == 'LP':
                 predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=test_nodes)
                 loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
-                acc, ap, macro_f1, macro_auc, micro_auc = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
+                acc, ap, macro_f1 = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
                 mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
                 metrics['mrr'] += mrr
-                accuracy, metrics['ap'], metrics['macro_f1'], metrics['macro_auc'], metrics['micro_auc'] = accuracy + acc, metrics['ap'] + ap, metrics['macro_f1'] + macro_f1, metrics['macro_auc'] + macro_auc, metrics['micro_auc'] + micro_auc
+                accuracy, metrics['ap'], metrics['macro_f1'] = accuracy + acc, metrics['ap'] + ap, metrics['macro_f1'] + macro_f1
             else:
                 predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, subnodes=test_nodes)
                 loss = loss_func(predicted_y[test_nodes], node_label)
@@ -476,67 +474,3 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
             count += b_count
 
         return test_sum_loss, accuracy/count, metrics
-
-def node_check(edge_index, new_changes, stack, edge, threshold=15):
-    if len(new_changes) == 0:
-        return []
-
-    # root = stack[-1]
-    
-    score = 1.0
-    while stack:
-        current_node = stack.pop()
-        neighbours = edge_index[1][edge_index[0] == current_node]
-        if score == 1.0 and edge == 0:
-            mask = ~(new_changes[0] == current_node)
-            new_changes = new_changes[:, mask]
-
-        for neighbour in neighbours:
-            if neighbour.item() not in new_changes[0]:
-                degree = torch.sum(edge_index[0] == neighbour.item())
-                curr_score = score / degree
-                # print("int(neighbour)", int(neighbour), "score", score, "number of difference", torch.sum(torch.logical_xor(feature_aggregation[root],feature_aggregation[neighbour.item()])))
-                if curr_score >= threshold:
-                    new = torch.tensor([[current_node],[neighbour.item()]]).to('cuda')
-                    new_changes = torch.cat((new_changes, new),1)
-                    stack.append(neighbour.item())
-                else:
-                    score = 1.0  #if the node exceed the threshold influence, we do not add it to the stack and end traversing the branch
-
-        if neighbours.shape[0] == 1:  # the node is a leaf, reached the end of a branch
-            score = 1.0
-        
-        score = score / 2
-    
-    return new_changes
-
-def get_relevant_edges(edge_index, new_changes):
-    if len(new_changes) == 0:
-        return []
-
-    stack = new_changes[1].tolist()  #List all target nodes to start with
-
-    while stack:
-        current_node = stack.pop()
-        new_changes = node_check(edge_index, new_changes, [current_node], 1)
-
-        while current_node in stack:
-            stack.remove(current_node)
-
-        # pair = new_changes[1][new_changes[0] == current_node]
-
-        # for p in pair: # in case there are multiple pairs
-        #     print("Pair", p)
-        #     if p.item() == current_node:  # updated feature
-        #         new_changes = node_check(edge_index, new_changes, [current_node], 0)
-        #     else:
-        #         new_changes = node_check(edge_index, new_changes, [current_node], 1)
-
-    # Step 1: Combine the updated_edge into tuples and sort
-    combined = list(zip(new_changes[0].tolist(), new_changes[1].tolist()))
-    sorted_combined = sorted(combined, key=lambda x: (x[0], x[1]))
-
-    # Step 2: Separate the sorted elements back into separate tensors
-    sorted_edges = torch.tensor(list(zip(*sorted_combined))).to('cuda')
-    
-    return sorted_edges

@@ -10,7 +10,7 @@ from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 
 from fl_clients import EdgeDevice
-from utils import process_data, tensor_difference
+from utils import process_data, generate_neg_edges
 from graph_partition import our_gpa
 from plot_graphs import draw_graph
 
@@ -135,11 +135,11 @@ def partition_data(task_type, num_snapshots, data):
             g_t1.x = torch.Tensor([[1] for _ in range(g_t1.num_nodes)])
             g_t2.x = torch.Tensor([[1] for _ in range(g_t2.num_nodes)])
 
-            transform = RandomLinkSplit(num_val=0.0, num_test=0.0)  # All for training in time t
+            transform = RandomLinkSplit(num_val=0.0, num_test=0.0, add_negative_train_samples=False)  # All for training in time t
             train_data, _, _ = transform(g_t0)
-            transform = RandomLinkSplit(num_val=0.0, num_test=0.0)  # All for validation in time t+1
+            transform = RandomLinkSplit(num_val=0.0, num_test=0.0, add_negative_train_samples=False)  # All for validation in time t+1
             val_data, _, _ = transform(g_t1)
-            transform = RandomLinkSplit(num_val=0.0, num_test=0.0)  # All for test in time t+2
+            transform = RandomLinkSplit(num_val=0.0, num_test=0.0, add_negative_train_samples=False)  # All for test in time t+2
             test_data, _, _ = transform(g_t2)
 
             train_list.append(train_data)
@@ -181,28 +181,10 @@ def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients, prev_n
     2. prev_partition: the node allocation recorded in the previous snapshot (Default=None)
     '''
     print("Total number of edges", train_data.edge_index.shape[1])
-    draw_graph(train_data.edge_index, 'global')
-    
     num_subgraphs = len(clients)
     train_subgraphs, train_nodes = graph_partition(train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y, prev_nodes=prev_nodes, prev_partition=prev_partition)
     val_subgraphs, val_nodes = graph_partition(val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.y, prev_nodes=train_nodes, prev_partition=train_subgraphs)
     test_subgraphs, test_nodes = graph_partition(test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.y, prev_nodes=val_nodes, prev_partition=val_subgraphs)
-
-    if env_cfg.mode == 'FLDGNN-LP': # For LP partition, split negative edges
-        train_neg_edges = tensor_difference(train_data.edge_label_index, train_data.edge_index)
-        val_neg_edges = tensor_difference(val_data.edge_label_index, val_data.edge_index)
-        test_neg_edges = tensor_difference(test_data.edge_label_index, test_data.edge_index)
-
-        neg_train_subgraphs, _ = graph_partition(train_neg_edges, train_data.num_nodes, num_subgraphs, node_label=train_data.y)
-        neg_val_subgraphs, _ = graph_partition(val_neg_edges, val_data.num_nodes, num_subgraphs, node_label=val_data.y)
-        neg_test_subgraphs, _ = graph_partition(test_neg_edges, test_data.num_nodes, num_subgraphs, node_label=test_data.y)
-
-        for train_nodes in torch.unique(train_neg_edges):
-            train_subgraphs[train_nodes] = neg_train_subgraphs[train_nodes]
-        for val_nodes in torch.unique(val_neg_edges):
-            val_subgraphs[val_nodes] = neg_val_subgraphs[val_nodes]
-        for test_nodes in torch.unique(test_neg_edges):
-            test_subgraphs[test_nodes] = neg_test_subgraphs[test_nodes]
 
     cc_edges_train = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
 
@@ -237,8 +219,11 @@ def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_
     subgraph_ei = data.edge_index[:, ei_mask]
 
     if task_type == "FLDGNN-LP":
-        el_mask = node_mask[data.edge_label_index[0]] & node_mask[data.edge_label_index[1]]
-        fed_data =  FLLPDataset(data.x[node_mask], subnodes, data.edge_index[:, ei_mask], data.edge_label_index[:, el_mask], data.edge_label[el_mask], clients[client_idx].prev_edge_index, clients[client_idx])
+        # Generate Negative Edges
+        negative_edges = generate_neg_edges(data.edge_index[:, ei_mask], subnodes, data.edge_index[:, ei_mask].size(1))
+        edge_label_index = torch.cat([data.edge_index[:, ei_mask], negative_edges], dim=1)
+        edge_label = torch.concat([data.edge_label[ei_mask], torch.zeros(data.edge_index[:, ei_mask].size(1))])
+        fed_data =  FLLPDataset(data.x[node_mask], subnodes, data.edge_index[:, ei_mask], edge_label_index, edge_label, clients[client_idx].prev_edge_index, clients[client_idx])
 
     elif task_type == "FLDGNN-NC":
         fed_data = FLNCDataset(data.x[node_mask], subnodes, data.edge_index[:, ei_mask], clients[client_idx].prev_edge_index, data.y[node_mask], clients[client_idx])

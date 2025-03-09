@@ -259,21 +259,6 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             optimizer = optimizers[model_id]
             optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
 
-            '''Train with only new/relevant edges'''
-            # if data.previous_edge_index != None:
-            #     prev_edge_index = data.previous_edge_index.to(device)
-            #     new_edge_index = get_exclusive_edges(edge_index, prev_edge_index)
-            #     if round == 0 and epoch == 0:
-            #         draw_graph(edge_index=prev_edge_index, name='previous', client=model_id)
-            #         draw_graph(edge_index=edge_index, name='current', client=model_id)
-            #         draw_graph(edge_index=new_edge_index, name='new', client=model_id)
-            #         print("size of graph", new_edge_index.shape[1])
-            #         print("Shrink in graph size", edge_index.shape[1] - new_edge_index.shape[1])
-            # else:
-            #     new_edge_index = edge_index
-            #     if round == 0 and epoch == 0:
-            #         print("size of graph", new_edge_index.shape[1])
-
             if task_cfg.task_type == 'LP':
                 predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
             else:
@@ -288,6 +273,7 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             loss.backward(retain_graph=True)  # Use backpropagation to compute gradients
             optimizer.step() # Update weights based on computed gradients
             
+            optimizers[model_id] = optimizer
             # client_train_loss[model_id] += loss.detach().item()
             client_train_loss[model_id] += loss
     else:
@@ -357,9 +343,9 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                 model = models[model_id]
                 if task_cfg.task_type == 'LP':
                     predicted_y, _ = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=val_nodes)
-                    loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
-                    acc, ap, macro_f1 = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
-                    mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
+                    loss = loss_func(torch.sigmoid(predicted_y), edge_label.type_as(predicted_y))
+                    acc, ap, macro_f1 = lp_prediction(torch.sigmoid(predicted_y), edge_label.type_as(predicted_y))
+                    mrr = compute_mrr(torch.sigmoid(predicted_y), edge_label.type_as(predicted_y)) # need raw scores for mrr
                     metrics['mrr'] += mrr
                     metrics['ap'], metrics['macro_f1'] = metrics['ap'] + ap, metrics['macro_f1'] + macro_f1
                 else:
@@ -367,7 +353,6 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                     loss = loss_func(predicted_y[val_nodes], node_label)
                     acc, macro_f1, micro_f1 = nc_prediction(predicted_y[val_nodes], node_label)
                     metrics['macro_f1'], metrics['micro_f1'] = metrics['macro_f1'] + macro_f1, metrics['macro_f1'] + micro_f1
-
                 # Compute Loss and other metrics
                 client_test_loss[model_id] += loss.detach().item()
                 client_test_acc[model_id] += acc
@@ -425,6 +410,8 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
     if task_cfg.task_type in ['LP', 'NC']:
         for data in fdl.fbd_list:
             x, edge_index = data.x.to(device), data.edge_index.to(device)
+            if edge_index is None: # neglect participants with no testing data
+                continue
             if task_cfg.task_type == 'LP':
                 edge_label_index, edge_label, test_nodes = data.edge_label_index.to(device), data.y.to(device), data.subnodes.to(device)
             else:
@@ -436,9 +423,10 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
 
             if task_cfg.task_type == 'LP':
                 predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=test_nodes)
-                loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
-                acc, ap, macro_f1 = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
-                mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y))
+                predicted_score = torch.sigmoid(predicted_y)
+                loss = loss_func(predicted_score, edge_label.type_as(predicted_y))
+                acc, ap, macro_f1 = lp_prediction(predicted_score, edge_label.type_as(predicted_y))
+                mrr = compute_mrr(predicted_score, edge_label.type_as(predicted_y))
                 metrics['mrr'] += mrr
                 accuracy, metrics['ap'], metrics['macro_f1'] = accuracy + acc, metrics['ap'] + ap, metrics['macro_f1'] + macro_f1
             else:

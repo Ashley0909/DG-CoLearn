@@ -31,7 +31,7 @@ def main():
 
     # Load Data
     if task_mode in ["FLDGNN-LP", "FLDGNN-NC"]:
-        num_snapshots, train_list, val_list, test_list, data_size, arg = load_gnndata(task_cfg)
+        num_snapshots, train_list, val_list, test_list, arg = load_gnndata(task_cfg)
     else:
         train_x, train_y, test_x, test_y, data_size = load_data(task_cfg, env_cfg)
     
@@ -54,13 +54,13 @@ def main():
         # if not os.path.exists(directory):
         #     os.makedirs(directory)
 
-        node_assignment, num_nodes = None, 0
-        for i in range(24,-1,-1): # only (num_snapshots - 2) training rounds because of TVT split
+        node_assignment, num_subgraphs = None, 0
+        for i in range(9, num_snapshots - 2): # only (num_snapshots - 2) training rounds because of TVT split
             print("Snapshot", i)
-            fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, ccn_dict, node_assignment, num_nodes = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients, num_nodes, node_assignment)
-            glob_model, best_round, best_ap, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
-                                                                       i, client_shard_sizes, data_size[i], test_ap_fig, test_ap, ccn_dict, node_assignment)
-            print("Snapshot Ends. Best Round:", best_round, "Best AP:", best_ap)
+            fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, ccn_dict, node_assignment, num_subgraphs, data_size = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients, num_subgraphs, node_assignment)
+            glob_model, best_round, best_metric, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
+                                                                       i, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment)
+            print("Snapshot Ends. Best Round:", best_round, "Best Metric:", best_metric)
             print("=============")
             for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
                 c.update_embeddings(c.curr_ne)

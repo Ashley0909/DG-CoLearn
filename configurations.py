@@ -9,7 +9,8 @@ class EnvSettings:
 
     """
 
-    def __init__(self, n_clients, n_rounds, n_epochs, batch_size, train_frac, shuffle, pick_frac, benign_ratio, data_dist, client_dist, perf_dist, crash_dist, keep_best, device, showplot, bw_set, max_T):
+    def __init__(self, n_clients, n_rounds, n_epochs, batch_size=20, train_frac=6.0/7.0, shuffle=False, pick_frac=1, benign_ratio=1.0, data_dist=('E', None), client_dist=('E', None), perf_dist=('X', None),
+                 crash_dist=('E', 0.3), keep_best=True, device='gpu', showplot=False, bw_set=(0.175, 1250), max_T=830):
         self.mode = None
         self.n_clients = n_clients
         self.n_rounds = n_rounds
@@ -100,10 +101,10 @@ def init_config(task2run, pick_C, crash_prob, bw_set):
         else:    
             task_cfg = TaskSettings(task_type='ResNet', dataset=task2run, num_classes=100, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='nllLoss', lr=1e-2, lr_decay=5e-4)
     elif task2run in ['bitcoinOTC', 'UCI']:
-        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=50, perf_dist=('X', None), crash_dist=('E', crash_prob), keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='LP', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-3, lr_decay=5e-3)
+        env_cfg = EnvSettings(n_clients=30, n_rounds=2, n_epochs=500, perf_dist=('X', None), crash_dist=('E', crash_prob), keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='LP', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-4, lr_decay=5e-3)
     elif task2run in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
-        env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=50, perf_dist=('X', None), crash_dist=('E', crash_prob), keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        env_cfg = EnvSettings(n_clients=30, n_rounds=10, n_epochs=50, perf_dist=('X', None), crash_dist=('E', crash_prob), keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='NC', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='ce', lr=1e-0, lr_decay=5e-3)
     else:
         print('[Err] Invalid task name provided. Options are {boston, mnist, cifar10, cifar100, bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}')
@@ -161,10 +162,7 @@ def init_global_model(env_cfg, task_cfg):
         model = MLmodelCNN(classes=10).to(device)
     elif task_cfg.task_type == 'ResNet':
         model = MLmodelResNet(BasicBlock, [2, 2, 2, 2], num_classes=task_cfg.num_classes).to(device)
-    elif task_cfg.task_type == 'LP':
-        model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, output_dim=2, num_nodes=task_cfg.out_dim, update='gru').to(device)
-        model.reset_parameters()
-    elif task_cfg.task_type == 'NC':
+    elif task_cfg.task_type in ['LP', 'NC']:
         model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, output_dim=task_cfg.num_classes, num_nodes=task_cfg.out_dim, update='gru').to(device)
         model.reset_parameters()
     torch.set_default_dtype(torch.float32)

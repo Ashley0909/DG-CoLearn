@@ -81,6 +81,7 @@ def load_gnndata(task_cfg):
 
         num_snapshots = len(data)
         label = 2 # positive or negative edges
+        task_cfg.num_classes = label
         hidden_conv1, hidden_conv2 = 128, 128 #64, 32
         last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]),torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
         task_cfg.in_dim = data[0].num_node_features
@@ -117,13 +118,13 @@ def load_gnndata(task_cfg):
             graph.y = label
 
     """ Split each snapshot into train, val and test """
-    train_list, val_list, test_list, data_size = partition_data(task_cfg.task_type, num_snapshots, data) # data_size is to record the number of training data (#edge/#node)
+    train_list, val_list, test_list = partition_data(task_cfg.task_type, num_snapshots, data)
 
-    return num_snapshots, train_list, val_list, test_list, data_size, {'last_embeddings': last_embeddings, 'num_nodes': data[0].num_nodes, 'y': label}
+    return num_snapshots, train_list, val_list, test_list, {'last_embeddings': last_embeddings, 'num_nodes': data[0].num_nodes, 'y': label}
 
 def partition_data(task_type, num_snapshots, data):
     """ Partition data in train using t, val using t+1 and test using t+2 """
-    train_list, val_list, test_list, data_size = [], [], [], []
+    train_list, val_list, test_list = [], [], []
 
     for i in range(num_snapshots - 2): # There are num_snapshots rounds of training
         g_t0 = copy.deepcopy(data[i])
@@ -145,18 +146,16 @@ def partition_data(task_type, num_snapshots, data):
             train_list.append(train_data)
             val_list.append(val_data)
             test_list.append(test_data)
-            data_size.append(len(train_data.edge_label)) # Set the data size as the size of training edge label (pos and neg edges)
 
         elif task_type == 'NC':
             train_list.append(g_t0)
             val_list.append(g_t1)
             test_list.append(g_t2)
-            data_size.append(g_t0.num_nodes)
         else:
             print('E> Invalid task type specified. Options are {LP, NC}')
             exit(-1)
     
-    return train_list, val_list, test_list, data_size
+    return train_list, val_list, test_list
 
 def get_cut_edges(node_assignment, coo_format):
     '''
@@ -168,26 +167,29 @@ def get_cut_edges(node_assignment, coo_format):
     '''
     ccn_dict = defaultdict(list)
     for start_node, end_node in zip(coo_format[0], coo_format[1]):
-        if node_assignment[start_node] != node_assignment[end_node]:
+        if (node_assignment[start_node] != node_assignment[end_node]) and (end_node not in ccn_dict[start_node]):
             ccn_dict[start_node].append(end_node)
-            # ccn_dict[end_node].append(start_node)
     return ccn_dict
 
-def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients, prev_nodes=0, prev_partition=None):
+def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients, prev_num_subgraphs=0, prev_partition=None):
     '''A function that first partition the graph to clients, then allocate edges to each clients accordingly.
     
     Hightlighted Inputs:
     1. prev_nodes: number of node the test graph has recorded in the previous snapshot (Default=0)
     2. prev_partition: the node allocation recorded in the previous snapshot (Default=None)
     '''
-    print("Total number of edges", train_data.edge_index.shape[1])
-    num_subgraphs = len(clients)
-    train_subgraphs, train_nodes = graph_partition(train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y, prev_nodes=prev_nodes, prev_partition=prev_partition)
-    val_subgraphs, val_nodes = graph_partition(val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.y, prev_nodes=train_nodes, prev_partition=train_subgraphs)
-    test_subgraphs, test_nodes = graph_partition(test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.y, prev_nodes=val_nodes, prev_partition=val_subgraphs)
+    num_subgraphs = gen_train_clients(train_data.edge_index.shape[1], len(clients))
+    global_size = train_data.edge_index.shape[1]
+    print(f"A total of {global_size} training edges")
+    print(num_subgraphs, "clients are chosen to train")
+    data_size = train_data.num_nodes # The total number of nodes in the global training graph
+
+    train_subgraphs, train_clients = graph_partition(train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y, prev_num_subgraphs=prev_num_subgraphs, prev_partition=prev_partition)
+    val_subgraphs, val_clients = graph_partition(val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.y, prev_num_subgraphs=train_clients, prev_partition=train_subgraphs)
+    test_subgraphs, test_clients = graph_partition(test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.y, prev_num_subgraphs=val_clients, prev_partition=val_subgraphs)
 
     cc_edges_train = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
-
+    print(f"Total number of cut edges: {sum(len(v) for v in cc_edges_train.values())}")
     client_sizes = [] # the training data size of each client (used for weighted aggregation)
     client_train, client_val, client_test = [], [], []
 
@@ -199,23 +201,27 @@ def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients, prev_n
         client_val.append(single_val)
         single_test = construct_single_client_data(test_data, test_subgraphs, i, clients, "test", env_cfg.mode)
         client_test.append(single_test)
+        print(f"Client {i} has {single_train.edge_index.shape[1]} positive training edges, {single_val.edge_index.shape[1]} positive val edges and {single_test.edge_index.shape[1]} positive test edges")
 
-        if env_cfg.mode == 'FLDGNN-LP':
-            client_sizes.append(single_train.ellength)
-        elif env_cfg.mode == 'FLDGNN-NC':
-            client_sizes.append(len(single_train.subnodes))
+        client_sizes.append(len(single_train.subnodes)) # Client data size is the number of subnodes a client has
 
     fed_train = FLFedDataset(client_train)
     fed_val = FLFedDataset(client_val)
     fed_test = FLFedDataset(client_test)
 
-    return fed_train, fed_val, fed_test, client_sizes, cc_edges_train, test_subgraphs, test_nodes
-            
+    return fed_train, fed_val, fed_test, client_sizes, cc_edges_train, test_subgraphs, test_clients, data_size
+       
 def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_mode, task_type):
     node_mask = (subgraph_label == client_idx)
     subnodes = torch.arange(data.num_nodes)[node_mask]
 
-    ei_mask = node_mask[data.edge_index[0]] & node_mask[data.edge_index[1]]
+    ei_mask = []
+    for src, targ in zip(data.edge_index[0], data.edge_index[1]):
+        if node_mask[src] == True and node_mask[targ] == True:
+            ei_mask.append(True)
+        else:
+            ei_mask.append(False)
+
     subgraph_ei = data.edge_index[:, ei_mask]
 
     if task_type == "FLDGNN-LP":
@@ -234,7 +240,7 @@ def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_
     
     return fed_data
 
-def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', node_label=None, prev_nodes=0, prev_partition=None):
+def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', node_label=None, prev_num_subgraphs=0, prev_partition=None):
     """ 
     Stay consistent partition for TVT, so prev_partition is to record the partition of testing data (the most recent snapshot)
 
@@ -252,8 +258,8 @@ def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', nod
     2. num_nodes: Number of nodes in the data
     """
     # If previous partition exists, maintain consistency
-    if prev_partition is not None and num_nodes == prev_nodes:
-        return prev_partition, num_nodes
+    if prev_partition is not None and num_parts == prev_num_subgraphs:
+        return prev_partition, num_parts
 
     # Convert graph to undirected for partitioning
     undirected_ei = to_undirected(edge_index)
@@ -269,9 +275,16 @@ def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', nod
     if partition_type == 'Metis':
         _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
     elif partition_type == 'Ours':
-        partitioning_labels = our_gpa(adjacency_list, node_labels=node_label, K=num_parts)
+        print("Partition Graph")
+        partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
     else:
         print('E> Invalid partitioning algorithm specified. Options are {Metis, Ours}')
         exit(-1)
 
-    return torch.tensor(partitioning_labels), num_nodes
+    return torch.tensor(partitioning_labels), num_parts
+
+def gen_train_clients(total_num_edges, max_num_clients, num_edge_per_clients=500):
+    ''' Determine number of training clients in this snapshot based on the total number of edges in the global graph '''
+    num_clients = total_num_edges // num_edge_per_clients
+    
+    return min(max(1,num_clients), max_num_clients)

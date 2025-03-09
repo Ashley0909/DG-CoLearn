@@ -4,8 +4,10 @@ import copy
 import random
 import torch
 from collections import defaultdict
+import os
 
 from utils import get_global_embedding
+from fl_models import ROLANDGNN
 from fl_clients import distribute_models, select_clients_FCFM, select_clients_randomly, version_filter, train, local_test, global_test
 from configurations import EventHandler
 from fl_aggregations import safa_aggregate, fedassets_aggregate, gnn_aggregate
@@ -319,6 +321,9 @@ def run_FedAssets(env_cfg, task_cfg, global_mod, cm_map, data_size, fed_data_tra
 def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment):
    # Initialise
    global_model = global_mod
+   # if os.path.exists('model_state/model.pth'):
+   #    global_model = 
+   
    local_models = [None for _ in range(env_cfg.n_clients)]
    cache = [None for _ in range(env_cfg.n_clients)] # stores the local model trained in each snapshot (only this snapshot)
    client_ids = list(range(env_cfg.n_clients))
@@ -349,13 +354,32 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
    """ Begin Training """
    for rd in range(env_cfg.n_rounds):
       print("Round", rd)
+      best_local_models = copy.deepcopy(local_models)
+      best_val_acc = [float('-inf') for _ in range(len(client_ids))]
 
       for epoch in range(env_cfg.n_epochs // 2):
+         if epoch == 1:
+            """ Share Node Embedding after first epoch """
+            trained_embeddings = defaultdict(torch.Tensor)
+            subnodes_union = set()
+            for c in client_ids:
+               # plot_h(matrix=clients[c].curr_ne[1], path='ne1_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Trained Node Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
+               trained_embeddings[c] = clients[c].send_embeddings()
+               subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
+
+            print("Share Embeddings")
+            shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union, client_ids[0])
+            for c in range(len(client_ids)):
+               clients[c].update_embeddings(shared_embeddings)
+               # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
+               
          train_loss = train(local_models, client_ids, env_cfg, cm_map, fed_data_train, task_cfg, train_loss, rd, epoch, verbose=True)
          val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
          # Update metrics data
          val_ap.append(val_metrics['ap'])
          val_ap_fig.data[0].y = val_ap  # Update y for Val AP Fig
+         # print('>   @Local> accuracy = ', val_acc)
+         # print('>   @Local> Other Metrics = ', val_metrics)
 
       """ Share Node Embedding after training for the first half of epochs """
       trained_embeddings = defaultdict(torch.Tensor)
@@ -367,8 +391,6 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
 
       print("Share Embeddings")
       shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union, client_ids[0])
-      # shared_embeddings, time_taken = time_cpu(share_embeddings, trained_embeddings, aggre_weights)
-      # print(f"Time Taken for Sharing Embedding: {time_taken:.6f} seconds")
       for c in range(len(client_ids)):
          clients[c].update_embeddings(shared_embeddings)
          # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
@@ -378,10 +400,16 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
          val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
          val_ap.append(val_metrics['ap']) # Update metric data
          val_ap_fig.data[0].y = val_ap  # Update y for Val AP Fig
+         # print('>   @Local> accuracy = ', val_acc)
+         # print('>   @Local> Other Metrics = ', val_metrics)
+         for c in client_ids:
+            if val_acc[c] > best_val_acc[c]:
+               best_local_models[c] = copy.deepcopy(local_models[c])
+               best_val_acc[c] = val_acc[c]
 
+      print('>   @Local> Best accuracies = ', best_val_acc)
       # Aggregate Local Models
-      update_cloud_cache(cache, local_models, client_ids)
-      # global_model = safa_aggregate(cache, client_shard_sizes, data_size)
+      update_cloud_cache(cache, best_local_models, client_ids)
       global_model = gnn_aggregate(cache, client_shard_sizes, data_size, client_ids)
       print("Aggregated Model")
       # Global Test
@@ -396,7 +424,7 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
 
       # Record Best Readings
       # if overall_loss < best_loss:
-      if global_ap > best_ap:
+      if (env_cfg.mode == "FLDGNN-NC" and global_acc > best_acc) or (env_cfg.mode == "FLDGNN-LP" and global_ap > best_ap):
          best_loss = overall_loss
          best_acc = global_acc
          best_ap = global_ap
@@ -409,4 +437,9 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
          global_acc = best_acc
          global_ap = best_ap
 
-   return best_model, best_round, best_ap, val_ap_fig, test_ap_fig, test_ap
+      # Save model's state
+      # torch.save(global_model.state_dict(), "model_state/model.pth")
+   if env_cfg.mode == "FLDGNN-LP":
+      return best_model, best_round, best_ap, val_ap_fig, test_ap_fig, test_ap
+   else:
+      return best_model, best_round, best_acc, val_ap_fig, test_ap_fig, test_ap

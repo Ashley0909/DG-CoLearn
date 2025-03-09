@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 import time
 import torch
 from torch_geometric.utils import to_undirected
+from collections import defaultdict
 
 def extract_accuracy_from_file(file_path):
     accuracies = []
@@ -67,22 +68,60 @@ def draw_graph(edge_index, name, client=0):
     undirected_edge_index = to_undirected(edge_index)
 
     # Add nodes and edges from tensor
-    for i in range(edge_index.shape[1]):
+    for i in range(undirected_edge_index.shape[1]):
         dot.edge(str(undirected_edge_index[0, i].item()), str(undirected_edge_index[1, i].item()))
 
     # Render the graph
     dot.render(path, format='png')
 
-def draw_adj_list(adj_list, subnodes, name):
+def draw_adj_list(adj_list, subnodes=None, name="global"):
     path = 'graph_output/'+name
 
     dot = graphviz.Graph(format='png')
+
+    if subnodes is None:
+        subnodes = np.arange(len(adj_list))
 
     # Add edges from adjacency list
     for src in subnodes:
         for dst in adj_list[src]:
             if dst in subnodes:
                 dot.edge(str(src), str(dst))
+
+    dot.render(path, format='png')
+
+def colour_adj_list(adj_list, labelling):
+    path = 'graph_output/coloured'
+    dot = graphviz.Graph(format='png')        
+
+    # color_palette = ["green", "yellow", "red", "blue", "purple", "orange", "pink", "cyan", "brown", "gray"]
+    color_palette = [
+    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+    "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+    "#aec7e8", "#ffbb78", "#98df8a", "#ff9896", "#c5b0d5",
+    "#c49c94", "#f7b6d2", "#c7c7c7", "#dbdb8d", "#9edae5",
+    "#393b79", "#637939", "#8c6d31", "#843c39", "#7b4173",
+    "#5254a3", "#637939", "#e7ba52", "#d6616b", "#ce6dbd"
+    ]
+
+    unique_labels = list(set(labelling))
+    color_map = {label: color_palette[i % len(color_palette)] for i, label in enumerate(unique_labels)}  # Assigns different colors
+
+    # Add nodes with colors
+    if isinstance(labelling, defaultdict):
+        for label, nodes in labelling.items():
+            for node in nodes:
+                if adj_list[node] != []:
+                    dot.node(str(node), style="filled", fillcolor=color_map[label])
+    else:
+        for node, label in enumerate(labelling):
+            if adj_list[node] != []:
+                dot.node(str(node), style="filled", fillcolor=color_map[label])
+
+    # Add edges from adjacency list
+    for src , neigh in enumerate(adj_list):
+        for dst in neigh:
+            dot.edge(str(src), str(dst))
 
     dot.render(path, format='png')
 

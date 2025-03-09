@@ -329,11 +329,11 @@ class ROLANDGNN(torch.nn.Module):
 
         #HADAMARD MLP (For Link Prediction)
         if task_type == "LP":
-            h_src = h[edge_label_index[0]].to(self.device)
-            h_dst = h[edge_label_index[1]].to(self.device)
+            h_src = h[edge_label_index[0].long()].to(self.device)
+            h_dst = h[edge_label_index[1].long()].to(self.device)
             h_hadamard = torch.mul(h_src, h_dst) #hadamard product
             h = self.postprocess1(h_hadamard)
-            out = torch.sum(h.clone(), dim=-1).clone()
+            out = torch.sum(h.clone(), dim=-1).clone() # sum up the values in a row
         elif task_type == "NC":
             out = self.postprocess1(h)
         else:

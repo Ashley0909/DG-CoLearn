@@ -3,7 +3,7 @@ import copy
 import numpy as np
 import itertools
 
-from plot_graphs import draw_adj_list
+from plot_graphs import draw_adj_list, colour_adj_list
 
 ''' Functions for Connected Components '''
 def component_nodes(node, adj_list):
@@ -64,7 +64,6 @@ def count_edges(adj_list, nodes_set, synthetic_edges):
 
     return edge_count
 
-
 ''' Functions for finding roots (by comparing shortest path of all pairs of nodes) '''
 def bfs_shortest_paths(adj_list, start):
     """Computes shortest paths from `start` node to all others using BFS."""
@@ -121,38 +120,46 @@ def find_k_furthest_nodes(adj_list, k, isolated_nodes=[]):
     return selected[:k]
 
 ''' Function for resolving conflicting nodes '''
-def resolve_conflicts(node, adj_list, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels):
+def resolve_conflicts(node, adj_list, global_size, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels, isolated_nodes):
+    # print("Node", node)
+    # colour_adj_list(adj_list, previous_level_subgraph)
     best_subgraph, best_subgraph_score = None, 0
     for subgraph in subgraph_allocated: # compute score for given root
-        number_subgraph_edges = count_edges(adj_list, list(previous_level_subgraph[subgraph] - {node}), synthetic_edges)
+        number_subgraph_edges = count_edges(adj_list, list(previous_level_subgraph[subgraph] - {node} - set(isolated_nodes)), synthetic_edges)
+        # print(f"Subgraph {subgraph} currently has {number_subgraph_edges} edges")
         number_neighbours = len(set(adj_list[node])&previous_level_subgraph[subgraph])
+        # print("Neighbours", set(adj_list[node])&previous_level_subgraph[subgraph])
         
         if node_labels is not None: # Add labels classification score
-            alpha, beta = 0.1, 0.1
+            delta, epsilon = 0.1, 0.1
             current_subgraph = np.array(list(previous_level_subgraph[subgraph] - {node}))
             node_label_array = np.array(node_labels)
             label_counts = np.bincount(node_label_array[current_subgraph], minlength=max(node_label_array)+1)
 
             number_unique_labels = np.count_nonzero(label_counts)
-            label_diversity_score = alpha / (1+number_unique_labels)
+            label_diversity_score = delta / (1+number_unique_labels)
 
             label_occurrence = label_counts[node_labels[node]]
-            occurrence_score = beta / (1+label_occurrence)
+            occurrence_score = epsilon / (1+label_occurrence)
             node_label_score = label_diversity_score + occurrence_score
         else:
             node_label_score = 0
 
-        cut_edge_score = (1/(1 + len(adj_list[node]) - number_neighbours))
-        edge_balanced_score = (1/(1+number_subgraph_edges))
+        # print(f"Degree: {len(adj_list[node])} Number of Neighbours {number_neighbours}, Score {len(adj_list[node]) - number_neighbours}")
+        cut_edge_score = (1/(1 + len(adj_list[node]) - number_neighbours)) # bigger => better
+        edge_balanced_score = 1 - ((number_subgraph_edges)/global_size) # bigger => better
+        # print(f"cut edge score {cut_edge_score}, edge score {edge_balanced_score}, node label score {node_label_score}")
         score = cut_edge_score + edge_balanced_score + node_label_score
+
         if score > best_subgraph_score:
             best_subgraph = subgraph
             best_subgraph_score = score
 
+    # print(f"Node {node} allocated to Subgraph {best_subgraph}")
     return best_subgraph
 
 ''' The main function for our graph partitioning algorithm '''
-def our_gpa(adj_list, node_labels=None, K=2):
+def our_gpa(adj_list, global_size, node_labels=None, K=2):
     '''
     A function that splits the graph into K subgraphs which:
 
@@ -200,13 +207,17 @@ def our_gpa(adj_list, node_labels=None, K=2):
         # Resolve conflicts with our weighting scheme
         for node, subgraph_allocated in node_to_allocated_subgraph.items():
             if len(subgraph_allocated) > 1: # conflict case
-                best_subgraph = resolve_conflicts(node, adj_list, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels)
-                node_to_allocated_subgraph[node] &= {best_subgraph}
-        
-        # Update previous_level_subgraph & consider nodes for next level
-        for node, subgraph_allocated in node_to_allocated_subgraph.items():
-            previous_level_subgraph[next(iter(subgraph_allocated))].add(node)
+                previous_subgraph_root = None
+                for root in previous_level_subgraph:
+                    if node in previous_level_subgraph[root]:
+                        previous_subgraph_root = root
 
+                best_subgraph = resolve_conflicts(node, adj_list, global_size, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels, isolated_nodes)
+                node_to_allocated_subgraph[node] &= {best_subgraph}
+                if node in previous_level_subgraph[previous_subgraph_root]:
+                    previous_level_subgraph[previous_subgraph_root].remove(node)
+                previous_level_subgraph[best_subgraph].add(node)
+        
         # Consider nodes to visit next :)
         next_level = []
         for node in nodes_visited_this_level:
@@ -216,5 +227,8 @@ def our_gpa(adj_list, node_labels=None, K=2):
                     next_level.append([neighbour, node_subgraph])
 
         level_queue = copy.deepcopy(next_level)
+
+    assignment = [node_to_allocated_subgraph[i].pop() for i in range(len(node_to_allocated_subgraph))]
+    # colour_adj_list(adj_list, assignment)
         
-    return [node_to_allocated_subgraph[i].pop() for i in range(len(node_to_allocated_subgraph))]
+    return assignment

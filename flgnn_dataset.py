@@ -283,7 +283,7 @@ def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', nod
 
     return torch.tensor(partitioning_labels), num_parts
 
-def gen_train_clients(total_num_edges, max_num_clients, num_edge_per_clients=500):
+def gen_train_clients(total_num_edges, max_num_clients, num_edge_per_clients=510):
     ''' Determine number of training clients in this snapshot based on the total number of edges in the global graph '''
     num_clients = total_num_edges // num_edge_per_clients
     

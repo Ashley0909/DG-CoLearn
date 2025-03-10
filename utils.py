@@ -14,8 +14,7 @@ from collections import deque
 
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import f1_score, accuracy_score
-from sklearn.metrics import roc_auc_score
-from functools import reduce
+from scipy.sparse import coo_matrix
 
 from plot_graphs import plot_h, plot_cluster
 
@@ -378,16 +377,48 @@ def nc_prediction(pred_score, true_l):
 
     return acc, macro_f1, micro_f1
 
-def compute_mrr(pred_score, true_l):
-    sorted_indices = torch.argsort(pred_score, descending=True)
-    sorted_labels = true_l[sorted_indices]
+def compute_mrr(pred_score, true_l, edge_label_index, do_softmax=True):
+    ''' Using the same way how EvolveGCN evaluates mrr '''
+    if do_softmax:
+        probs = torch.softmax(pred_score, dim=0)
+    else:
+        probs = pred_score
 
-    true_edge_ranks = torch.where(sorted_labels == 1)[0]
+    probs = probs.cpu().detach().numpy()
+    true_l = true_l.cpu().detach().numpy()
 
-    reciprocal_ranks = 1.0 / (true_edge_ranks + 1)
+    source_nodes = edge_label_index[0].cpu().detach().numpy()
+    target_nodes = edge_label_index[1].cpu().detach().numpy()
 
-    mrr = reciprocal_ranks.mean().item()
+    pred_matrix = coo_matrix((probs, (source_nodes, target_nodes))).toarray()
+    true_matrix = coo_matrix((true_l, (source_nodes, target_nodes))).toarray()
 
+    # Calculate mrr for each row where there are true edges
+    row_mrrs = []
+    for i, pred_row in enumerate(pred_matrix):
+        # Check if there are any existing edges in the true_matrix for this row
+        if np.isin(1, true_matrix[i]):  # 1 indicates an existing edge
+            row_mrrs.append(get_row_mrr(pred_row, true_matrix[i]))
+
+    avg_mrr = torch.tensor(row_mrrs).mean()  # Return the average mrr across all rows
+    return avg_mrr.float().item()
+
+def get_row_mrr(prob_score, true_l):
+    prob_score = np.nan_to_num(prob_score)
+    # Get the mask for the existing edges (true labels == 1)
+    existing_mask = true_l == 1
+    # Sort predictions in descending order (probabilities)
+    ordered_indices = np.flip(prob_score.argsort())
+
+    # Apply the ordered indices to the existing mask to find the rank of true edges
+    ordered_existing_mask = existing_mask[ordered_indices]
+    existing_ranks = np.arange(1, true_l.shape[0] + 1, dtype=np.cfloat)[ordered_existing_mask]
+
+    if existing_ranks.shape[0] == 0: # No valid ranks, return 0 instead of NaN
+        return 0.0
+
+    # Calculate Mean Reciprocal Rank (mrr) for the row
+    mrr = (1 / existing_ranks).sum() / existing_ranks.shape[0]
     return mrr
 
 def generate_neg_edges(edge_index, node_range:torch.Tensor, num_neg_samples:int=None):

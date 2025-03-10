@@ -3,6 +3,9 @@ import sys
 import torch
 import time
 import numpy as np
+import optuna
+import mlflow
+
 from datetime import datetime
 
 from fl_strategy import run_FL,run_FedAssets,run_dygl
@@ -15,7 +18,8 @@ from plot_graphs import configure_plotly, time_gpu
 
 torch.autograd.set_detect_anomaly(True)
 
-def main():
+def ml_flow_LP_objective(trial):
+
     # Set Configuration
     crash_prob = float(sys.argv[1])
     lag_tol = int(sys.argv[2])
@@ -38,7 +42,7 @@ def main():
     # Create a list of information per snapshots in FLDGNN
     if task_mode in ["FLDGNN-LP", "FLDGNN-NC"]:
         sys.stdout = Logger('fl_lp')
-        print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
+        print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}, lr={task_cfg.lr}")
 
         clients, cindexmap = init_GNN_clients(env_cfg.n_clients, arg['last_embeddings']) # Stay the same for all snapshots
         glob_model = init_global_model(env_cfg, task_cfg)
@@ -54,23 +58,42 @@ def main():
         # if not os.path.exists(directory):
         #     os.makedirs(directory)
 
-        node_assignment, num_subgraphs = None, 0
-        for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
+        task_cfg.lr = trial.suggest_loguniform("learning_rate", 1e-4, 1e-2)
 
+        overall_acc, overall_mrr = 0, 0
+        node_assignment, num_subgraphs = None, 0
+        
+
+        for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
             print("Snapshot", i)
             fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, ccn_dict, node_assignment, num_subgraphs, data_size = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients, num_subgraphs, node_assignment)
             # glob_model, best_round, best_metric, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
             #                                                            i, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment)
-            run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
-                                                                       i, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment)
-            # print("Snapshot Ends. Best Round:", best_round, "Best Metric:", best_metric)
+            global_snapshot_acc, global_snapshot_mrr, glob_model, best_round, best_metric, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
+                                                                        i, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment)
+            overall_acc += global_snapshot_acc
+            overall_mrr += global_snapshot_mrr
+            print("Snapshot Ends. Best Round:", best_round, "Best Metric:", best_metric)
             print("=============")
             for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
                 c.update_embeddings(c.curr_ne)
 
+            with mlflow.start_run():
+                mlflow.log_param(f"Learning rate for snapshot {i}", task_cfg.lr)
+                mlflow.log_metric(f"Global Best Accuracy for Snapshot {i}", global_snapshot_acc)
+                mlflow.log_metric(f"Global Best MRR for Snapshot {i}", global_snapshot_mrr)
+                mlflow.log_metric(f"Global Best Average precision for Snapshot {i}", best_metric)
+
             # file_path = os.path.join(directory, "{}_SS{}.png".format(datetime.now().strftime("%Y%m%d_%H%M"), i))
             # val_fig.write_image(file_path)
             # test_ap_fig.write_image("test_ap_plots/{}.png".format(datetime.now().strftime("%Y%m%d_%H%M")))
+
+        with mlflow.start_run():
+            mlflow.log_param(f"Final overall learning rate for all snapshots", task_cfg.lr)
+            mlflow.log_metric(f"Final Best Accuracy overall averaged with lr {task_cfg.lr}", overall_acc/(num_snapshots-2))
+            mlflow.log_metric(f"Global Best MRR overall averaged with lr {task_cfg.lr}{i}", overall_mrr/(num_snapshots-2))
+
+        return 0.5 * overall_acc/(num_snapshots-2) + 0.5 * overall_mrr/(num_snapshots-2)
     else:
         # Create Clients
         if task_mode == 'FedAssets':
@@ -105,6 +128,17 @@ def main():
 
             _, _, _ = run_FL(env_cfg, task_cfg, glob_model, cindexmap, data_size, fed_loader_train, fed_loader_test, client_shard_sizes, clients_perf_vec, 
                                                 crash_trace, progress_trace,clients_est_round_T_train, response_time_limit, lag_tol)
+    
+    
+def main():
+    # ml flow hyperparameter case study
+    mlflow.set_experiment('Bitcoin-OTC')
+    study = optuna.create_study(direction='maximize')
 
+    study.optimize(lambda trial: ml_flow_LP_objective(trial),
+                    n_trials=5)
+    
+    print("Best Trial:", study.best_trial)
+        
 if __name__ == '__main__':  # If the file is run directly (python3 main.py), __name__ will be set to __main__ and will run the function main()
     main()

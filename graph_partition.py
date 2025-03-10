@@ -123,6 +123,7 @@ def find_k_furthest_nodes(adj_list, k, isolated_nodes=[]):
 def resolve_conflicts(node, adj_list, global_size, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels, isolated_nodes):
     # print("Node", node)
     # colour_adj_list(adj_list, previous_level_subgraph)
+    alpha, beta = 0.25, 0.75
     best_subgraph, best_subgraph_score = None, 0
     for subgraph in subgraph_allocated: # compute score for given root
         number_subgraph_edges = count_edges(adj_list, list(previous_level_subgraph[subgraph] - {node} - set(isolated_nodes)), synthetic_edges)
@@ -149,7 +150,7 @@ def resolve_conflicts(node, adj_list, global_size, subgraph_allocated, previous_
         cut_edge_score = (1/(1 + len(adj_list[node]) - number_neighbours)) # bigger => better
         edge_balanced_score = 1 - ((number_subgraph_edges)/global_size) # bigger => better
         # print(f"cut edge score {cut_edge_score}, edge score {edge_balanced_score}, node label score {node_label_score}")
-        score = cut_edge_score + edge_balanced_score + node_label_score
+        score = alpha * cut_edge_score + beta * edge_balanced_score + node_label_score
 
         if score > best_subgraph_score:
             best_subgraph = subgraph

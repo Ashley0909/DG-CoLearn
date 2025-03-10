@@ -8,10 +8,10 @@
             "name": "Run Model",
             "type": "debugpy",
             "request": "launch",
-            "program": "/home/u1912321/Documents/own_code/FL_General/main.py",
+            "program": "/home/u1912321/Documents/own_code/FL_General/main_ml_flow.py",
             "console": "integratedTerminal",
-            // "args": ["0.0", "5", "1.0", "Reddit", "FLDGNN-NC"],
-            "args": ["0.0", "5", "1.0", "UCI", "FLDGNN-LP"],
+            // "args": ["0.0", "5", "1.0", "Brain", "FLDGNN-NC"],
+            "args": ["0.0", "5", "1.0", "bitcoinOTC", "FLDGNN-LP"],
             "justMyCode": false
         }
     ]

@@ -5,11 +5,12 @@ import random
 import torch
 from collections import defaultdict
 import os
-
+import mlflow
+import optuna
 from utils import get_global_embedding
 from fl_models import ROLANDGNN
 from fl_clients import distribute_models, select_clients_FCFM, select_clients_randomly, version_filter, train, local_test, global_test
-from configurations import EventHandler
+from configurations import EventHandler, init_global_model
 from fl_aggregations import safa_aggregate, fedassets_aggregate, gnn_aggregate
 from plot_graphs import configure_plotly, time_cpu
 
@@ -320,10 +321,7 @@ def run_FedAssets(env_cfg, task_cfg, global_mod, cm_map, data_size, fed_data_tra
 
 def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment):
    # Initialise
-   global_model = global_mod
-   # if os.path.exists('model_state/model.pth'):
-   #    global_model = 
-   
+   global_model = global_mod   
    local_models = [None for _ in range(env_cfg.n_clients)]
    cache = [None for _ in range(env_cfg.n_clients)] # stores the local model trained in each snapshot (only this snapshot)
    client_ids = list(range(env_cfg.n_clients))
@@ -437,9 +435,15 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
          global_acc = best_acc
          global_ap = best_ap
 
-      # Save model's state
-      # torch.save(global_model.state_dict(), "model_state/model.pth")
+   # Save Model State and Optimizer State
+   checkpoint = {
+      'snapshot': snapshot,
+      'learning_rate': task_cfg.lr,
+      'model_state_dict': global_model.state_dict()
+   }
+   torch.save(checkpoint, f'model_state/{task_cfg.dataset}/model_checkpoint_ss{snapshot}_lr{task_cfg.lr}.pth')
+
    if env_cfg.mode == "FLDGNN-LP":
-      return best_model, best_round, best_ap, val_ap_fig, test_ap_fig, test_ap
+      return global_acc, global_metrics['mrr'], best_model, best_round, best_ap, val_ap_fig, test_ap_fig, test_ap
    else:
       return best_model, best_round, best_acc, val_ap_fig, test_ap_fig, test_ap

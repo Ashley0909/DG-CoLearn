@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import math
 
 from sklearn.metrics import average_precision_score
 
@@ -241,6 +242,10 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
         else:
             print('Err> Invalid optimizer %s specified' % task_cfg.optimizer)
 
+    schedulers = []
+    for i in range(num_models):
+        schedulers.append(torch.optim.lr_scheduler.MultiStepLR(optimizers[i], [10001], gamma=10**-2))
+
     # Begin an epoch of training
     if task_cfg.task_type in ['LP', 'NC']:
         for data in fdl.fbd_list: # Traverse the data of each client
@@ -257,7 +262,8 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
 
             model = models[model_id]
             optimizer = optimizers[model_id]
-            optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
+            scheduler = schedulers[model_id]
+            # optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
 
             if task_cfg.task_type == 'LP':
                 predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
@@ -271,10 +277,16 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             else:
                 loss = loss_func(predicted_y[train_nodes], node_label)
             loss.backward(retain_graph=True)  # Use backpropagation to compute gradients
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
             optimizer.step() # Update weights based on computed gradients
-            
+            optimizer.zero_grad()
+            scheduler.step()
+
+            schedulers[model_id] = scheduler
             optimizers[model_id] = optimizer
             # client_train_loss[model_id] += loss.detach().item()
+
+        
             client_train_loss[model_id] += loss
     else:
         for _, (inputs, labels, client) in enumerate(fdl):
@@ -334,6 +346,9 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                 x, edge_index = data.x.to(device), data.edge_index.to(device)
                 if task_cfg.task_type == 'LP':
                     edge_label_index, edge_label, val_nodes = data.edge_label_index.to(device), data.y.to(device), data.subnodes.to(device)
+                    if len(edge_label) == 0 or edge_label.numel() == 0: # neglect participants with no validation data
+                        print("Ignore clients with no validation data")
+                        continue
                 else:
                     node_label, val_nodes = data.y.to(device), data.subnodes.to(device)
                 model_id = cm_map[data.location.id]
@@ -343,9 +358,9 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                 model = models[model_id]
                 if task_cfg.task_type == 'LP':
                     predicted_y, _ = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=val_nodes)
-                    loss = loss_func(torch.sigmoid(predicted_y), edge_label.type_as(predicted_y))
+                    loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
                     acc, ap, macro_f1 = lp_prediction(torch.sigmoid(predicted_y), edge_label.type_as(predicted_y))
-                    mrr = compute_mrr(torch.sigmoid(predicted_y), edge_label.type_as(predicted_y)) # need raw scores for mrr
+                    mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y), edge_label_index) # need raw scores for mrr
                     metrics['mrr'] += mrr
                     metrics['ap'], metrics['macro_f1'] = metrics['ap'] + ap, metrics['macro_f1'] + macro_f1
                 else:
@@ -410,10 +425,11 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
     if task_cfg.task_type in ['LP', 'NC']:
         for data in fdl.fbd_list:
             x, edge_index = data.x.to(device), data.edge_index.to(device)
-            if edge_index is None: # neglect participants with no testing data
-                continue
             if task_cfg.task_type == 'LP':
                 edge_label_index, edge_label, test_nodes = data.edge_label_index.to(device), data.y.to(device), data.subnodes.to(device)
+                if len(edge_label) == 0 or edge_label.numel() == 0: # neglect participants with no testing data
+                    print("Ignore participants with no testing data")
+                    continue
             else:
                 node_label, test_nodes = data.y.to(device), data.subnodes.to(device)
 
@@ -424,11 +440,14 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl, round)
             if task_cfg.task_type == 'LP':
                 predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=test_nodes)
                 predicted_score = torch.sigmoid(predicted_y)
-                loss = loss_func(predicted_score, edge_label.type_as(predicted_y))
+                loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
                 acc, ap, macro_f1 = lp_prediction(predicted_score, edge_label.type_as(predicted_y))
-                mrr = compute_mrr(predicted_score, edge_label.type_as(predicted_y))
-                metrics['mrr'] += mrr
-                accuracy, metrics['ap'], metrics['macro_f1'] = accuracy + acc, metrics['ap'] + ap, metrics['macro_f1'] + macro_f1
+                mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y), edge_label_index)
+                if not math.isnan(mrr):
+                    metrics['mrr'] += mrr
+                    accuracy, metrics['ap'], metrics['macro_f1'] = accuracy + acc, metrics['ap'] + ap, metrics['macro_f1'] + macro_f1
+                else:
+                    count -= 1
             else:
                 predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, subnodes=test_nodes)
                 loss = loss_func(predicted_y[test_nodes], node_label)

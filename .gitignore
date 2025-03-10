@@ -7,3 +7,6 @@ stats/
 test_ap_plots/
 val_ap_plots/
 analysis.ipynb
+mlruns/
+mlflow_runs/
+model_state/

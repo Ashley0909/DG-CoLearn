@@ -1,11 +1,13 @@
 import numpy as np
 import copy
 import torch
+import torch.profiler
+import time
 from collections import defaultdict
-from utils import get_global_embedding
+from utils import get_global_embedding, fast_get_global_embedding
 from fl_clients import distribute_models, train, local_test, global_test
 from fl_aggregations import gnn_aggregate
-from plot_graphs import configure_plotly, time_cpu
+from plot_graphs import configure_plotly
 
 def update_cloud_cache(cache, local_models, ids):
    """ Update each clients' local models in the cache """
@@ -67,8 +69,20 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
                trained_embeddings[c] = clients[c].send_embeddings()
                subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
 
-            print("Share Embeddings")
+            print("Share Embeddings (Original)")
+            start_time = time.time()
+            # with torch.profiler.profile(record_shapes=True, profile_memory=True) as prof:
             shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union, client_ids[0])
+            # print(prof.key_averages().table(sort_by="cpu_time_total"))
+            end_time = time.time()
+            print(f"Time taken for original: {end_time-start_time}")
+
+            print("Share Embeddings (Optimized)")
+            start_time = time.time()
+            shared_embeddings = fast_get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union, client_ids[0])
+            end_time = time.time()
+            print(f"Time taken for optimized: {end_time-start_time}")
+
             for c in range(len(client_ids)):
                clients[c].update_embeddings(shared_embeddings)
                # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)

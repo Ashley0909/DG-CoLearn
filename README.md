@@ -16,23 +16,12 @@ Creates a basic client class, and list out all client-related functions
 Another important function to runs the Federated Learning process, called by `main.py`
 
 ### Running Code
-`python3 main.py $crash_prob$ $lag$ $client_frac$ $taskname$ $taskmode$`
+`python3 main.py $taskname$ $taskmode$`
 
-`crash_prob`: crash probability of clients, valid in [0,1)  
-`lag`: lag tolerance for SAFA, a positive integer, e.g. 3, 5 or 10  
-`client_frac`: the fraction of clients to select in each training round, valid in (0,1]  
-`taskname`: federated machine learning task for demo, options are {boston, mnist, cifar10}
-`taskmode`: task mode introduced by us, options are {'Semi-Async', 'FedAssets', 'FLDGNN-LP', 'FLDGNN-NC'}
+`taskname`: federated machine learning task for demo, options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}
+`taskmode`: task mode introduced by us, options are {'FLDGNN-LP', 'FLDGNN-NC'}
 
 #### Examples
-`python3 main.py 0.1 5 1.0 boston Semi-Async`  
-`python3 main.py 0.3 5 0.3 mnist Semi-Async`  
-`python3 main.py 0.0 5 0.5 cifar10 FedAssets`
-`python3 main.py 0.0 5 0.3 mnist FedAssets`
-`python3 main.py 0.0 5 1.0 bitcoinOTC FLDGNN-LP`
-`python3 main.py 0.0 5 1.0 DBLP3 FLDGNN-NC`
-`python3 main.py 0.0 5 1.0 Reddit FLDGNN-NC`
-
-### Default Hyperparameters
-`benign_ratio`: 0.6
-`poisoning_rate`: 0.7
+`python3 main.py bitcoinOTC FLDGNN-LP`
+`python3 main.py DBLP3 FLDGNN-NC`
+`python3 main.py Reddit FLDGNN-NC`

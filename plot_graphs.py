@@ -33,31 +33,6 @@ def extract_loss_from_file(file_path, search_phrase):
                 # losses.append(loss)
     return losses
 
-def extract_edge_shapes_from_file(file_path):
-    edge_index = []
-    new_edge_index = []
-    relevant_edge = []
-    
-    with open(file_path, 'r') as file:
-        for line in file:
-            # Extract edge_index values
-            match_edge = re.search(r'ori_edge_index is of shape (\d+)', line)
-            if match_edge:
-                edge_index.append(int(match_edge.group(1)))
-            
-            # Extract new_edge_index values
-            match_new_edge = re.search(r'new_edge_index is of shape (\d+)', line)
-            if match_new_edge:
-                new_edge_index.append(int(match_new_edge.group(1)))
-
-            # Extract relevant_edge values
-            match_relevant_edge = re.search(r'relevant_edge is of shape (\d+)', line)
-            if match_relevant_edge:
-                relevant_edge.append(int(match_relevant_edge.group(1)))
-    
-    return edge_index, new_edge_index, relevant_edge
-
-
 def draw_graph(edge_index, name, client=0):
     path = 'graph_output/'+name+'client'+str(client)
 
@@ -139,22 +114,6 @@ def plot_h(matrix, path, name, round="", vmin=None, vmax=None, anno=False, y_lab
         sns.heatmap(np.array(matrix), annot=False, cmap='viridis')
     plt.title(name)
     plt.savefig(full_path)
-    plt.close()
-
-def plot_cluster(data, label, dim, y_label=None):
-    if dim == 2:
-        plt.scatter(data[:, 0], data[:, 1], c=label, cmap='viridis', s=50, alpha=0.75)
-        for i in range(len(data)):
-            plt.text(data[i][0], data[i][1], y_label[i], ha='right')
-    elif dim == 1:
-        plt.scatter(data, np.zeros_like(data), c=label, cmap='viridis', s=50, alpha=0.75)
-        for i in range(len(data)):
-            plt.text(data[i], 0, y_label[i], ha='right')
-    plt.xlabel('PCA Component 1')
-    plt.ylabel('PCA Component 2')
-    plt.title('Cluster Plot')
-    plt.colorbar(label='Cluster Label')
-    plt.savefig('fedassets_output/cluster.png')
     plt.close()
 
 def configure_plotly(x_labels, metric, name, snapshot):

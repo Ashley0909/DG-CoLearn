@@ -268,7 +268,7 @@ def weighted_aggregate(models, benign_clients, malicious_clients, evil_clients, 
 
     return global_model
 
-def get_exclusive_edges(current, prev):
+def get_exclusive_subgraph(current, prev):
     # Get edges in current but not in prev
     current_T = current.cpu().numpy().T
     prev_T = prev.cpu().numpy().T

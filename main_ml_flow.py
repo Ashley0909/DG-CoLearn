@@ -5,6 +5,7 @@ import time
 import numpy as np
 import optuna
 import mlflow
+import warnings
 
 from datetime import datetime
 
@@ -17,6 +18,8 @@ from fl_clients import generate_clients_perf, generate_clients_crash_prob, gener
 from plot_graphs import configure_plotly, time_gpu
 
 torch.autograd.set_detect_anomaly(True)
+
+warnings.filterwarnings("ignore")
 
 def ml_flow_LP_objective(trial):
 
@@ -73,7 +76,7 @@ def ml_flow_LP_objective(trial):
                                                                         i, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment)
             overall_acc += global_snapshot_acc
             overall_mrr += global_snapshot_mrr
-            print("Snapshot Ends. Best Round:", best_round, "Best Metric:", best_metric)
+            print("Snapshot Ends. Best Round:", best_round, "Best Metric (AP):", best_metric)
             print("=============")
             for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
                 c.update_embeddings(c.curr_ne)
@@ -132,7 +135,7 @@ def ml_flow_LP_objective(trial):
     
 def main():
     # ml flow hyperparameter case study
-    mlflow.set_experiment('Bitcoin-OTC')
+    mlflow.set_experiment('UCI-Clipping')
     study = optuna.create_study(direction='maximize')
 
     study.optimize(lambda trial: ml_flow_LP_objective(trial),

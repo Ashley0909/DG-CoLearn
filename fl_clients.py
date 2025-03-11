@@ -11,7 +11,7 @@ import math
 
 from sklearn.metrics import average_precision_score
 
-from utils import get_exclusive_edges, lp_prediction, compute_mrr, nc_prediction
+from utils import get_exclusive_subgraph, lp_prediction, compute_mrr, nc_prediction
 from plot_graphs import draw_graph, plot_h
 
 class FLClient:
@@ -268,7 +268,6 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             if task_cfg.task_type == 'LP':
                 predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
             else:
-                # model.customise_pe(len(client.subnodes))  # Customise so that each client's PE has different shape
                 predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, subnodes=train_nodes, previous_embeddings=client.prev_ne)
 
             # Compute Loss
@@ -277,7 +276,7 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             else:
                 loss = loss_func(predicted_y[train_nodes], node_label)
             loss.backward(retain_graph=True)  # Use backpropagation to compute gradients
-            # torch.nn.utils.clip_grad_norm_(model.parameters(), 10)
+            nn.utils.clip_grad_norm_(model.parameters(), 1) # Stop exploding gradients
             optimizer.step() # Update weights based on computed gradients
             optimizer.zero_grad()
             scheduler.step()
@@ -285,8 +284,6 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rou
             schedulers[model_id] = scheduler
             optimizers[model_id] = optimizer
             # client_train_loss[model_id] += loss.detach().item()
-
-        
             client_train_loss[model_id] += loss
     else:
         for _, (inputs, labels, client) in enumerate(fdl):

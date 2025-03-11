@@ -4,6 +4,7 @@ import torch
 import time
 import numpy as np
 from datetime import datetime
+import warnings
 
 from fl_strategy import run_FL,run_FedAssets,run_dygl
 from configurations import init_config, init_FL_clients, init_global_model, init_FLBackdoor_clients, init_GNN_clients
@@ -14,6 +15,7 @@ from fl_clients import generate_clients_perf, generate_clients_crash_prob, gener
 from plot_graphs import configure_plotly, time_gpu
 
 torch.autograd.set_detect_anomaly(True)
+warnings.filterwarnings("ignore")
 
 def main():
     # Set Configuration
@@ -56,14 +58,13 @@ def main():
 
         node_assignment, num_subgraphs = None, 0
         for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
-
             print("Snapshot", i)
             fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, ccn_dict, node_assignment, num_subgraphs, data_size = get_gnn_clientdata(train_list[i], val_list[i], test_list[i], env_cfg, clients, num_subgraphs, node_assignment)
             # glob_model, best_round, best_metric, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
             #                                                            i, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment)
-            run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
-                                                                       i, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment)
-            # print("Snapshot Ends. Best Round:", best_round, "Best Metric:", best_metric)
+            global_snapshot_acc, global_snapshot_mrr, glob_model, best_round, best_metric, _, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
+                                                                        i, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment)
+            print("Snapshot Ends. Best Round:", best_round, "Best AP:", best_metric, "Best Accuracy:", global_snapshot_acc, "Best MRR:", global_snapshot_mrr)
             print("=============")
             for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
                 c.update_embeddings(c.curr_ne)

@@ -171,7 +171,7 @@ def get_cut_edges(node_assignment, coo_format):
             ccn_dict[start_node].append(end_node)
     return ccn_dict
 
-def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients, prev_num_subgraphs=0, prev_partition=None):
+def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, clients):
     '''A function that first partition the graph to clients, then allocate edges to each clients accordingly.
     
     Hightlighted Inputs:
@@ -182,13 +182,17 @@ def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients, prev_n
     global_size = train_data.edge_index.shape[1]
     print(f"A total of {global_size} training edges")
     print(num_subgraphs, "clients are chosen to train")
+    server.record_num_subgraphs(num_subgraphs)
     data_size = train_data.num_nodes # The total number of nodes in the global training graph
+    server.construct_global_adj_matrix(train_data.edge_index, data_size)
 
-    train_subgraphs, train_clients = graph_partition(train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y, prev_num_subgraphs=prev_num_subgraphs, prev_partition=prev_partition)
-    val_subgraphs, val_clients = graph_partition(val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.y, prev_num_subgraphs=train_clients, prev_partition=train_subgraphs)
-    test_subgraphs, test_clients = graph_partition(test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.y, prev_num_subgraphs=val_clients, prev_partition=val_subgraphs)
+    train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y)
+    server.construct_client_adj_matrix(train_subgraphs)
+    val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.y)
+    test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.y)
 
     cc_edges_train = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
+    server.record_ccn(cc_edges_train)
     print(f"Total number of cut edges: {sum(len(v) for v in cc_edges_train.values())}")
     client_sizes = [] # the training data size of each client (used for weighted aggregation)
     client_train, client_val, client_test = [], [], []
@@ -209,7 +213,7 @@ def get_gnn_clientdata(train_data, val_data, test_data, env_cfg, clients, prev_n
     fed_val = FLFedDataset(client_val)
     fed_test = FLFedDataset(client_test)
 
-    return fed_train, fed_val, fed_test, client_sizes, cc_edges_train, test_subgraphs, test_clients, data_size
+    return fed_train, fed_val, fed_test, client_sizes, data_size
        
 def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_mode, task_type):
     node_mask = (subgraph_label == client_idx)
@@ -240,9 +244,10 @@ def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_
     
     return fed_data
 
-def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', node_label=None, prev_num_subgraphs=0, prev_partition=None):
+def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ours', node_label=None):
     """ 
     Stay consistent partition for TVT, so prev_partition is to record the partition of testing data (the most recent snapshot)
+    Input server instance to store current partition and adj_list if needed
 
     Inputs:
     1. edge_index: COO format of edges
@@ -258,8 +263,8 @@ def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', nod
     2. num_nodes: Number of nodes in the data
     """
     # If previous partition exists, maintain consistency
-    if prev_partition is not None and num_parts == prev_num_subgraphs:
-        return prev_partition, num_parts
+    if server.node_assignment is not None and num_parts == server.num_subgraphs:
+        return server.node_assignment
 
     # Convert graph to undirected for partitioning
     undirected_ei = to_undirected(edge_index)
@@ -279,9 +284,9 @@ def graph_partition(edge_index, num_nodes, num_parts, partition_type='Ours', nod
         partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
     else:
         print('E> Invalid partitioning algorithm specified. Options are {Metis, Ours}')
-        exit(-1)
+        exit(-1)    
 
-    return torch.tensor(partitioning_labels), num_parts
+    return torch.tensor(partitioning_labels)
 
 def gen_train_clients(total_num_edges, max_num_clients, num_edge_per_clients=510):
     ''' Determine number of training clients in this snapshot based on the total number of edges in the global graph '''

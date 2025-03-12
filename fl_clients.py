@@ -90,6 +90,11 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, ver
         scheduler = schedulers[model_id]
         # optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
 
+        # ''' Extract 2 hop subgraph of changed pairs of nodes '''
+        # if data.previous_edge_index != None:
+        #     exclusive_edge_index = get_exclusive_subgraph(edge_index, data.previous_edge_index.to('cuda:0'))
+        #     print("Shrink in graph", edge_index.shape[1] - exclusive_edge_index.shape[1])
+
         if task_cfg.task_type == 'LP':
             predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
         else:

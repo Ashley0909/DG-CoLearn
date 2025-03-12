@@ -61,26 +61,35 @@ def process_data(txt_path):
     return data_list
 
 def get_exclusive_subgraph(current, prev):
-    # Get edges in current but not in prev
+    ''' Get the 2-hop neighbourhood of edges that are exclusive to the current subgraph (added and removed) '''
+    # Convert to NumPy for efficient comparison
     current_T = current.cpu().numpy().T
     prev_T = prev.cpu().numpy().T
 
-    mask = np.all(current_T[:, None] == prev_T[None, :], axis=-1)
-    exclusive_mask = ~np.any(mask, axis=1)
+    # Find exclusive edges in current (not in prev)
+    add_mask = np.all(current_T[:, None] == prev_T[None, :], axis=-1)
+    exclusive_add_mask = ~np.any(add_mask, axis=1)
+    exclusive_current = current[:, exclusive_add_mask]
 
-    exclusive_current = current[:, exclusive_mask]
+    # Find exclusive edges in prev (not in current)
+    remove_mask = np.all(prev_T[:, None] == current_T[None, :], axis=-1)
+    exclusive_remove_mask = ~np.any(remove_mask, axis=1)
+    exclusive_prev = prev[:, exclusive_remove_mask]
 
-    # Now get all the edges inside the 2-hop neighbourhoods of newly added edges
-    new_nodes = torch.unique(exclusive_current)
+    # Combine both sets of exclusive edges
+    exclusive_edges = torch.cat([exclusive_current, exclusive_prev], dim=1)
 
+    # Get 1-hop neighbors
+    new_nodes = torch.unique(exclusive_edges)
     mask_1hop = torch.isin(current[0], new_nodes) | torch.isin(current[1], new_nodes)
     one_hop_edges = current[:, mask_1hop]
 
+    # Get 2-hop neighbors
     one_hop_nodes = torch.unique(one_hop_edges)
     mask_2hop = torch.isin(current[0], one_hop_nodes) | torch.isin(current[1], one_hop_nodes)
     two_hop_edges = current[:, mask_2hop]
 
-    if two_hop_edges is None:
+    if two_hop_edges.nelement() == 0:
         print('>E No edges left to train')
 
     return two_hop_edges
@@ -133,9 +142,9 @@ def get_global_embedding(embeddings, ccn, node_client_map, subnodes_union, first
     for hop in range(3):
         hop_matrix = []
         for node in range(len(node_client_map)):
-            node_embdedding_sum = node_embedding_update_sum(node, ccn, hop)
+            node_embedding_sum = node_embedding_update_sum(node, ccn, hop)
             final_embedding = torch.zeros(embeddings[first_parti_client][0][0].shape).to("cuda:0")
-            for update_node, k in node_embdedding_sum:
+            for update_node, k in node_embedding_sum:
                 if update_node in subnodes_union:
                     final_embedding += embeddings[node_client_map[update_node]][k][update_node]
             hop_matrix.append(final_embedding)

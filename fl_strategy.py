@@ -4,7 +4,7 @@ import torch
 import torch.profiler
 import time
 from collections import defaultdict
-from utils import get_global_embedding, fast_get_global_embedding
+from utils import get_global_embedding
 from fl_clients import distribute_models, train, local_test, global_test
 from fl_aggregations import gnn_aggregate
 from plot_graphs import configure_plotly
@@ -23,7 +23,7 @@ def sample_clients(data_list, cm_map):
          client_list.append(cm_map[client.id])
    return client_list
 
-def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment):
+def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap):
    # Initialise
    global_model = global_mod   
    local_models = [None for _ in range(env_cfg.n_clients)]
@@ -71,17 +71,15 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
 
             print("Share Embeddings (Original)")
             start_time = time.time()
-            # with torch.profiler.profile(record_shapes=True, profile_memory=True) as prof:
-            shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union, client_ids[0])
-            # print(prof.key_averages().table(sort_by="cpu_time_total"))
+            shared_embeddings = get_global_embedding(trained_embeddings, server.ccn, server.node_assignment.tolist(), subnodes_union, client_ids[0])
             end_time = time.time()
             print(f"Time taken for original: {end_time-start_time}")
 
-            print("Share Embeddings (Optimized)")
-            start_time = time.time()
-            shared_embeddings = fast_get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union, client_ids[0])
-            end_time = time.time()
-            print(f"Time taken for optimized: {end_time-start_time}")
+            # print("Share Embeddings (Optimized)")
+            # start_time = time.time()
+            # shared_embeddings = server.fast_get_global_embedding(trained_embeddings, subnodes_union)
+            # end_time = time.time()
+            # print(f"Time taken for optimized: {end_time-start_time}")
 
             for c in range(len(client_ids)):
                clients[c].update_embeddings(shared_embeddings)
@@ -104,7 +102,7 @@ def run_dygl(env_cfg, task_cfg, global_mod, clients, cm_map, fed_data_train, fed
          subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
 
       print("Share Embeddings")
-      shared_embeddings = get_global_embedding(trained_embeddings, ccn_dict, node_assignment.tolist(), subnodes_union, client_ids[0])
+      shared_embeddings = get_global_embedding(trained_embeddings, server.ccn, server.node_assignment.tolist(), subnodes_union, client_ids[0])
       for c in range(len(client_ids)):
          clients[c].update_embeddings(shared_embeddings)
          # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)

@@ -26,10 +26,7 @@ class EnvSettings:
             self.device = torch.device('cuda:0')
 
 class TaskSettings:
-    """
-    Task Settings for FL
-
-    """
+    """ Task Settings for FL """
 
     def __init__(self, task_type, dataset, path, in_dim, out_dim, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0):
         self.task_type = task_type
@@ -50,8 +47,8 @@ def init_config(task2run, bw_set):
         env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=100, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-4, lr_decay=5e-3)
     elif task2run in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
-        env_cfg = EnvSettings(n_clients=10, n_rounds=1, n_epochs=100, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='NC', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='SGD', loss='ce', lr=1e-4, lr_decay=5e-3)
+        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=100, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='NC', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='ce', lr=1e-3, lr_decay=1e-4)
     else:
         print('[Err] Invalid task name provided. Options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}')
         exit(0)

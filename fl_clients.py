@@ -6,6 +6,7 @@ import numpy as np
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as functional
 import torch.optim as optim
 import math
 
@@ -64,13 +65,15 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, ver
         if task_cfg.optimizer == 'SGD':
             optimizers.append(optim.SGD(models[i].parameters(), lr=task_cfg.lr))
         elif task_cfg.optimizer == 'Adam':
-            optimizers.append(optim.Adam(models[i].parameters(), lr=task_cfg.lr))
+            optimizers.append(optim.Adam(models[i].parameters(), lr=task_cfg.lr, weight_decay=task_cfg.lr_decay))
         else:
             print('Err> Invalid optimizer %s specified' % task_cfg.optimizer)
 
     schedulers = []
     for i in range(num_models):
-        schedulers.append(torch.optim.lr_scheduler.MultiStepLR(optimizers[i], [10001], gamma=10**-2))
+        # schedulers.append(torch.optim.lr_scheduler.MultiStepLR(optimizers[i], [10001], gamma=10**-2))
+        schedulers.append(torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[i], T_max=env_cfg.n_epochs, eta_min=1e-5))
+        # schedulers.append(torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers[i],mode='max',factor=0.5,patience=5,verbose=True))
 
     # Begin an epoch of training
     for data in fdl.fbd_list: # Traverse the data of each client
@@ -106,14 +109,12 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, ver
         else:
             loss = loss_func(predicted_y[train_nodes], node_label)
         loss.backward(retain_graph=True)  # Use backpropagation to compute gradients
-        nn.utils.clip_grad_norm_(model.parameters(), 1) # Stop exploding gradients
+        nn.utils.clip_grad_norm_(model.parameters(), 1.0) # Stop exploding gradients
         optimizer.step() # Update weights based on computed gradients
         optimizer.zero_grad()
         scheduler.step()
 
-        schedulers[model_id] = scheduler
         optimizers[model_id] = optimizer
-        # client_train_loss[model_id] += loss.detach().item()
         client_train_loss[model_id] += loss
 
     # Restore printing
@@ -167,15 +168,15 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
             if task_cfg.task_type == 'LP':
                 predicted_y, _ = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=val_nodes)
                 loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
-                acc, ap, macro_f1 = lp_prediction(torch.sigmoid(predicted_y), edge_label.type_as(predicted_y))
+                acc, ap = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
                 mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y), edge_label_index) # need raw scores for mrr
                 metrics['mrr'] += mrr
-                metrics['ap'], metrics['macro_f1'] = metrics['ap'] + ap, metrics['macro_f1'] + macro_f1
+                metrics['ap'] += ap
             else:
                 predicted_y, _ = model(x, edge_index, task_cfg.task_type, subnodes=val_nodes)
                 loss = loss_func(predicted_y[val_nodes], node_label)
-                acc, macro_f1, micro_f1 = nc_prediction(predicted_y[val_nodes], node_label)
-                metrics['macro_f1'], metrics['micro_f1'] = metrics['macro_f1'] + macro_f1, metrics['macro_f1'] + micro_f1
+                acc, macro_f1 = nc_prediction(functional.softmax(predicted_y[val_nodes], dim=1), node_label)
+                metrics['macro_f1'] += macro_f1
             # Compute Loss and other metrics
             client_test_loss[model_id] += loss.detach().item()
             client_test_acc[model_id] += acc
@@ -225,18 +226,19 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl):
             predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=test_nodes)
             predicted_score = torch.sigmoid(predicted_y)
             loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
-            acc, ap, macro_f1 = lp_prediction(predicted_score, edge_label.type_as(predicted_y))
+            acc, ap = lp_prediction(predicted_score, edge_label.type_as(predicted_y))
             mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y), edge_label_index)
             if not math.isnan(mrr):
                 metrics['mrr'] += mrr
-                accuracy, metrics['ap'], metrics['macro_f1'] = accuracy + acc, metrics['ap'] + ap, metrics['macro_f1'] + macro_f1
+                accuracy, metrics['ap'] = accuracy + acc, metrics['ap'] + ap
             else:
                 count -= 1
         else:
             predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, subnodes=test_nodes)
             loss = loss_func(predicted_y[test_nodes], node_label)
-            acc, macro_f1, micro_f1 = nc_prediction(predicted_y[test_nodes], node_label)
-            accuracy, metrics['macro_f1'], metrics['micro_f1'] = accuracy + acc, metrics['macro_f1'] + macro_f1, metrics['macro_f1'] + micro_f1
+            acc, macro_f1 = nc_prediction(functional.softmax(predicted_y[test_nodes], dim=1), node_label)
+            print("macro_f1", macro_f1)
+            accuracy, metrics['macro_f1'] = accuracy + acc, metrics['macro_f1'] + macro_f1
 
         # Compute Loss
         if not torch.isnan(loss).any():

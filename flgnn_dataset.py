@@ -10,7 +10,7 @@ from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 
 from fl_clients import EdgeDevice
-from utils import process_data, generate_neg_edges
+from utils import process_data, generate_neg_edges, count_label_occur
 from graph_partition import our_gpa
 from plot_graphs import draw_graph
 
@@ -184,10 +184,12 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, clients
     print(num_subgraphs, "clients are chosen to train")
     server.record_num_subgraphs(num_subgraphs)
     data_size = train_data.num_nodes # The total number of nodes in the global training graph
-    server.construct_global_adj_matrix(train_data.edge_index, data_size)
+    # server.construct_global_adj_matrix(train_data.edge_index, data_size)
+    server.record_num_nodes(data_size)
 
-    train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y)
+    train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y, tvt_type='train')
     server.construct_client_adj_matrix(train_subgraphs)
+    count_label_occur(train_subgraphs, node_labels=train_data.y)
     val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.y)
     test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.y)
 
@@ -244,7 +246,7 @@ def construct_single_client_data(data, subgraph_label, client_idx, clients, tvt_
     
     return fed_data
 
-def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ours', node_label=None):
+def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ours', node_label=None, tvt_type='test'):
     """ 
     Stay consistent partition for TVT, so prev_partition is to record the partition of testing data (the most recent snapshot)
     Input server instance to store current partition and adj_list if needed
@@ -277,6 +279,9 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
 
     adjacency_list = [list(neigh) for neigh in adjacency_list]
 
+    if tvt_type == 'train':
+        server.construct_glob_adj_mtx(adjacency_list)
+
     if partition_type == 'Metis':
         _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
     elif partition_type == 'Ours':
@@ -284,7 +289,7 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
         partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
     else:
         print('E> Invalid partitioning algorithm specified. Options are {Metis, Ours}')
-        exit(-1)    
+        exit(-1)
 
     return torch.tensor(partitioning_labels)
 

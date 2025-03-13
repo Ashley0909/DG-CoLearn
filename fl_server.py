@@ -6,95 +6,169 @@ class Server:
     ''' A server class to record global_adj_list, number of subgraphs, node_assignment and ccn.'''
     def __init__(self):
         self.global_adj_mtx = None
-        self.edge_index = None
+        self.adj_list = None
         self.num_nodes = 0
         self.num_subgraphs = 0
         self.clients_adj_matrices = None
         self.ccn = None
         self.node_assignment = None
 
-    def construct_global_adj_matrix(self, edge_index, num_nodes):
-        ''' Save current snapshot's edge index and use it to construct adj_matrix for node embedding exchange. '''
-        self.edge_index = edge_index
-        self.num_nodes = num_nodes
-        
-        row, col = edge_index
-        adj_matrix = sp.coo_matrix((torch.ones_like(row), (row.numpy(), col.numpy())), shape=(num_nodes, num_nodes))
-        dense_adj_matrix = adj_matrix.toarray()  # Converts to dense numpy array
-        self.global_adj_mtx = dense_adj_matrix
+        self.global_adj_mtx_gpu = None
+        self.clients_adj_matrices_gpu = None
 
     def record_num_subgraphs(self, num_subgraphs):
         ''' Save number of subgraphs. '''
         self.num_subgraphs = num_subgraphs
 
+    def record_num_nodes(self, num_nodes):
+        self.num_nodes = num_nodes
+
+    def construct_glob_adj_mtx(self, adj_list):
+        '''Create global adjacency matrix as a sparse matrix.'''
+        self.adj_list = adj_list
+
+        global_adj_matrix = sp.lil_matrix((self.num_nodes, self.num_nodes), dtype=int)
+        for src in range(self.num_nodes):
+            for dst in adj_list[src]:
+                global_adj_matrix[src, dst] = 1
+        global_adj_matrix = global_adj_matrix.tocsr()  # Convert to CSR format for efficient operations
+    
+        self.global_adj_mtx = global_adj_matrix
+        self.global_adj_mtx_gpu = self._sparse_to_torch_gpu(global_adj_matrix)
+
     def construct_client_adj_matrix(self, node_assignment):
         ''' Save node assignment. '''
         self.node_assignment = node_assignment
 
-        # Initialize empty adjacency matrices for each subgraph
-        clients_adj_matrices = [np.zeros((self.num_nodes, self.num_nodes), dtype=int) for _ in range(self.num_subgraphs)]
-        
-        # Iterate through edges
-        for i in range(self.edge_index.shape[1]):  # edge_index is (2, num_edges)
-            src, dst = self.edge_index[:, i]
-            src_subgraph = node_assignment[src].item()
-            dst_subgraph = node_assignment[dst].item()
-            
-            # Only add edge if both nodes belong to the same subgraph
-            if src_subgraph == dst_subgraph:
-                clients_adj_matrices[src_subgraph][src, dst] = 1
-                clients_adj_matrices[src_subgraph][dst, src] = 1  # Assuming undirected graph
+        # Create client adjacency matrices as sparse matrices
+        clients_adj_matrix = []
+        for client in range(self.num_subgraphs):
+            client_adj_matrix = sp.lil_matrix((self.num_nodes, self.num_nodes), dtype=int)
+            for src in range(self.num_nodes):
+                if node_assignment[src] == client:
+                    for dst in self.adj_list[src]:
+                        if node_assignment[dst] == client:
+                            client_adj_matrix[src, dst] = 1
+            clients_adj_matrix.append(client_adj_matrix.tocsr())  # Convert to CSR format
 
-        self.clients_adj_matrices =  np.array(clients_adj_matrices)
+        self.clients_adj_matrices = clients_adj_matrix
+        self.clients_adj_matrices_gpu = [self._sparse_to_torch_gpu(mtx) for mtx in clients_adj_matrix]
+
+    def _sparse_to_torch_gpu(self, sparse_matrix):
+        '''Convert scipy.sparse.csr_matrix to torch.sparse tensor on GPU.'''
+        sparse_matrix = sparse_matrix.tocoo()
+        indices = np.vstack((sparse_matrix.row, sparse_matrix.col))
+        indices = torch.tensor(indices, dtype=torch.long, device='cuda')
+        values = torch.tensor(sparse_matrix.data, dtype=torch.float32, device='cuda')
+        shape = sparse_matrix.shape
+        return torch.sparse_coo_tensor(indices, values, shape)
 
     def record_ccn(self, ccn):
         ''' Save cross client neighbours. '''
         self.ccn = ccn
 
-    def get_node_embedding_needed(self, start_node, node_assignment, k):
+    def get_node_embedding_needed(self, start_node, k):
         ''' Return all the (client, node, number of times needed to add) for each hop. '''
+        ne_needed = [[] for _ in range(k)]
+        node_assign = self.node_assignment.tolist()
+        
         if k == 1:
-            ne_needed = [[] for _ in range(k)] # info needed for hop 0
-            to_subtract = self.clients_adj_matrices[node_assignment[start_node]]
-            adjustment_coefficient = self.global_adj_mtx[start_node] - to_subtract[start_node]
-            for i, coe in enumerate(adjustment_coefficient):
-                if coe > 0:
-                    ne_needed[0].append((node_assignment[i], i, coe))
-
+            # Convert to dense for the specific row (since sparse slicing is inefficient for single rows)
+            to_subtract = self.clients_adj_matrices[node_assign[start_node]][start_node].toarray()[0]
+            adjustment_coefficient = self.global_adj_mtx[start_node].toarray()[0] - to_subtract
+            indices = np.where(adjustment_coefficient > 0)[0]
+            ne_needed[0] = [(node_assign[i], i, adjustment_coefficient[i]) for i in indices]
+        
         elif k == 2:
-            ne_needed = [[] for _ in range(k)] # info needed for hop 0, 1
-            global_two_hop = np.linalg.matrix_power(self.global_adj_mtx, 2) # Corrected (** 2 is wrong)
-            to_subtract = np.linalg.matrix_power(self.clients_adj_matrices[node_assignment[start_node]], 2)
-            for neigh in self.ccn[start_node]:
-                to_subtract[start_node] += self.clients_adj_matrices[node_assignment[neigh]][neigh] # Correct (have to specify which row)
-                ne_needed[1].append((node_assignment[neigh], neigh, 1))
-
-            adjustment_coefficient = global_two_hop[start_node] - to_subtract[start_node]
-            for i, coe in enumerate(adjustment_coefficient):
-                if coe > 0:
-                    ne_needed[0].append((node_assignment[i], i, coe))
+            # Compute global_two_hop using sparse matrix multiplication
+            global_two_hop = self.global_adj_mtx @ self.global_adj_mtx
+            to_subtract = self.clients_adj_matrices[node_assign[start_node]] @ self.clients_adj_matrices[node_assign[start_node]]
             
-        return ne_needed # Corrected
+            # Add contributions from neighbors
+            start_subtract = to_subtract[start_node].toarray()[0]
+            for neigh in self.ccn[start_node]:
+                start_subtract += self.clients_adj_matrices[node_assign[neigh]][neigh].toarray()[0]
+                ne_needed[1].append((node_assign[neigh], neigh, 1))
+            
+            # Compute adjustment coefficient
+            adjustment_coefficient = global_two_hop[start_node].toarray()[0] - start_subtract
+            indices = np.where(adjustment_coefficient > 0)[0]
+            ne_needed[0] = [(node_assign[i], i, adjustment_coefficient[i]) for i in indices]
+        
+        return ne_needed
 
     def fast_get_global_embedding(self, embeddings, subnodes_union):
+        num_nodes = len(self.adj_list)
         node_assign = self.node_assignment.tolist()
+        
         hop_embeddings = []
         for hop in range(3):
             hop_matrix = []
-            for node in range(len(node_assign)):
+            for node in range(num_nodes):
                 if self.ccn[node] == [] or hop == 0:
                     final_embedding = embeddings[node_assign[node]][hop][node].clone()
                 else:
                     final_embedding = embeddings[node_assign[node]][hop][node].clone()
-                    # print("hop", hop, "node", node, "starting emb", final_embedding)
-                    ne_needed = self.get_node_embedding_needed(node, node_assign, hop)
+                    ne_needed = self.get_node_embedding_needed(node, hop)
                     for hop_needed, tuples in enumerate(ne_needed):
-                        for client, node, num_times in tuples:
-                            if node in subnodes_union:
-                                # print(f"hop {hop_needed}: ({client},{node},{num_times}) => {embeddings[client][hop_needed][node]}")
-                                final_embedding += embeddings[client][hop_needed][node] * num_times
-
+                        for client, node_needed, num_times in tuples:
+                            if node_needed in subnodes_union:
+                                final_embedding += embeddings[client][hop_needed][node_needed] * num_times
                 hop_matrix.append(final_embedding)
-            hop_embeddings.append(hop_matrix)
+            stack = torch.stack(hop_matrix)
+            hop_embeddings.append(stack)
+        
+        return hop_embeddings
+    
+    def get_node_embedding_needed_gpu(self, start_node, k):
+        ''' Return all the (client, node, number of times needed to add) for each hop. '''
+        ne_needed = [[] for _ in range(k)]
+        node_assign = self.node_assignment.tolist()
+        
+        if k == 1:
+            # Convert to dense for the specific row (since sparse slicing is inefficient for single rows)
+            to_subtract = self.clients_adj_matrices_gpu[node_assign[start_node]][start_node].to_dense()
+            adjustment_coefficient = self.global_adj_mtx_gpu[start_node].to_dense() - to_subtract
+            indices = torch.where(adjustment_coefficient > 0)[0].cpu().numpy()
+            ne_needed[0] = [(node_assign[i], i, adjustment_coefficient[i].item()) for i in indices]
+        
+        elif k == 2:
+            # Compute global_two_hop using sparse matrix multiplication
+            global_two_hop = torch.sparse.mm(self.global_adj_mtx_gpu, self.global_adj_mtx_gpu)
+            to_subtract = torch.sparse.mm(self.clients_adj_matrices_gpu[node_assign[start_node]],self.clients_adj_matrices_gpu[node_assign[start_node]])
+            
+            # Add contributions from neighbors
+            start_subtract = to_subtract[start_node].to_dense()
+            for neigh in self.ccn[start_node]:
+                start_subtract += self.clients_adj_matrices_gpu[node_assign[neigh]][neigh].to_dense()
+                ne_needed[1].append((node_assign[neigh], neigh, 1))
+            
+            # Compute adjustment coefficient
+            adjustment_coefficient = global_two_hop[start_node].to_dense() - start_subtract
+            indices = torch.where(adjustment_coefficient > 0)[0].cpu().numpy()
+            ne_needed[0] = [(node_assign[i], i, adjustment_coefficient[i].item()) for i in indices]
+        
+        return ne_needed
 
+    def fast_get_global_embedding_gpu(self, embeddings, subnodes_union):
+        num_nodes = len(self.adj_list)
+        node_assign = self.node_assignment.tolist()
+        
+        hop_embeddings = []
+        for hop in range(3):
+            hop_matrix = []
+            for node in range(num_nodes):
+                if self.ccn[node] == [] or hop == 0:
+                    final_embedding = embeddings[node_assign[node]][hop][node].clone()
+                else:
+                    final_embedding = embeddings[node_assign[node]][hop][node].clone()
+                    ne_needed = self.get_node_embedding_needed_gpu(node, hop)
+                    for hop_needed, tuples in enumerate(ne_needed):
+                        for client, node_needed, num_times in tuples:
+                            if node_needed in subnodes_union:
+                                final_embedding += embeddings[client][hop_needed][node_needed] * num_times
+                hop_matrix.append(final_embedding)
+            stack = torch.stack(hop_matrix)
+            hop_embeddings.append(stack)
+        
         return hop_embeddings

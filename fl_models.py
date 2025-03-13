@@ -19,7 +19,7 @@ class ReshapeH():
         return reshaped
 
 class ROLANDGNN(torch.nn.Module):
-    def __init__(self, device, input_dim, num_nodes, output_dim, dropout=0.0, update='moving', loss=nn.BCEWithLogitsLoss):
+    def __init__(self, device, input_dim, num_nodes, output_dim, dropout=0.3, update='moving', loss=nn.BCEWithLogitsLoss):
         
         super(ROLANDGNN, self).__init__()
         #Architecture: 
@@ -31,9 +31,13 @@ class ROLANDGNN(torch.nn.Module):
         hidden_conv_1 = 128 #64
         hidden_conv_2 = 128 #32
         self.preprocess1 = Linear(input_dim, 256).to(self.device)
+        self.bn1 = nn.BatchNorm1d(256).to(self.device)
         self.preprocess2 = Linear(256, 128).to(self.device)
+        self.bn2 = nn.BatchNorm1d(128).to(self.device)
         self.conv1 = GCNConv(128, hidden_conv_1).to(self.device)
+        self.bn3 = nn.BatchNorm1d(hidden_conv_1).to(self.device)
         self.conv2 = GCNConv(hidden_conv_1, hidden_conv_2).to(self.device)
+        self.bn4 = nn.BatchNorm1d(hidden_conv_2).to(self.device)
         self.postprocess1 = Linear(hidden_conv_2, output_dim).to(self.device)
         
         #Initialize the loss function to BCEWithLogitsLoss
@@ -84,9 +88,11 @@ class ROLANDGNN(torch.nn.Module):
         
         #Preprocess text
         h = self.preprocess1(x)
+        h = self.bn1(h)
         h = F.leaky_relu(h,inplace=True)
         h = F.dropout(h, p=self.dropout,inplace=True)
         h = self.preprocess2(h)
+        h = self.bn2(h)
         h = F.leaky_relu(h,inplace=True)
         h = F.dropout(h, p=self.dropout, inplace=True)
 
@@ -94,14 +100,15 @@ class ROLANDGNN(torch.nn.Module):
         h = self.reshape.reshape_to_fill(h, subnodes)
 
         #Embedding Update after preprocessing (only when training) (newly added)
-        h = self.gru1(h, self.previous_embeddings[0].clone()).detach()
+        # h = self.gru1(h, self.previous_embeddings[0].clone()).detach()
 
         """ Obtain 0-hop NE """
-        current_embeddings[0] = h.clone().to(self.device)
+        current_embeddings[0] = self.gru1(h, self.previous_embeddings[0].clone()).detach().clone().to(self.device)
 
         #GRAPHCONV
         #GraphConv1
         h = self.conv1(h, edge_index)
+        h = self.bn3(h)
         h = F.leaky_relu(h,inplace=True)
         h = F.dropout(h, p=self.dropout,inplace=True)
 
@@ -118,6 +125,7 @@ class ROLANDGNN(torch.nn.Module):
         current_embeddings[1] = h.clone().to(self.device)
         #GraphConv2
         h = self.conv2(h, edge_index)
+        h = self.bn4(h)
         h = F.leaky_relu(h,inplace=True)
         h = F.dropout(h, p=self.dropout,inplace=True)
 

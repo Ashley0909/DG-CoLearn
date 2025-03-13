@@ -69,15 +69,21 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
                trained_embeddings[c] = clients[c].send_embeddings()
                subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
 
-            print("Share Embeddings (Original)")
-            start_time = time.time()
-            shared_embeddings = get_global_embedding(trained_embeddings, server.ccn, server.node_assignment.tolist(), subnodes_union, client_ids[0])
-            end_time = time.time()
-            print(f"Time taken for original: {end_time-start_time}")
+            # print("Share Embeddings (Original)")
+            # start_time = time.time()
+            # shared_embeddings = get_global_embedding(trained_embeddings, server.ccn, server.node_assignment.tolist(), subnodes_union, client_ids[0])
+            # end_time = time.time()
+            # print(f"Time taken for original: {end_time-start_time}")
 
             # print("Share Embeddings (Optimized)")
             # start_time = time.time()
             # shared_embeddings = server.fast_get_global_embedding(trained_embeddings, subnodes_union)
+            # end_time = time.time()
+            # print(f"Time taken for optimized: {end_time-start_time}")
+
+            # print("Share Embeddings (Tensor Optimized)")
+            # start_time = time.time()
+            shared_embeddings = server.fast_get_global_embedding_gpu(trained_embeddings, subnodes_union)
             # end_time = time.time()
             # print(f"Time taken for optimized: {end_time-start_time}")
 
@@ -102,7 +108,7 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
          subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
 
       print("Share Embeddings")
-      shared_embeddings = get_global_embedding(trained_embeddings, server.ccn, server.node_assignment.tolist(), subnodes_union, client_ids[0])
+      shared_embeddings = server.fast_get_global_embedding_gpu(trained_embeddings, subnodes_union)
       for c in range(len(client_ids)):
          clients[c].update_embeddings(shared_embeddings)
          # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
@@ -119,7 +125,8 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
                best_local_models[c] = copy.deepcopy(local_models[c])
                best_val_acc[c] = val_acc[c]
 
-      print('>   @Local> Best accuracies = ', best_val_acc)
+      # print('>   @Local> Best accuracies = ', best_val_acc)
+      print('>   @Local> Val F1 = ', val_metrics)
       # Aggregate Local Models
       update_cloud_cache(cache, best_local_models, client_ids)
       global_model = gnn_aggregate(cache, client_shard_sizes, data_size, client_ids)

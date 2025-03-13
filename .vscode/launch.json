@@ -11,7 +11,7 @@
             "program": "/home/u1912321/Documents/own_code/DG-CoLearn/main.py",
             // "program": "/home/u1912321/Documents/own_code/DG-CoLearn/main_ml_flow.py",
             "console": "integratedTerminal",
-            "args": ["Reddit", "FLDGNN-NC"],
+            "args": ["DBLP5", "FLDGNN-NC"],
             // "args": ["UCI", "FLDGNN-LP"],
             "justMyCode": false
         }

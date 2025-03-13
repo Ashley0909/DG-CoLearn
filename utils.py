@@ -10,8 +10,6 @@ from sklearn.metrics import average_precision_score
 from sklearn.metrics import f1_score, accuracy_score
 from scipy.sparse import coo_matrix
 
-from concurrent.futures import ThreadPoolExecutor
-
 class Logger(object):
     def __init__(self, path):
         filename = "stats/{}/{}.txt".format(path, datetime.datetime.now().strftime("%Y%m%d_%H%M"))
@@ -112,7 +110,7 @@ def node_embedding_update_sum(start_node, ccn, k):
         embeddings_required.append([node, hop])
         if hop > 1 and node == start_node:
             embeddings_required += [[node, 0]]  * len(ccn[node]) # count the times 1-hop ccn visits itself
-        elif hop > 1:
+        elif hop == 1:
             embeddings_required += [[node, 0]] # add 0-hop whenever it is visited
 
         for neigh in ccn[node]:
@@ -162,21 +160,23 @@ def lp_prediction(pred_score, true_l):
     true = true_l.cpu().numpy()
     acc = accuracy_score(true, pred)
     ap = average_precision_score(true, pred_score)
-    macro_f1 = f1_score(true, pred, average='macro')
-    # macro_auc = roc_auc_score(true, pred_score, average='macro')
-    # micro_auc = roc_auc_score(true, pred_score, average='micro')
 
-    return acc, ap, macro_f1
+    return acc, ap
 
 def nc_prediction(pred_score, true_l):
+    # print("pred_score", pred_score)
     pred = pred_score.argmax(dim=1).detach().cpu().numpy()
     true = true_l.cpu().numpy()
+    # print("pred", pred)
+    # print("true", true)
 
     acc = accuracy_score(true, pred)
+    # true = torch.tensor([2, 1, 0, 0])
+    # pred = torch.tensor([[0.16, 0.26, 0.58],[0.22, 0.61, 0.17],[0.71, 0.09, 0.20],[0.05, 0.82, 0.13]])
+    # pred_score = pred.argmax(dim=1)
     macro_f1 = f1_score(true, pred, average='macro')
-    micro_f1 = f1_score(true, pred, average='micro')
 
-    return acc, macro_f1, micro_f1
+    return acc, macro_f1
 
 def compute_mrr(pred_score, true_l, edge_label_index, do_softmax=True):
     ''' Using the same way how EvolveGCN evaluates mrr '''
@@ -240,3 +240,20 @@ def generate_neg_edges(edge_index, node_range:torch.Tensor, num_neg_samples:int=
     neg_edge_index = torch.tensor(list(neg_edges)).t()  # Convert back to tensor shape (2, num_neg_samples)
     
     return neg_edge_index
+
+def count_label_occur(node_assignment, node_labels):
+    pairs = torch.stack([node_assignment, node_labels], dim=1)
+
+    # Get unique (subgraph, label) pairs and their counts
+    unique_pairs, counts = torch.unique(pairs, return_counts=True, dim=0)
+
+    # Convert results into a dictionary-like structure
+    subgraph_label_counts = {}
+    for (subgraph, label), count in zip(unique_pairs.tolist(), counts.tolist()):
+        if subgraph not in subgraph_label_counts:
+            subgraph_label_counts[subgraph] = {}
+        subgraph_label_counts[subgraph][label] = count
+
+    # Print results
+    for subgraph, label_counts in subgraph_label_counts.items():
+        print(f"Subgraph {subgraph}: {label_counts}")

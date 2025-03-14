@@ -197,8 +197,8 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, clients
     server.record_num_nodes(data_size)
 
     train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y, tvt_type='train')
-    server.construct_client_adj_matrix(train_subgraphs)
     server.record_num_subgraphs(num_subgraphs)
+    server.construct_client_adj_matrix(train_subgraphs)
     count_label_occur(train_subgraphs, node_labels=train_data.y)
     val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.y)
     test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.y)

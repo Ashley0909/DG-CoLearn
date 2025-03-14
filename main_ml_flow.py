@@ -22,12 +22,12 @@ warnings.filterwarnings("ignore")
 def ml_flow_LP_objective(trial):
 
     # Set Configuration
-    task2run = str(sys.argv[1])  # string: options={boston, mnist, cifar10, cifar100, bitcoinOTC, DBLP, Reddit}
+    dataset = str(sys.argv[1])  # string: options={boston, mnist, cifar10, cifar100, bitcoinOTC, DBLP, Reddit}
     task_mode = str(sys.argv[2])
 
     bw_set = (0.175, 1250) # (client throughput, bandwidth_server) in MB/s
 
-    env_cfg, task_cfg = init_config(task2run, bw_set)
+    env_cfg, task_cfg = init_config(dataset, bw_set)
 
     env_cfg.mode = task_mode
 

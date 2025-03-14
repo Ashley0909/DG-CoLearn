@@ -1,3 +1,8 @@
+import requests
+import gzip
+import shutil
+import os
+
 import numpy as np
 import torch
 import sys
@@ -23,7 +28,21 @@ class Logger(object):
     def flush(self):
         pass
 
-def process_data(txt_path):
+def download_url(url, save_path):
+    response = requests.get(url, stream=True)
+    file_path = os.path.join(save_path, url.split("/")[-1])
+    with open(file_path, "wb") as file:
+        file.write(response.content)
+    return file_path
+
+def extract_gz(gz_path):
+    extracted_path = gz_path.replace(".gz", "")
+    with gzip.open(gz_path, "rb") as f_in:
+        with open(extracted_path, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+    return extracted_path
+
+def process_txt_data(txt_path):
     with open(txt_path, 'r') as f:
         lines = [[x for x in line.split(' ')]
                     for line in f.read().split('\n')[:-1]]
@@ -40,6 +59,41 @@ def process_data(txt_path):
         ]
 
     # total_duration = (stamps[-1] - stamps[0]).days
+
+    offset = datetime.timedelta(days=5.0) # 193 days, Results in 39 time steps
+    graph_indices, factor = [], 1
+    for t in stamps:
+        factor = factor if t < stamps[0] + factor * offset else factor + 1
+        graph_indices.append(factor - 1)
+    graph_idx = torch.tensor(graph_indices, dtype=torch.long)
+
+    data_list = []
+    for i in range(int(graph_idx.max()) + 1):
+        mask = (graph_idx > (i - 10)) & (graph_idx <= i)
+        data = Data()
+        data.edge_index = edge_index[:, mask]
+        data.num_nodes = num_nodes
+        data_list.append(data)
+
+    return data_list
+
+def process_csv_data(csv_path):
+    with open(csv_path, 'r') as f:
+        lines = [[x for x in line.split(',')]
+                    for line in f.read().split('\n')[:-1]]
+        
+        edge_indices = [[int(line[0]), int(line[1])] for line in lines]
+        edge_index = torch.tensor(edge_indices, dtype=torch.long)
+        edge_index = edge_index - edge_index.min()
+        edge_index = edge_index.t().contiguous()
+        num_nodes = int(edge_index.max()) + 1
+
+        stamps = [
+            datetime.datetime.fromtimestamp(int(float(line[2])))
+            for line in lines
+        ]
+
+    total_duration = (stamps[-1] - stamps[0]).seconds
 
     offset = datetime.timedelta(days=5.0) # 193 days, Results in 39 time steps
     graph_indices, factor = [], 1
@@ -242,6 +296,9 @@ def generate_neg_edges(edge_index, node_range:torch.Tensor, num_neg_samples:int=
     return neg_edge_index
 
 def count_label_occur(node_assignment, node_labels):
+    if node_labels == None:
+        return
+    
     pairs = torch.stack([node_assignment, node_labels], dim=1)
 
     # Get unique (subgraph, label) pairs and their counts
@@ -257,3 +314,61 @@ def count_label_occur(node_assignment, node_labels):
     # Print results
     for subgraph, label_counts in subgraph_label_counts.items():
         print(f"Subgraph {subgraph}: {label_counts}")
+
+def label_dirichlet_partition(
+    labels: np.array, N: int, K: int, n_parties: int, beta: float
+) -> list:
+    """
+    This function partitions data based on labels by using the Dirichlet distribution, to ensure even distribution of samples
+
+    Arguments:
+    labels: (NumPy array) - An array with labels or categories for each data point
+    N: (int) - Total number of data points in the dataset
+    K: (int) - Total number of unique labels
+    n_parties: (int) - The number of groups into which the data should be partitioned
+    beta: (float) - Dirichlet distribution parameter value
+
+    Return:
+    split_data_indexes (list) - list indices of data points assigned into groups
+
+    """
+    min_size = 0
+    min_require_size = 10
+
+    split_data_indexes = []
+
+    while min_size < min_require_size:
+        idx_batch: list[list[int]] = [[] for _ in range(n_parties)]
+        for k in range(K):
+            idx_k = np.where(labels == k)[0]
+            np.random.shuffle(idx_k)
+            proportions = np.random.dirichlet(np.repeat(beta, n_parties))
+
+            proportions = np.array(
+                [
+                    p * (len(idx_j) < N / n_parties)
+                    for p, idx_j in zip(proportions, idx_batch)
+                ]
+            )
+
+            proportions = proportions / proportions.sum()
+
+            proportions = (np.cumsum(proportions) * len(idx_k)).astype(int)[:-1]
+
+            idx_batch = [
+                idx_j + idx.tolist()
+                for idx_j, idx in zip(idx_batch, np.split(idx_k, proportions))
+            ]
+            min_size = min([len(idx_j) for idx_j in idx_batch])
+
+    for j in range(n_parties):
+        np.random.shuffle(idx_batch[j])
+        split_data_indexes.append(idx_batch[j])
+
+    node_to_subgraph = [-1] * N
+    
+    # Assign subgraph index to each node
+    for subgraph_id, nodes in enumerate(split_data_indexes):
+        for node in nodes:
+            node_to_subgraph[node] = subgraph_id
+    return node_to_subgraph

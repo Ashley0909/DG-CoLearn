@@ -33,7 +33,7 @@ def distribute_models(global_model, local_models, client_ids):
     for id in client_ids:
         local_models[id] = copy.deepcopy(global_model)
 
-def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, verbose=True):
+def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, rd, epoch, verbose=True):
     device = env_cfg.device
     if len(client_ids) == 0:
         return last_loss_rep
@@ -91,12 +91,12 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, ver
         model = models[model_id]
         optimizer = optimizers[model_id]
         scheduler = schedulers[model_id]
-        # optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
+        optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
 
-        # ''' Extract 2 hop subgraph of changed pairs of nodes '''
-        # if data.previous_edge_index != None:
-        #     exclusive_edge_index = get_exclusive_subgraph(edge_index, data.previous_edge_index.to('cuda:0'))
-        #     print("Shrink in graph", edge_index.shape[1] - exclusive_edge_index.shape[1])
+        ''' Extract 2 hop subgraph of changed pairs of nodes '''
+        if rd == 0 and epoch == 0 and data.previous_edge_index != None:
+            exclusive_edge_index = get_exclusive_subgraph(edge_index, data.previous_edge_index.to('cuda:0'))
+            print("Shrink in graph", edge_index.shape[1] - exclusive_edge_index.shape[1])
 
         if task_cfg.task_type == 'LP':
             predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
@@ -111,7 +111,6 @@ def train(models, client_ids, env_cfg, cm_map, fdl, task_cfg, last_loss_rep, ver
         loss.backward(retain_graph=True)  # Use backpropagation to compute gradients
         nn.utils.clip_grad_norm_(model.parameters(), 1.0) # Stop exploding gradients
         optimizer.step() # Update weights based on computed gradients
-        optimizer.zero_grad()
         scheduler.step()
 
         optimizers[model_id] = optimizer
@@ -175,7 +174,8 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
             else:
                 predicted_y, _ = model(x, edge_index, task_cfg.task_type, subnodes=val_nodes)
                 loss = loss_func(predicted_y[val_nodes], node_label)
-                acc, macro_f1 = nc_prediction(functional.softmax(predicted_y[val_nodes], dim=1), node_label)
+                # acc, macro_f1 = nc_prediction(functional.softmax(predicted_y[val_nodes], dim=1), node_label)
+                acc, macro_f1 = nc_prediction(torch.log_softmax(predicted_y[val_nodes], dim=1), node_label)
                 metrics['macro_f1'] += macro_f1
             # Compute Loss and other metrics
             client_test_loss[model_id] += loss.detach().item()
@@ -236,7 +236,8 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl):
         else:
             predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, subnodes=test_nodes)
             loss = loss_func(predicted_y[test_nodes], node_label)
-            acc, macro_f1 = nc_prediction(functional.softmax(predicted_y[test_nodes], dim=1), node_label)
+            acc, macro_f1 = nc_prediction(torch.log_softmax(predicted_y[test_nodes], dim=1), node_label)
+            # acc, macro_f1 = nc_prediction(functional.softmax(predicted_y[test_nodes], dim=1), node_label)
             print("macro_f1", macro_f1)
             accuracy, metrics['macro_f1'] = accuracy + acc, metrics['macro_f1'] + macro_f1
 

@@ -4,15 +4,17 @@ from collections import defaultdict
 import numpy as np
 import torch
 import metis
+import networkx as nx
+import community as community_louvain
 from torch_geometric import datasets as torchgeometric_datasets
 from torch_geometric.data import Data
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 
 from fl_clients import EdgeDevice
-from utils import process_data, generate_neg_edges, count_label_occur
+from utils import process_txt_data, process_csv_data, download_url, extract_gz, generate_neg_edges, count_label_occur, label_dirichlet_partition
 from graph_partition import our_gpa
-from plot_graphs import draw_graph
+# from plot_graphs import draw_graph
 
 class FLLPDataset:
     def __init__(self, x, subnodes, edge_index, edge_label_index, edge_label, previous_edge_index, client=None):
@@ -70,11 +72,19 @@ def load_gnndata(task_cfg):
         if task_cfg.dataset == 'bitcoinOTC':
             data = torchgeometric_datasets.BitcoinOTC(task_cfg.path)
         elif task_cfg.dataset == 'UCI':
-            # path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
-            # extract_gz(path, task_cfg.path)
-            # os.unlink(path)
+            if not os.path.isdir("data/UCI"):
+                path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
+                extract_gz(path, task_cfg.path)
+                os.unlink(path)
             txt_path = os.path.join(task_cfg.path, "CollegeMsg.txt")
-            data = process_data(txt_path)
+            data = process_txt_data(txt_path)
+        elif task_cfg.dataset == 'bitcoinAlpha':
+            if not os.path.isdir("data/bitcoinAlpha"):
+                path = download_url('https://snap.stanford.edu/data/soc-sign-bitcoinalpha.csv.gz', task_cfg.path)
+                extract_gz(path, task_cfg.path)
+                os.unlink(path)
+            csv_path = os.path.join(task_cfg.path, "soc-sign-bitcoinalpha.csv")
+            data = process_csv_data(csv_path)
         else:
             print('E> Invalid link prediction dataset specified. Options are {bitcoinOTC, UCI}')
             exit(-1)
@@ -182,13 +192,13 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, clients
     global_size = train_data.edge_index.shape[1]
     print(f"A total of {global_size} training edges")
     print(num_subgraphs, "clients are chosen to train")
-    server.record_num_subgraphs(num_subgraphs)
     data_size = train_data.num_nodes # The total number of nodes in the global training graph
     # server.construct_global_adj_matrix(train_data.edge_index, data_size)
     server.record_num_nodes(data_size)
 
     train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.y, tvt_type='train')
     server.construct_client_adj_matrix(train_subgraphs)
+    server.record_num_subgraphs(num_subgraphs)
     count_label_occur(train_subgraphs, node_labels=train_data.y)
     val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.y)
     test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.y)
@@ -255,7 +265,7 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
     1. edge_index: COO format of edges
     2. num_nodes: Number of nodes in the data
     3. num_parts: Number of desired subgraphs
-    4. partition_type: Type of Partitioning Algorithm (Options={'Metis', 'Ours'}) (Default='Ours')
+    4. partition_type: Type of Partitioning Algorithm (Options={'Metis', 'Louvain, 'Ours'}) (Default='Ours')
     5. node_label: Node Labels in NC problems to help our graph partitioning (Default=None)
     6. edge_label: Edge Labels in LP problems (Default=None)
     6. prev_partition: Partitioning Labels of training or validation for consistency if there exists (Default=None)
@@ -265,7 +275,7 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
     2. num_nodes: Number of nodes in the data
     """
     # If previous partition exists, maintain consistency
-    if server.node_assignment is not None and num_parts == server.num_subgraphs:
+    if partition_type == 'Ours' and server.node_assignment is not None and num_parts == server.num_subgraphs:
         return server.node_assignment
 
     # Convert graph to undirected for partitioning
@@ -284,6 +294,14 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
 
     if partition_type == 'Metis':
         _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
+    elif partition_type == 'Louvain':
+        G = nx.Graph()
+        edges = edge_index.t().tolist()
+        G.add_edges_from(edges)
+        partition = community_louvain.best_partition(G)
+        partitioning_labels = [partition[i] for i in range(len(G.nodes))]
+    elif partition_type == 'Dirichlet':
+        partitioning_labels = label_dirichlet_partition(node_label, len(node_label), max(node_label), num_parts, beta=100)
     elif partition_type == 'Ours':
         print("Partition Graph")
         partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)

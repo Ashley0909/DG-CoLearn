@@ -42,15 +42,15 @@ class TaskSettings:
         self.poisoning_rate = poisoning_rate
         self.model_size = 10.0  #10MB
 
-def init_config(task2run, bw_set):
-    if task2run in ['bitcoinOTC', 'UCI']:
+def init_config(dataset, bw_set):
+    if dataset in ['bitcoinOTC', 'bitcoinAlpha', 'UCI']:
         env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=100, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='LP', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-4, lr_decay=5e-3)
-    elif task2run in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
+        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-4, lr_decay=5e-3)
+    elif dataset in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
         env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=100, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='NC', dataset=task2run, path=f'data/{task2run}/', in_dim=None, out_dim=None, optimizer='Adam', loss='ce', lr=1e-3, lr_decay=1e-4)
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, optimizer='Adam', loss='ce', lr=1e-3, lr_decay=1e-4)
     else:
-        print('[Err] Invalid task name provided. Options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}')
+        print('[Err] Invalid dataset provided. Options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}')
         exit(0)
 
     return env_cfg, task_cfg

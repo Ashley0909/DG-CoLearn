@@ -23,8 +23,8 @@ Runs the Federated Learning process, called by `main.py`
 ### Running Code
 `python3 main.py $taskname$ $taskmode$`
 
-`taskname`: federated machine learning task for demo, options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}  
-`taskmode`: task mode introduced by us, options are {'FLDGNN-LP', 'FLDGNN-NC'}
+`dataset`:  datasets, options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}  
+`taskmode`: federated dynamic graph learning task mode, options are {'FLDGNN-LP', 'FLDGNN-NC'}
 
 ### Example Experiments
 `python3 main.py bitcoinOTC FLDGNN-LP`  

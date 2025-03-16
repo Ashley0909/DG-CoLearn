@@ -35,7 +35,8 @@ class GNNNodeHead(nn.Module):
     def forward(self, batch):
         batch = self.layer_post_mp(batch)
         pred, label = self._apply_index(batch)
-        return pred, label
+        # return pred, label
+        return pred, label, copy.deepcopy([tensor.detach().clone() for tensor in batch.node_states]) # Return the node embed from current snapshot as well
 
 
 class GNNEdgeHead(nn.Module):

@@ -10,7 +10,7 @@ def gnn_aggregate(models, local_shards_sizes, data_size, client_id):
     for name, param in global_model_params.items():
         global_model_params[name] = 0.0
 
-    client_weights_val = np.array(local_shards_sizes) / data_size
+    client_weights_val = np.array(local_shards_sizes) / np.array(local_shards_sizes).sum()
 
     for lm in range(len(models)):  # For each local model
         if lm in client_id:

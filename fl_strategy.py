@@ -79,19 +79,19 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
 
       for epoch in range(env_cfg.n_epochs // 2):
          # if epoch == 1:
-            # """ Share Node Embedding after first epoch """
-            # trained_embeddings = defaultdict(torch.Tensor)
-            # subnodes_union = set()
-            # for c in client_ids:
-            #    # plot_h(matrix=clients[c].curr_ne[1], path='ne1_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Trained Node Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
-            #    trained_embeddings[c] = clients[c].send_embeddings()
-            #    subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
+         #    """ Share Node Embedding after first epoch """
+         #    trained_embeddings = defaultdict(torch.Tensor)
+         #    subnodes_union = set()
+         #    for c in client_ids:
+         #       # plot_h(matrix=clients[c].curr_ne[1], path='ne1_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Trained Node Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
+         #       trained_embeddings[c] = clients[c].send_embeddings()
+         #       subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
 
-            # shared_embeddings = server.fast_get_global_embedding_gpu(trained_embeddings, subnodes_union)
+         #    shared_embeddings = server.fast_get_global_embedding_gpu(trained_embeddings, subnodes_union)
 
-            # for c in range(len(client_ids)):
-            #    clients[c].update_embeddings(shared_embeddings)
-               # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
+         #    for c in range(len(client_ids)):
+         #       clients[c].update_embeddings(shared_embeddings)
+         #       # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
                
          train_loss = train(env_cfg, task_cfg, local_models, optimizers, schedulers, client_ids, cm_map, fed_data_train, train_loss, rd, epoch, verbose=True)
          val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
@@ -133,7 +133,7 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
       update_cloud_cache(cache, best_local_models, client_ids)
       global_model = gnn_aggregate(cache, client_shard_sizes, data_size, client_ids)
       print("Aggregated Model")
-      global_loss, global_acc, global_metrics = global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fed_data_test)
+      global_loss, global_acc, global_metrics = global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fed_data_test)
       overall_loss = np.array(global_loss)[np.array(global_loss) != 0.0].sum() / data_size
       global_f1 = global_metrics['macro_f1']
       global_ap = global_metrics['ap']

@@ -208,26 +208,20 @@ def get_global_embedding(embeddings, ccn, node_client_map, subnodes_union, first
     return hop_embeddings
 
 def lp_prediction(pred_score, true_l):
-    # print("pred score", pred_score)
     pred = pred_score.clone()
     pred = torch.where(pred > 0.5, 1, 0)
     pred = pred.detach().cpu().numpy()
-    # print('pred', pred)
     pred_score = pred_score.detach().cpu().numpy()
 
     true = true_l.cpu().numpy()
-    # print("true", true)
     acc = accuracy_score(true, pred)
     ap = average_precision_score(true, pred_score)
 
     return acc, ap
 
 def nc_prediction(pred_score, true_l):
-    print("pred_score", pred_score)
     pred = pred_score.argmax(dim=1).detach().cpu().numpy()
     true = true_l.cpu().numpy()
-    print("pred", pred)
-    print("true", true)
 
     acc = accuracy_score(true, pred)
     # true = torch.tensor([2, 1, 0, 0])

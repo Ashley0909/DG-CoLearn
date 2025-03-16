@@ -99,7 +99,7 @@ def set_cfg(cfg):
     cfg.dataset.node_encoder = False
 
     # Name of node encoder
-    cfg.dataset.node_encoder_name = 'roland'
+    cfg.dataset.node_encoder_name = 'Atom'
 
     # If add batchnorm after node encoder
     cfg.dataset.node_encoder_bn = True

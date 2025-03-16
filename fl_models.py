@@ -18,6 +18,18 @@ class ReshapeH():
         reshaped[subnodes] = h
 
         return reshaped
+    
+class MLPEncoder(nn.Module):
+    def __init__(self, in_dim, hidden_dim, out_dim):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Linear(in_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, out_dim)
+        )
+
+    def forward(self, x):
+        return self.encoder(x)
 
 class ROLANDGNN(torch.nn.Module):
     def __init__(self, device, input_dim, num_nodes, output_dim, dropout=0.3, update='moving', loss=nn.BCEWithLogitsLoss):

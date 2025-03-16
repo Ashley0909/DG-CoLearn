@@ -6,11 +6,8 @@ import torch
 import metis
 import networkx as nx
 from torch_geometric.data import Data
-# from deepsnap.dataset import GraphDataset
 import community as community_louvain
 from torch_geometric import datasets as torchgeometric_datasets
-
-import graphgym.register as register
 
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
@@ -99,7 +96,8 @@ def load_gnndata(task_cfg):
         task_cfg.num_classes = label
         hidden_conv1, hidden_conv2 = 128, 128 #64, 32
         last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]),torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
-        task_cfg.out_dim = data[0].num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
+        task_cfg.out_dim = 1
+        num_nodes = data[0].num_nodes
 
     elif task_cfg.task_type == 'NC':
         data = np.load('./data/{}.npz'.format(task_cfg.dataset))
@@ -114,7 +112,6 @@ def load_gnndata(task_cfg):
         hidden_conv1, hidden_conv2 = 128, 128 #64, 32
         last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
         task_cfg.in_dim = feature.shape[2]
-        task_cfg.out_dim = num_nodes  # number of nodes is not the output dimension, I just used out_dim to store num_nodes for init_global_model
 
         for node in range(num_nodes):
             adjs[:, node, node] = 0
@@ -127,6 +124,7 @@ def load_gnndata(task_cfg):
         data = [Data(edge_index=index, num_nodes=num_nodes) for index in indices]
         feature = [torch.tensor(feat, dtype=torch.float) for feat in feature]
         label = torch.tensor(label, dtype=torch.long)
+        task_cfg.out_dim = max(label).item() + 1
         for graph, feat in zip(data, feature):
             graph.node_feature = feat
             graph.node_label = label
@@ -134,7 +132,7 @@ def load_gnndata(task_cfg):
     """ Split each snapshot into train, val and test """
     train_list, val_list, test_list = partition_data(task_cfg, num_snapshots, data)
 
-    return num_snapshots, train_list, val_list, test_list, {'last_embeddings': last_embeddings, 'num_nodes': data[0].num_nodes, 'node_label': label}
+    return num_snapshots, train_list, val_list, test_list, {'last_embeddings': last_embeddings, 'num_nodes': num_nodes, 'node_label': label}
 
 def partition_data(task_cfg, num_snapshots, data):
     """ Partition data in train using t, val using t+1 and test using t+2 """
@@ -185,11 +183,17 @@ def get_cut_edges(node_assignment, coo_format):
     
     Output: Dictionary of lists, ith key is the start node and ith value is the list of cutting nodes connecting it
     '''
+    coo_ccn = [[], []]
+    ccn_label = []
     ccn_dict = defaultdict(list)
     for start_node, end_node in zip(coo_format[0], coo_format[1]):
-        if (node_assignment[start_node] != node_assignment[end_node]) and (end_node not in ccn_dict[start_node]):
+        if (node_assignment[start_node] != node_assignment[end_node]):
             ccn_dict[start_node].append(end_node)
-    return ccn_dict
+            coo_ccn[0].append(start_node)
+            coo_ccn[1].append(end_node)
+            ccn_label.append(1)
+
+    return ccn_dict, torch.tensor(coo_ccn), torch.tensor(ccn_label)
 
 def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, task_cfg, clients):
     '''A function that first partition the graph to clients, then allocate edges to each clients accordingly.
@@ -205,18 +209,23 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, task_cf
     data_size = train_data.num_nodes # The total number of nodes in the global training graph
     # server.construct_global_adj_matrix(train_data.edge_index, data_size)
     server.record_num_nodes(data_size)
+
     train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None, tvt_type='train')
     server.record_num_subgraphs(num_subgraphs)
     server.construct_client_adj_matrix(train_subgraphs)
     val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
     test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
 
-    cc_edges_train = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
-    server.record_ccn(cc_edges_train)
+    ''' Server gets cce and construct server-side test data '''
+    cc_edges_train, _, _ = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
     print(f"Total number of cut edges: {sum(len(v) for v in cc_edges_train.values())}")
+    server.record_ccn(cc_edges_train)
+
+    cce_test, server_ei, server_el = get_cut_edges(test_subgraphs.tolist(), test_data.edge_index.tolist())
+    server.construct_ccn_test_data(task_cfg.in_dim, server_ei, server_el, cce_test.keys())
+
     client_sizes = [] # the training data size of each client (used for weighted aggregation)
     client_train, client_val, client_test = [], [], []
-
     # According to LP or NC, we allocate the train, val and test to FLLPDataset or FLNCDataset
     for i in range(num_subgraphs): # for each client, allocate subgraph
         single_train = construct_single_client_data(task_cfg, train_data, train_subgraphs, i, clients, "train", env_cfg.mode)
@@ -227,13 +236,14 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, task_cf
         client_test.append(single_test)
         print(f"Client {i} has {single_train.dataset.edge_index.shape[1]} positive training edges, {single_val.dataset.edge_index.shape[1]} positive val edges and {single_test.dataset.edge_index.shape[1]} positive test edges")
 
-        client_sizes.append(len(single_train.dataset.subnodes)) # Client data size is the number of subnodes a client has
+        # client_sizes.append(len(single_train.dataset.subnodes)) # Client data size is the number of subnodes a client has
+        client_sizes.append(single_train.dataset.edge_index.shape[1]) # Client data size is the number of training edges a client has
 
     fed_train = FLFedDataset(client_train)
     fed_val = FLFedDataset(client_val)
     fed_test = FLFedDataset(client_test)
 
-    return fed_train, fed_val, fed_test, client_sizes, data_size
+    return fed_train, fed_val, fed_test, client_sizes, global_size # changed data_size to total number of edges, not nodes
        
 def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, clients, tvt_mode, task_type):
     node_mask = (subgraph_label == client_idx)
@@ -247,6 +257,7 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
             ei_mask.append(False)
 
     subgraph_ei = data.edge_index[:, ei_mask]
+    indim = task_cfg.in_dim
 
     if task_type == "FLDGNN-LP":
         # Generate Negative Edges
@@ -255,17 +266,18 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
         edge_label = torch.concat([data.edge_label[ei_mask], torch.zeros(data.edge_index[:, ei_mask].size(1))])
         # fed_data =  FLLPDataset(data.node_feature[node_mask], subnodes, data.edge_index[:, ei_mask], edge_label_index, edge_label, clients[client_idx].prev_edge_index, clients[client_idx])
         fed_data = Data(node_feature=data.node_feature[node_mask], edge_label_index=edge_label_index, edge_label=edge_label, subnodes=subnodes, 
-                        edge_feature=data.edge_feature[ei_mask], edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index, 
-                        location=clients[client_idx], node_states=[torch.zeros((data.num_nodes, 16)), torch.zeros((data.num_nodes, 16))], keep_ratio=0.2)
+                        edge_feature=data.edge_feature[ei_mask], edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index,
+                        node_states=[torch.zeros((data.num_nodes, indim)), torch.zeros((data.num_nodes, indim))],
+                        location=clients[client_idx], keep_ratio=0.2)
         fed_data_loader = DataLoader(fed_data, batch_size=1)
 
     elif task_type == "FLDGNN-NC":
         class_weights = compute_label_weights(data.node_label[node_mask])
         # fed_data = FLNCDataset(data.node_feature[node_mask], subnodes, data.edge_index[:, ei_mask], clients[client_idx].prev_edge_index, data.node_label[node_mask], class_weights, clients[client_idx])
-        fed_data = Data(node_feature=data.node_feature[node_mask], node_label_index=torch.arange(data.num_nodes), node_label=data.node_label[node_mask], subnodes=subnodes, 
+        fed_data = Data(node_feature=data.node_feature[node_mask], node_label_index=subnodes, node_label=data.node_label[node_mask], subnodes=subnodes, 
                         edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index, 
                         class_weights=class_weights, location=clients[client_idx],
-                        node_states=[torch.zeros((data.num_nodes, 16)), torch.zeros((data.num_nodes, 16))], keep_ratio=0.2)
+                        node_states=[torch.zeros((data.num_nodes, indim)), torch.zeros((data.num_nodes, indim))], keep_ratio=0.2)
 
         fed_data_loader = DataLoader(fed_data, batch_size=1)
     if tvt_mode == "train":

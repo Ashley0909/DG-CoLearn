@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.sparse as sp
 import torch
+from torch_geometric.data import Data
+from torch.utils.data import DataLoader
 
 class Server:
     ''' A server class to record global_adj_list, number of subgraphs, node_assignment and ccn.'''
@@ -12,6 +14,7 @@ class Server:
         self.clients_adj_matrices = None
         self.ccn = None
         self.node_assignment = None
+        self.test_loader = None
 
         self.global_adj_mtx_gpu = None
         self.clients_adj_matrices_gpu = None
@@ -66,6 +69,15 @@ class Server:
     def record_ccn(self, ccn):
         ''' Save cross client neighbours. '''
         self.ccn = ccn
+
+    def construct_ccn_test_data(self, indim, edge_index, edge_label, subnodes):
+        node_feature = torch.Tensor([[1 for _ in range(16)] for _ in range(self.num_nodes)])
+        edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(edge_index.shape[1])])
+
+        server_data = Data(node_feature=node_feature, edge_label_index=edge_index, edge_label=edge_label,
+                        edge_feature=edge_feature, edge_index=edge_index, subnodes=subnodes,
+                        node_states=[torch.zeros((self.num_nodes, indim)), torch.zeros((self.num_nodes, indim))], keep_ratio=1.0)
+        self.test_loader = DataLoader(server_data, batch_size=1)
 
     def get_node_embedding_needed(self, start_node, k):
         ''' Return all the (client, node, number of times needed to add) for each hop. '''

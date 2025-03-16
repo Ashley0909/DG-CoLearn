@@ -47,11 +47,11 @@ class TaskSettings:
 
 def init_config(dataset, bw_set):
     if dataset in ['bitcoinOTC', 'bitcoinAlpha', 'UCI']:
-        env_cfg = EnvSettings(n_clients=10, n_rounds=5, n_epochs=200, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.3, lr_decay=0.1)
+        env_cfg = EnvSettings(n_clients=10, n_rounds=50, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.03, lr_decay=0.1)
     elif dataset in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
-        env_cfg = EnvSettings(n_clients=1, n_rounds=1, n_epochs=1000, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=1e-3, lr_decay=1e-1)
+        env_cfg = EnvSettings(n_clients=10, n_rounds=50, n_epochs=100, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.3, lr_decay=1e-1)
     else:
         print('[Err] Invalid dataset provided. Options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}')
         exit(0)
@@ -68,7 +68,7 @@ def init_GNN_clients(num_clients, last_ne):
 
     return clients, cm_map
 
-def init_global_model(env_cfg, task_cfg):
+def init_global_model(env_cfg, task_cfg, arg):
     model = None
     device = env_cfg.device
 
@@ -77,9 +77,9 @@ def init_global_model(env_cfg, task_cfg):
 
     # model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, output_dim=task_cfg.num_classes, num_nodes=task_cfg.out_dim, update='gru').to(device)
     if env_cfg.mode == 'FLDGNN-LP':
-        model = GNN(dim_in=task_cfg.in_dim, dim_out=1, glob_shape=task_cfg.out_dim)
+        model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'])
     else:
-        model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=task_cfg.out_dim)
+        model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'])
     # model.reset_parameters()
     torch.set_default_dtype(torch.float32)
     return model

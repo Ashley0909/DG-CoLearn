@@ -31,12 +31,11 @@ def main():
     num_snapshots, train_list, val_list, test_list, arg = load_gnndata(task_cfg)
     
     # Create a list of information per snapshots in FLDGNN
-    sys.stdout = Logger('fl_lp')
+    # sys.stdout = Logger('fl_lp')
     print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
 
-    # task_cfg.in_dim = train_list[0].node_feature[1]
-    clients, cindexmap = init_GNN_clients(env_cfg.n_clients, None) # Stay the same for all snapshots
-    glob_model = init_global_model(env_cfg, task_cfg)
+    clients, cindexmap = init_GNN_clients(env_cfg.n_clients, last_ne=None) # Stay the same for all snapshots
+    glob_model = init_global_model(env_cfg, task_cfg, arg)
     server = Server()
 
     # Configure Plot to plot global model performance
@@ -49,7 +48,7 @@ def main():
     # directory = "val_ap_plots/{}".format(datetime.now().strftime("%Y%m%d_%H%M"))
     # if not os.path.exists(directory):
     #     os.makedirs(directory)
-    for i in range(2,num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
+    for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
         print("Snapshot", i)
         fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, data_size = get_gnn_clientdata(server, train_list[i], val_list[i], test_list[i], env_cfg, task_cfg, clients)
         # glob_model, best_round, best_metric, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 

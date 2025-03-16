@@ -28,6 +28,10 @@ class EdgeDevice:
     def update_embeddings(self, shared_ne): # update the previous NE for GRU integration after sharing, or for next snapshot learning 
         self.prev_ne = shared_ne
 
+    # def upload_features(self):
+    #     ''' Upload encrypted features to server '''
+
+
 def distribute_models(global_model, local_models, client_ids):
     for id in client_ids:
         local_models[id] = copy.deepcopy(global_model)
@@ -90,17 +94,6 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
 
     # Begin an epoch of training
     for data in fdl.fbd_list: # Traverse the data of each client
-        # if task_cfg.loss == 'mse': # Regression
-        #     loss_func = nn.MSELoss(reduction='mean')
-        # elif task_cfg.loss == 'nllLoss':  # CNN mnist task
-        #     loss_func = nn.NLLLoss()
-        # elif task_cfg.loss == 'bce':
-        #     loss_func = nn.BCEWithLogitsLoss()  # By default, it shows the average loss per data point (reduction='mean')
-        # elif task_cfg.loss == 'ce':
-        #     loss_func = nn.CrossEntropyLoss()
-        # elif task_cfg.loss == 'wce':
-        #     loss_func = nn.CrossEntropyLoss(weight=data.dataset.class_weights.to(device))
-
         client = data.dataset.location
         model_id = cm_map[client.id]
         if model_id not in client_ids: # neglect non-participants
@@ -108,9 +101,9 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
         
         x, edge_index = data.dataset.node_feature.to(device), data.dataset.edge_index.to(device)
         if task_cfg.task_type == 'LP':
-            edge_label_index, edge_label, train_nodes = data.dataset.edge_label_index.to(device), data.dataset.edge_label.to(device), data.dataset.subnodes.to(device)
+            edge_label, train_nodes = data.dataset.edge_label.to(device), data.dataset.subnodes.to(device)
         else:
-            node_label, train_nodes = data.dataset.node_label.to(device), data.dataset.subnodes.to(device) # data.dataset.subnode is the client's training nodes
+            train_nodes = data.dataset.subnodes.to(device) # data.dataset.subnode is the client's training nodes
 
         model = models[model_id]
         optimizer = optimizers[model_id]
@@ -126,12 +119,10 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
             if client.prev_ne is not None:
                 data.dataset.node_states = client.prev_ne
             predicted_y, true, client.curr_ne = model(copy.deepcopy(data.dataset))
-            # updated_dataset = copy.deepcopy(data.dataset)
-            # predicted_y, true = model(updated_dataset)
-            # client.curr_ne = updated_dataset.node_feature
-            # del updated_dataset
             # predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
         else:
+            if client.prev_ne is not None:
+                data.dataset.node_states = client.prev_ne
             predicted_y, true, client.curr_ne = model(copy.deepcopy(data.dataset))
             # predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, subnodes=train_nodes, previous_embeddings=client.prev_ne)
 
@@ -140,7 +131,7 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
             loss, _ = compute_loss(task_cfg, predicted_y, edge_label.type_as(predicted_y))
             # loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
         else:
-            loss, _ = compute_loss(task_cfg, predicted_y[train_nodes], true)
+            loss, _ = compute_loss(task_cfg, predicted_y, true)
         #     loss = loss_func(predicted_y[train_nodes], node_label)
         loss.backward(retain_graph=True)  # Need retain_graph=True for temporal updates
         # for name, param in model.named_parameters():
@@ -216,12 +207,12 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
                 metrics['ap'] += ap
             else:
                 predicted_y, true, _ = model(copy.copy(data.dataset))
-                loss, _ = compute_loss(task_cfg, predicted_y[val_nodes], true)
+                loss, _ = compute_loss(task_cfg, predicted_y, true)
                 
-                predicted_y, _ = model(x, edge_index, task_cfg.task_type, subnodes=val_nodes)
-                loss = loss_func(predicted_y[val_nodes], node_label)
+                # predicted_y, _ = model(x, edge_index, task_cfg.task_type, subnodes=val_nodes)
+                # loss = loss_func(predicted_y[val_nodes], node_label)
                 # acc, macro_f1 = nc_prediction(functional.softmax(predicted_y[val_nodes], dim=1), node_label)
-                acc, macro_f1 = nc_prediction(torch.log_softmax(predicted_y[val_nodes], dim=1), node_label)
+                acc, macro_f1 = nc_prediction(predicted_y, node_label)
                 metrics['macro_f1'] += macro_f1
             # Compute Loss and other metrics
             client_test_loss[model_id] += loss.detach().item()
@@ -231,7 +222,7 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
         metrics = {key: value / count for key, value in metrics.items()}
         return client_test_loss, client_test_acc, metrics
         
-def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl):
+def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl):
     """ Testing the aggregated global model by averaging its error on each local data """
     device = env_cfg.device
     test_sum_loss = [0 for _ in range(env_cfg.n_clients)]
@@ -255,7 +246,6 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl):
     metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0}
 
     for data in fdl.fbd_list:
-        x, edge_index = data.dataset.node_feature.to(device), data.dataset.edge_index.to(device)
         if task_cfg.task_type == 'LP':
             edge_label_index, edge_label, test_nodes = data.dataset.edge_label_index.to(device), data.dataset.edge_label.to(device), data.dataset.subnodes.to(device)
             if len(edge_label) == 0 or edge_label.numel() == 0: # neglect participants with no testing data
@@ -272,9 +262,9 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl):
             predicted_y, _, _ = global_model(copy.copy(data.dataset))
 
             # predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=test_nodes)
-            predicted_score = predicted_y
-            loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
-            acc, ap = lp_prediction(predicted_score, edge_label.type_as(predicted_y))
+            # loss = loss_func(predicted_y, edge_label.type_as(predicted_y))
+            acc, ap = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
+            print("Test Accuracy is", acc, "by client with", data.dataset.edge_index.shape[1], "edges")
             mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y), edge_label_index)
             if not math.isnan(mrr):
                 metrics['mrr'] += mrr
@@ -282,12 +272,12 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl):
             else:
                 count -= 1
         else:
-            predicted_y, _, _ = global_model(copy.copy(data.dataset))
+            predicted_y, true_label, _ = global_model(copy.copy(data.dataset))
 
             # predicted_y, _ = global_model(x, edge_index, task_cfg.task_type, subnodes=test_nodes)
             # loss = loss_func(predicted_y[test_nodes], node_label)
             # acc, macro_f1 = nc_prediction(torch.log_softmax(predicted_y[test_nodes], dim=1), node_label)
-            acc, macro_f1 = nc_prediction(functional.softmax(predicted_y[test_nodes], dim=1), node_label)
+            acc, macro_f1 = nc_prediction(predicted_y, true_label)
             print("macro_f1", macro_f1)
             accuracy, metrics['macro_f1'] = accuracy + acc, metrics['macro_f1'] + macro_f1
 
@@ -296,6 +286,15 @@ def global_test(global_model, client_ids, task_cfg, env_cfg, cm_map, fdl):
         #     test_sum_loss[model_id] += loss.detach().item()
 
         count += 1
+
+    """ Server test model using cross client edges """
+    if task_cfg.task_type == 'LP':
+        server_data = server.test_loader.dataset
+        if server_data.edge_index.shape[1] > 1: # Test if there are any cce
+            predicted_y, true_label, _ = global_model(copy.copy(server_data))
+            acc, ap = lp_prediction(predicted_y, true_label)
+            print("Test Accuracy is", acc, "by server with", server_data.edge_index.shape[1], "edges")
+
     metrics = {key: value / count for key, value in metrics.items()}
     
     # return test_sum_loss, accuracy/count, metrics

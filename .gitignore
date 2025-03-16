@@ -11,4 +11,3 @@ mlruns/
 mlflow_runs/
 model_state/
 real_roland/
-graphgym/

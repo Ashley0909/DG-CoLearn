@@ -3,6 +3,8 @@ import torch
 from fl_clients import EdgeDevice
 from fl_models import ROLANDGNN
 
+from gnn_recurrent import GNN
+
 class EnvSettings:
     """
     Environment Settings for FL
@@ -28,13 +30,14 @@ class EnvSettings:
 class TaskSettings:
     """ Task Settings for FL """
 
-    def __init__(self, task_type, dataset, path, in_dim, out_dim, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0):
+    def __init__(self, task_type, dataset, path, in_dim, out_dim, batch_size=5, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0):
         self.task_type = task_type
         self.dataset = dataset
         self.num_classes = num_classes
         self.path = path
         self.in_dim = in_dim
         self.out_dim = out_dim
+        self.batch_size = batch_size
         self.optimizer = optimizer
         self.loss = loss
         self.lr = lr
@@ -44,11 +47,11 @@ class TaskSettings:
 
 def init_config(dataset, bw_set):
     if dataset in ['bitcoinOTC', 'bitcoinAlpha', 'UCI']:
-        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=100, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, optimizer='Adam', loss='bce', lr=1e-4, lr_decay=5e-3)
+        env_cfg = EnvSettings(n_clients=10, n_rounds=5, n_epochs=200, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.3, lr_decay=0.1)
     elif dataset in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
-        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=100, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, optimizer='Adam', loss='ce', lr=1e-3, lr_decay=1e-4)
+        env_cfg = EnvSettings(n_clients=1, n_rounds=1, n_epochs=1000, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=1e-3, lr_decay=1e-1)
     else:
         print('[Err] Invalid dataset provided. Options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}')
         exit(0)
@@ -72,7 +75,11 @@ def init_global_model(env_cfg, task_cfg):
     if device.type == 'cuda':
         torch.set_default_dtype(torch.float32)
 
-    model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, output_dim=task_cfg.num_classes, num_nodes=task_cfg.out_dim, update='gru').to(device)
-    model.reset_parameters()
+    # model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, output_dim=task_cfg.num_classes, num_nodes=task_cfg.out_dim, update='gru').to(device)
+    if env_cfg.mode == 'FLDGNN-LP':
+        model = GNN(dim_in=task_cfg.in_dim, dim_out=1, glob_shape=task_cfg.out_dim)
+    else:
+        model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=task_cfg.out_dim)
+    # model.reset_parameters()
     torch.set_default_dtype(torch.float32)
     return model

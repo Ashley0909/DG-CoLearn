@@ -6,14 +6,15 @@ import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, Linear
 
 class ReshapeH():
-    def __init__(self, empty_h):
-        self.empty_h = empty_h
+    def __init__(self, glob_shape):
+        self.glob_shape = glob_shape
 
     def reshape_to_fill(self, h, subnodes):
-        if h.shape == self.empty_h.shape:
+        if h.shape[0] == self.glob_shape:
             return h
         
-        reshaped = copy.deepcopy(self.empty_h)
+        reshaped = torch.zeros((self.glob_shape, h.shape[1]))
+        # reshaped = copy.deepcopy(self.empty_h)
         reshaped[subnodes] = h
 
         return reshaped
@@ -39,6 +40,11 @@ class ROLANDGNN(torch.nn.Module):
         self.conv2 = GCNConv(hidden_conv_1, hidden_conv_2).to(self.device)
         self.bn4 = nn.BatchNorm1d(hidden_conv_2).to(self.device)
         self.postprocess1 = Linear(hidden_conv_2, output_dim).to(self.device)
+        self.nc_mlp = nn.Sequential(
+            Linear(hidden_conv_2, 128),
+            nn.ReLU(),
+            Linear(128, output_dim)
+        ).to(self.device)
         
         #Initialize the loss function to BCEWithLogitsLoss
         self.loss_fn = nn.BCEWithLogitsLoss()
@@ -74,7 +80,7 @@ class ROLANDGNN(torch.nn.Module):
         #You do not need all the parameters to be different to None in test phase
         #You can just use the saved previous embeddings and tau
         if previous_embeddings is not None: #None if test
-            self.previous_embeddings = [previous_embeddings[0].clone().to(self.device),previous_embeddings[1].clone().to(self.device)]
+            self.previous_embeddings = [previous_embeddings[0].detach().clone().to(self.device),previous_embeddings[1].detach().clone().to(self.device)]
             train = True
         else:
             train = False
@@ -89,67 +95,71 @@ class ROLANDGNN(torch.nn.Module):
         #Preprocess text
         h = self.preprocess1(x)
         h = self.bn1(h)
-        h = F.leaky_relu(h,inplace=True)
-        h = F.dropout(h, p=self.dropout,inplace=True)
+        h = F.leaky_relu(h)
+        h = F.dropout(h, p=self.dropout, training=self.training)
         h = self.preprocess2(h)
         h = self.bn2(h)
-        h = F.leaky_relu(h,inplace=True)
-        h = F.dropout(h, p=self.dropout, inplace=True)
+        h = F.leaky_relu(h)
+        h = F.dropout(h, p=self.dropout, training=self.training)
 
         #Reshape h since clients have different number of nodes
         h = self.reshape.reshape_to_fill(h, subnodes)
 
-        #Embedding Update after preprocessing (only when training) (newly added)
-        # h = self.gru1(h, self.previous_embeddings[0].clone()).detach()
-
         """ Obtain 0-hop NE """
-        current_embeddings[0] = self.gru1(h, self.previous_embeddings[0].clone()).detach().clone().to(self.device)
+        current_embeddings[0] = self.gru1(h, self.previous_embeddings[0].clone()).clone().to(self.device)
 
         #GRAPHCONV
         #GraphConv1
         h = self.conv1(h, edge_index)
         h = self.bn3(h)
-        h = F.leaky_relu(h,inplace=True)
-        h = F.dropout(h, p=self.dropout,inplace=True)
+        h = F.leaky_relu(h)
+        h = F.dropout(h, p=self.dropout, training=self.training)
 
         #Embedding Update after first layer (only when training)
         if train == True:
             if self.update=='gru':
-                h = self.gru1(h, self.previous_embeddings[0].clone()).detach()
+                h_temp = self.gru1(h, self.previous_embeddings[0].clone())
+                h = h_temp
             elif self.update=='mlp':
-                hin = torch.cat((h,self.previous_embeddings[0].clone()),dim=1)
-                h = self.mlp1(hin).detach()
+                hin = torch.cat((h, self.previous_embeddings[0].clone()), dim=1)
+                h_temp = self.mlp1(hin)
+                h = h_temp
             else:
-                h = (self.tau * self.previous_embeddings[0].clone() + (1-self.tau) * h.clone()).detach()
+                h_temp = self.tau * self.previous_embeddings[0].clone() + (1-self.tau) * h
+                h = h_temp
     
         current_embeddings[1] = h.clone().to(self.device)
+        
         #GraphConv2
         h = self.conv2(h, edge_index)
         h = self.bn4(h)
-        h = F.leaky_relu(h,inplace=True)
-        h = F.dropout(h, p=self.dropout,inplace=True)
+        h = F.leaky_relu(h)
+        h = F.dropout(h, p=self.dropout, training=self.training)
 
         #Embedding Update after second layer (only when training)
         if train == True:
             if self.update=='gru':
-                h = self.gru2(h, self.previous_embeddings[1].clone()).detach()
+                h_temp = self.gru2(h, self.previous_embeddings[1].clone())
+                h = h_temp
             elif self.update=='mlp':
-                hin = torch.cat((h,self.previous_embeddings[1].clone()),dim=1)
-                h = self.mlp2(hin).detach()
+                hin = torch.cat((h, self.previous_embeddings[1].clone()), dim=1)
+                h_temp = self.mlp2(hin)
+                h = h_temp
             else:
-                h = (self.tau * self.previous_embeddings[1].clone() + (1-self.tau) * h.clone()).detach()
+                h_temp = self.tau * self.previous_embeddings[1].clone() + (1-self.tau) * h
+                h = h_temp
     
         current_embeddings[2] = h.clone().to(self.device)
 
         #HADAMARD MLP (For Link Prediction)
         if task_type == "LP":
-            h_src = h[edge_label_index[0].long()].to(self.device)
-            h_dst = h[edge_label_index[1].long()].to(self.device)
-            h_hadamard = torch.mul(h_src, h_dst) #hadamard product
-            h = self.postprocess1(h_hadamard)
-            out = torch.sum(h.clone(), dim=-1).clone() # sum up the values in a row
+            h_src = h[edge_label_index[0].long()].clone().to(self.device)
+            h_dst = h[edge_label_index[1].long()].clone().to(self.device)
+            h_hadamard = torch.mul(h_src.clone(), h_dst.clone()) #hadamard product
+            h = self.postprocess1(h_hadamard.clone())
+            out = torch.sum(h.clone(), dim=-1) # sum up the values in a row
         elif task_type == "NC":
-            out = self.postprocess1(h)
+            out = self.nc_mlp(h.clone())
         else:
             print('E> Invalid task type specified. Options are {LP, NC}')
             exit(-1)

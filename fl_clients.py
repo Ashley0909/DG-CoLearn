@@ -13,6 +13,7 @@ from sklearn.metrics import average_precision_score
 
 from utils import get_exclusive_subgraph, lp_prediction, compute_mrr, nc_prediction
 from plot_graphs import draw_graph, plot_h
+from fl_models import ReshapeH
 
 class EdgeDevice:
     def __init__(self, id, prev_ne, subnodes):
@@ -28,8 +29,10 @@ class EdgeDevice:
     def update_embeddings(self, shared_ne): # update the previous NE for GRU integration after sharing, or for next snapshot learning 
         self.prev_ne = shared_ne
 
-    # def upload_features(self):
-    #     ''' Upload encrypted features to server '''
+    def upload_features(self, node_feature, total_num_nodes):
+        reshape = ReshapeH(total_num_nodes)
+        expanded_node_feature = reshape.reshape_to_fill(node_feature, self.subnodes)
+        return expanded_node_feature
 
 
 def distribute_models(global_model, local_models, client_ids):
@@ -117,7 +120,9 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
 
         if task_cfg.task_type == 'LP':
             if client.prev_ne is not None:
-                data.dataset.node_states = client.prev_ne
+                # data.dataset.node_states = client.prev_ne
+                for i in range(len(data.dataset.node_states)):
+                    data.dataset.node_states[i] = client.prev_ne[i] * (1 - 0.6) + data.dataset.node_states[i] * 0.6
             predicted_y, true, client.curr_ne = model(copy.deepcopy(data.dataset))
             # predicted_y, client.curr_ne = model(x, edge_index, task_cfg.task_type, edge_label_index, subnodes=train_nodes, previous_embeddings=client.prev_ne)
         else:
@@ -292,8 +297,16 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
         server_data = server.test_loader.dataset
         if server_data.edge_index.shape[1] > 1: # Test if there are any cce
             predicted_y, true_label, _ = global_model(copy.copy(server_data))
-            acc, ap = lp_prediction(predicted_y, true_label)
-            print("Test Accuracy is", acc, "by server with", server_data.edge_index.shape[1], "edges")
+            ccn_acc, ccn_ap = lp_prediction(predicted_y, true_label)
+            ccn_mrr = compute_mrr(predicted_y, true_label, server_data.edge_label_index)
+            if not math.isnan(mrr):
+                metrics['mrr'] += ccn_mrr
+                accuracy, metrics['ap'] = accuracy + ccn_acc, metrics['ap'] + ccn_ap
+            else:
+                count -= 1
+            print("Test Accuracy is", ccn_acc, "with MRR", ccn_mrr, "and AP", ccn_ap, "by server with", server_data.edge_index.shape[1], "edges")
+
+            count += 1
 
     metrics = {key: value / count for key, value in metrics.items()}
     

@@ -4,6 +4,8 @@ import torch
 from torch_geometric.data import Data
 from torch.utils.data import DataLoader
 
+from fl_models import MLPEncoder
+
 class Server:
     ''' A server class to record global_adj_list, number of subgraphs, node_assignment and ccn.'''
     def __init__(self):
@@ -15,6 +17,7 @@ class Server:
         self.ccn = None
         self.node_assignment = None
         self.test_loader = None
+        self.client_features = []
 
         self.global_adj_mtx_gpu = None
         self.clients_adj_matrices_gpu = None
@@ -71,12 +74,12 @@ class Server:
         self.ccn = ccn
 
     def construct_ccn_test_data(self, indim, edge_index, edge_label, subnodes):
-        node_feature = torch.Tensor([[1 for _ in range(16)] for _ in range(self.num_nodes)])
+        node_feature = torch.Tensor([[1 for _ in range(indim)] for _ in range(self.num_nodes)])
         edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(edge_index.shape[1])])
 
         server_data = Data(node_feature=node_feature, edge_label_index=edge_index, edge_label=edge_label,
                         edge_feature=edge_feature, edge_index=edge_index, subnodes=subnodes,
-                        node_states=[torch.zeros((self.num_nodes, indim)), torch.zeros((self.num_nodes, indim))], keep_ratio=1.0)
+                        node_states=[torch.zeros((self.num_nodes, indim//2)), torch.zeros((self.num_nodes, indim//2))], keep_ratio=0.0) # after dimension reduction to 16
         self.test_loader = DataLoader(server_data, batch_size=1)
 
     def get_node_embedding_needed(self, start_node, k):
@@ -184,3 +187,25 @@ class Server:
             hop_embeddings.append(stack)
         
         return hop_embeddings
+    
+    def get_global_node_states(self):
+        encoder = MLPEncoder(self.client_features[0].shape[1])
+        node_assign = self.node_assignment.tolist() # which client takes which node
+
+        hop_embeddings = []
+        for hop in range(1,3):
+            hop_matrix = []
+            for node in range(self.num_nodes):
+                if node in self.ccn.keys():
+                    node_feature = torch.zeros(self.client_features[0].shape[1]).to('cuda:0')
+                    neighbours = torch.sparse.mm(self.global_adj_mtx_gpu, self.global_adj_mtx_gpu).to_dense()[node] if hop == 2 else self.global_adj_mtx.todense()[node].tolist()[0]
+                    for neigh, value in enumerate(neighbours):
+                        if value > 0:
+                            node_feature += self.client_features[node_assign[neigh]][neigh].to('cuda:0') * value
+                    hop_matrix.append(node_feature.tolist())
+                else:
+                    hop_matrix.append(torch.zeros(self.client_features[0].shape[1]).tolist())
+            encoded_features = encoder(torch.tensor(hop_matrix))
+            hop_embeddings.append(encoded_features)
+        return hop_embeddings
+            

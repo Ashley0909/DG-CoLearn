@@ -20,7 +20,7 @@ class ReshapeH():
         return reshaped
     
 class MLPEncoder(nn.Module):
-    def __init__(self, in_dim, hidden_dim, out_dim):
+    def __init__(self, in_dim, hidden_dim=16, out_dim=16):
         super().__init__()
         self.encoder = nn.Sequential(
             nn.Linear(in_dim, hidden_dim),

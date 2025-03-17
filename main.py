@@ -31,7 +31,7 @@ def main():
     num_snapshots, train_list, val_list, test_list, arg = load_gnndata(task_cfg)
     
     # Create a list of information per snapshots in FLDGNN
-    # sys.stdout = Logger('fl_lp')
+    sys.stdout = Logger('fl_lp')
     print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
 
     clients, cindexmap = init_GNN_clients(env_cfg.n_clients, last_ne=None) # Stay the same for all snapshots
@@ -54,7 +54,7 @@ def main():
         # glob_model, best_round, best_metric, val_fig, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
         #                                                            i, client_shard_sizes, data_size, test_ap_fig, test_ap, ccn_dict, node_assignment)
         global_snapshot_acc, global_snapshot_mrr, glob_model, best_round, best_metric, _, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, server, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
-                                                                    i, client_shard_sizes, data_size, test_ap_fig, test_ap)
+                                                                    i, client_shard_sizes, data_size, test_ap_fig, test_ap, arg['num_nodes'])
         print("Snapshot Ends. Best Round:", best_round, "Best AP:", best_metric, "Best Accuracy:", global_snapshot_acc, "Best MRR:", global_snapshot_mrr)
         print("=============")
         for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round

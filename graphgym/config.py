@@ -79,7 +79,7 @@ def set_cfg(cfg):
     cfg.dataset.dir = './datasets'
 
     # Task: node, edge, graph, link_pred
-    cfg.dataset.task = 'node'  # TO CHANGE
+    cfg.dataset.task = 'link_pred'  # TO CHANGE
 
     # Type of task: classification, regression, classification_binary
     # classification_multi
@@ -105,7 +105,7 @@ def set_cfg(cfg):
     cfg.dataset.node_encoder_bn = True
 
     # Whether to use an encoder for the edge features
-    cfg.dataset.edge_encoder = False  # TO CHANGE
+    cfg.dataset.edge_encoder = True  # TO CHANGE
 
     # Name of edge encoder
     cfg.dataset.edge_encoder_name = 'roland_general'
@@ -273,7 +273,7 @@ def set_cfg(cfg):
     cfg.gnn.layers_post_mp = 0
 
     # Hidden layer dim. Automatically set if train.auto_match = True
-    cfg.gnn.dim_inner = 100  # TO CHANGE (16 for LP, 100 for BDLP5)
+    cfg.gnn.dim_inner = 16  # TO CHANGE (16 for LP, 100 for DBLP5)
 
     # Type of graph conv: generalconv, gcnconv, sageconv, gatconv, ...
     cfg.gnn.layer_type = 'generalconv'

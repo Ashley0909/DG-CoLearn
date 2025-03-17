@@ -25,7 +25,7 @@ def sample_clients(data_list, cm_map):
          client_list.append(cm_map[client.id])
    return client_list
 
-def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap):
+def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, tot_num_nodes):
    # Initialise
    global_model = global_mod   
    local_models = [None for _ in range(env_cfg.n_clients)]
@@ -71,28 +71,22 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
       schedulers.append(torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[i], T_max=env_cfg.n_epochs, eta_min=1e-5))
       # schedulers.append(torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers[i],mode='max',factor=0.5,patience=5,verbose=True))
 
+   ''' Pretraining Communication '''
+   for c in fed_data_train:
+      client = c.dataset.location 
+      feature = client.upload_features(c.dataset.node_feature, tot_num_nodes)
+      server.client_features.append(feature) # Server collects the clients' features
+   global_states = server.get_global_node_states() # Server computes global features
+   for c in fed_data_train:
+      c.dataset.node_states = copy.deepcopy([s.detach() for s in global_states]) # Clients collects the global features
+
    """ Begin Training """
    for rd in range(env_cfg.n_rounds):
       print("Round", rd)
       best_local_models = copy.deepcopy(local_models)
       best_val_acc = [float('-inf') for _ in range(len(client_ids))]
 
-      for epoch in range(env_cfg.n_epochs // 2):
-         # if epoch == 1:
-         #    """ Share Node Embedding after first epoch """
-         #    trained_embeddings = defaultdict(torch.Tensor)
-         #    subnodes_union = set()
-         #    for c in client_ids:
-         #       # plot_h(matrix=clients[c].curr_ne[1], path='ne1_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Trained Node Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
-         #       trained_embeddings[c] = clients[c].send_embeddings()
-         #       subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
-
-         #    shared_embeddings = server.fast_get_global_embedding_gpu(trained_embeddings, subnodes_union)
-
-         #    for c in range(len(client_ids)):
-         #       clients[c].update_embeddings(shared_embeddings)
-         #       # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
-               
+      for epoch in range(env_cfg.n_epochs):
          train_loss = train(env_cfg, task_cfg, local_models, optimizers, schedulers, client_ids, cm_map, fed_data_train, train_loss, rd, epoch, verbose=True)
          val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
          # Update metrics data
@@ -101,27 +95,6 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
          print('>   @Local> accuracy = ', val_acc)
          # print('>   @Local> Other Metrics = ', val_metrics)
 
-      # """ Share Node Embedding after training for the first half of epochs """
-      # trained_embeddings = defaultdict(torch.Tensor)
-      # subnodes_union = set()
-      # for c in client_ids:
-      #    # plot_h(matrix=clients[c].curr_ne[1], path='ne1_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Trained Node Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
-      #    trained_embeddings[c] = clients[c].send_embeddings()
-      #    subnodes_union = subnodes_union.union(clients[c].subnodes.tolist())
-
-      # print("Share Embeddings")
-      # shared_embeddings = server.fast_get_global_embedding_gpu(trained_embeddings, subnodes_union)
-      # for c in range(len(client_ids)):
-      #    clients[c].update_embeddings(shared_embeddings)
-         # plot_h(matrix=clients[c].prev_ne[1], path='newprev_client'+str(c)+'ep'+str(epoch)+'rd', name=f'Updated Prev Embeddings of Client {c}', round=rd, vmin=-0.5, vmax=0.3)
-
-      for epoch in range(env_cfg.n_epochs // 2, env_cfg.n_epochs):
-         train_loss = train(env_cfg, task_cfg, local_models, optimizers, schedulers, client_ids, cm_map, fed_data_train, train_loss, rd, epoch, verbose=True)
-         val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
-         val_ap.append(val_metrics['ap']) # Update metric data
-         val_ap_fig.data[0].y = val_ap  # Update node_label for Val AP Fig
-         # print('>   @Local> accuracy = ', val_acc)
-         # print('>   @Local> Other Metrics = ', val_metrics)
          for c in client_ids:
             if val_acc[c] > best_val_acc[c]:
                best_local_models[c] = copy.deepcopy(local_models[c])

@@ -96,6 +96,7 @@ def load_gnndata(task_cfg):
         task_cfg.num_classes = label
         hidden_conv1, hidden_conv2 = 128, 128 #64, 32
         last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]),torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
+        task_cfg.in_dim = 32 # Set it to be the size of the input node feature
         task_cfg.out_dim = 1
         num_nodes = data[0].num_nodes
 
@@ -144,11 +145,9 @@ def partition_data(task_cfg, num_snapshots, data):
         g_t2 = copy.deepcopy(data[i+2])
 
         if task_cfg.task_type == 'LP':
-            g_t0.node_feature = torch.Tensor([[1 for _ in range(16)] for _ in range(g_t0.num_nodes)])
-            g_t1.node_feature = torch.Tensor([[1 for _ in range(16)] for _ in range(g_t1.num_nodes)])
-            g_t2.node_feature = torch.Tensor([[1 for _ in range(16)] for _ in range(g_t2.num_nodes)])
-
-            task_cfg.in_dim = 16 # Set it to be the size of the input node feature
+            g_t0.node_feature = torch.Tensor([[1 for _ in range(task_cfg.in_dim)] for _ in range(g_t0.num_nodes)])
+            g_t1.node_feature = torch.Tensor([[1 for _ in range(task_cfg.in_dim)] for _ in range(g_t1.num_nodes)])
+            g_t2.node_feature = torch.Tensor([[1 for _ in range(task_cfg.in_dim)] for _ in range(g_t2.num_nodes)])
 
             g_t0.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t0.edge_index.shape[1])])
             g_t1.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t1.edge_index.shape[1])])
@@ -257,7 +256,7 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
             ei_mask.append(False)
 
     subgraph_ei = data.edge_index[:, ei_mask]
-    indim = task_cfg.in_dim
+    indim = task_cfg.in_dim//2
 
     if task_type == "FLDGNN-LP":
         # Generate Negative Edges

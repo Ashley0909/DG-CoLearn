@@ -21,8 +21,24 @@ Runs the Federated Learning process, called by `main.py`
 ---
 
 ### Running Code
+Because we are levaraging the model architecture of ROLAND, which forks GraphGym, we need to change `graphgym/config.py` according to the task type.
+
+#### Link Prediction
+`cfg.dataset.task = 'link_pred'`  
+`cfg.gnn.layer_type = 'generalconv'`  
+`cfg.dataset.edge_encoder = True`  
+`cfg.gnn.dim_inner = 16`  
+
+#### Node Classification
+`cfg.dataset.task = 'node'`  
+`cfg.gnn.layer_type = 'gcnconv'`  
+`cfg.dataset.edge_encoder = False`  
+`cfg.gnn.dim_inner = 100`  
+
+After tuning the file, we can run the program using:  
 `python3 main.py $taskname$ $taskmode$`
 
+where  
 `dataset`:  datasets, options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}  
 `taskmode`: federated dynamic graph learning task mode, options are {'FLDGNN-LP', 'FLDGNN-NC'}
 

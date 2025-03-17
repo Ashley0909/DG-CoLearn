@@ -79,7 +79,7 @@ def set_cfg(cfg):
     cfg.dataset.dir = './datasets'
 
     # Task: node, edge, graph, link_pred
-    cfg.dataset.task = 'link_pred'  # TO CHANGE
+    cfg.dataset.task = 'node'  # TO CHANGE
 
     # Type of task: classification, regression, classification_binary
     # classification_multi
@@ -273,10 +273,10 @@ def set_cfg(cfg):
     cfg.gnn.layers_post_mp = 0
 
     # Hidden layer dim. Automatically set if train.auto_match = True
-    cfg.gnn.dim_inner = 16  # TO CHANGE (16 for LP, 100 for DBLP5)
+    cfg.gnn.dim_inner = 16  # TO CHANGE (16 for LP, 100 for DBLP5) # The outer dimension of Conv
 
     # Type of graph conv: generalconv, gcnconv, sageconv, gatconv, ...
-    cfg.gnn.layer_type = 'generalconv'
+    cfg.gnn.layer_type = 'gcnconv' # Changed from generalconv
 
     # Stage type: 'stack', 'skipsum', 'skipconcat'
     cfg.gnn.stage_type = 'stack'
@@ -288,7 +288,7 @@ def set_cfg(cfg):
     cfg.gnn.batchnorm = True
 
     # Activation
-    cfg.gnn.act = 'prelu'
+    cfg.gnn.act = 'selu'
 
     # Dropout
     cfg.gnn.dropout = 0.0
@@ -317,7 +317,7 @@ def set_cfg(cfg):
     cfg.gnn.l2norm = True
 
     # randomly use fewer edges for message passing
-    cfg.gnn.keep_edge = 0.5
+    cfg.gnn.keep_edge = 1.0
 
     # ------------------------------------------------------------------------ #
     # Optimizer options

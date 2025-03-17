@@ -224,12 +224,10 @@ def nc_prediction(pred_score, true_l):
     true = true_l.cpu().numpy()
 
     acc = accuracy_score(true, pred)
-    # true = torch.tensor([2, 1, 0, 0])
-    # pred = torch.tensor([[0.16, 0.26, 0.58],[0.22, 0.61, 0.17],[0.71, 0.09, 0.20],[0.05, 0.82, 0.13]])
-    # pred_score = pred.argmax(dim=1)
     macro_f1 = f1_score(true, pred, average='macro')
+    micro_f1 = f1_score(true, pred, average='micro')
 
-    return acc, macro_f1
+    return acc, macro_f1, micro_f1
 
 def compute_mrr(pred_score, true_l, edge_label_index, do_softmax=True):
     ''' Using the same way how EvolveGCN evaluates mrr '''
@@ -294,7 +292,7 @@ def generate_neg_edges(edge_index, node_range:torch.Tensor, num_neg_samples:int=
     
     return neg_edge_index
 
-def count_label_occurr(node_assignment, node_labels):
+def count_label_occur(node_assignment, node_labels):
     if node_labels == None:
         return
     

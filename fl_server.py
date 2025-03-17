@@ -79,7 +79,7 @@ class Server:
 
         server_data = Data(node_feature=node_feature, edge_label_index=edge_index, edge_label=edge_label,
                         edge_feature=edge_feature, edge_index=edge_index, subnodes=subnodes,
-                        node_states=[torch.zeros((self.num_nodes, indim//2)), torch.zeros((self.num_nodes, indim//2))], keep_ratio=0.0) # after dimension reduction to 16
+                        node_states=[torch.zeros((self.num_nodes, indim // 2)) for _ in range(2)], keep_ratio=0.0) # after dimension reduction to 16
         self.test_loader = DataLoader(server_data, batch_size=1)
 
     def get_node_embedding_needed(self, start_node, k):
@@ -189,7 +189,9 @@ class Server:
         return hop_embeddings
     
     def get_global_node_states(self):
-        encoder = MLPEncoder(self.client_features[0].shape[1])
+        # encoder_in_dim = self.client_features[0].shape[1]
+        # encoder_out_dim = encoder_in_dim // 2
+        # encoder = MLPEncoder(in_dim=encoder_in_dim, out_dim=16) # Changed
         node_assign = self.node_assignment.tolist() # which client takes which node
 
         hop_embeddings = []
@@ -205,7 +207,7 @@ class Server:
                     hop_matrix.append(node_feature.tolist())
                 else:
                     hop_matrix.append(torch.zeros(self.client_features[0].shape[1]).tolist())
-            encoded_features = encoder(torch.tensor(hop_matrix))
-            hop_embeddings.append(encoded_features)
+            # encoded_features = encoder(torch.tensor(hop_matrix))
+            hop_embeddings.append(torch.tensor(hop_matrix))
         return hop_embeddings
             

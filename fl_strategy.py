@@ -10,6 +10,7 @@ from utils import get_global_embedding
 from fl_clients import distribute_models, train, local_test, global_test
 from fl_aggregations import gnn_aggregate
 from plot_graphs import configure_plotly
+from fl_models import MLPEncoder
 
 def update_cloud_cache(cache, local_models, ids):
    """ Update each clients' local models in the cache """
@@ -72,13 +73,22 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
       # schedulers.append(torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers[i],mode='max',factor=0.5,patience=5,verbose=True))
 
    ''' Pretraining Communication '''
+   in_dim = fed_data_train[0].dataset.node_feature.shape[1]
+   encoder = MLPEncoder(in_dim=in_dim, out_dim=16)
    for c in fed_data_train:
       client = c.dataset.location 
-      feature = client.upload_features(c.dataset.node_feature, tot_num_nodes)
+      feature = client.upload_features(c.dataset.node_feature, tot_num_nodes, encoder)
       server.client_features.append(feature) # Server collects the clients' features
    global_states = server.get_global_node_states() # Server computes global features
    for c in fed_data_train:
       c.dataset.node_states = copy.deepcopy([s.detach() for s in global_states]) # Clients collects the global features
+
+   ''' Simulating FedGCN Pretain Communication '''
+   # clients compute feature aggregation
+   
+   # clients send them to server
+   # server computes average
+   # server redistribute to clients
 
    """ Begin Training """
    for rd in range(env_cfg.n_rounds):
@@ -93,7 +103,6 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
          val_ap.append(val_metrics['ap'])
          val_ap_fig.data[0].y = val_ap  # Update node_label for Val AP Fig
          print('>   @Local> accuracy = ', val_acc)
-         # print('>   @Local> Other Metrics = ', val_metrics)
 
          for c in client_ids:
             if val_acc[c] > best_val_acc[c]:
@@ -101,14 +110,14 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
                best_val_acc[c] = val_acc[c]
 
       # print('>   @Local> Best accuracies = ', best_val_acc)
-      print('>   @Local> Val F1 = ', val_metrics)
+      print('>   @Local> Val Metrics = ', val_metrics)
       # Aggregate Local Models
       update_cloud_cache(cache, best_local_models, client_ids)
       global_model = gnn_aggregate(cache, client_shard_sizes, data_size, client_ids)
       print("Aggregated Model")
       global_loss, global_acc, global_metrics = global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fed_data_test)
       overall_loss = np.array(global_loss)[np.array(global_loss) != 0.0].sum() / data_size
-      global_f1 = global_metrics['macro_f1']
+      global_f1 = global_metrics['micro_f1']
       global_ap = global_metrics['ap']
       print('>   @Cloud> post-aggregation loss avg = ', overall_loss)
       print('>   @Cloud> accuracy = ', global_acc)
@@ -118,13 +127,14 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
 
       # Record Best Readings
       # if overall_loss < best_loss:
+      best_metrics = defaultdict()
       if (env_cfg.mode == "FLDGNN-NC" and global_f1 > best_f1) or (env_cfg.mode == "FLDGNN-LP" and global_ap > best_ap):
-         best_loss = overall_loss
-         best_acc = global_acc
-         best_ap = global_ap
-         best_f1 = global_f1
          best_model = global_model
-         best_round = rd
+         best_metrics['best_loss'] = overall_loss
+         best_metrics['best_acc'] = global_acc
+         best_metrics['best_ap'], best_ap = global_ap, global_ap
+         best_metrics['best_f1'], best_f1 = global_f1, global_f1
+         best_metrics['best_round'] = rd
       
       if env_cfg.keep_best:
          global_model = best_model
@@ -141,7 +151,4 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
    }
    torch.save(checkpoint, f'model_state/{task_cfg.dataset}/model_checkpoint_ss{snapshot}_lr{task_cfg.lr}.pth')
 
-   if env_cfg.mode == "FLDGNN-LP":
-      return global_acc, global_metrics['mrr'], best_model, best_round, best_ap, val_ap_fig, test_ap_fig, test_ap
-   elif env_cfg.mode == "FLDGNN-NC":
-      return global_acc, global_metrics['macro_f1'], best_model, best_round, best_f1, val_ap_fig, test_ap_fig, test_ap
+   return best_model, best_metrics, val_ap_fig, test_ap_fig, test_ap

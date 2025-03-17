@@ -13,7 +13,7 @@ from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 from torch.utils.data import DataLoader
 from fl_clients import EdgeDevice
-from utils import process_txt_data, process_csv_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, label_dirichlet_partition
+from utils import process_txt_data, process_csv_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, label_dirichlet_partition, count_label_occur
 from graph_partition import our_gpa
 # from plot_graphs import draw_graph
 
@@ -165,6 +165,10 @@ def partition_data(task_cfg, num_snapshots, data):
             test_list.append(test_data)
 
         elif task_cfg.task_type == 'NC':
+            g_t0.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t0.edge_index.shape[1])])
+            g_t1.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t1.edge_index.shape[1])])
+            g_t2.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t2.edge_index.shape[1])])
+
             train_list.append(g_t0)
             val_list.append(g_t1)
             test_list.append(g_t2)
@@ -215,6 +219,8 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, task_cf
     val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
     test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
 
+    if env_cfg.mode == 'FLDGNN-NC':
+        count_label_occur(train_subgraphs, train_data.node_label)
     ''' Server gets cce and construct server-side test data '''
     cc_edges_train, _, _ = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
     print(f"Total number of cut edges: {sum(len(v) for v in cc_edges_train.values())}")
@@ -256,7 +262,8 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
             ei_mask.append(False)
 
     subgraph_ei = data.edge_index[:, ei_mask]
-    indim = task_cfg.in_dim//2
+    indim = task_cfg.in_dim//2 # Changed
+    indim = 16
 
     if task_type == "FLDGNN-LP":
         # Generate Negative Edges
@@ -266,17 +273,16 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
         # fed_data =  FLLPDataset(data.node_feature[node_mask], subnodes, data.edge_index[:, ei_mask], edge_label_index, edge_label, clients[client_idx].prev_edge_index, clients[client_idx])
         fed_data = Data(node_feature=data.node_feature[node_mask], edge_label_index=edge_label_index, edge_label=edge_label, subnodes=subnodes, 
                         edge_feature=data.edge_feature[ei_mask], edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index,
-                        node_states=[torch.zeros((data.num_nodes, indim)), torch.zeros((data.num_nodes, indim))],
-                        location=clients[client_idx], keep_ratio=0.2)
+                        node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], location=clients[client_idx], keep_ratio=0.2)
         fed_data_loader = DataLoader(fed_data, batch_size=1)
 
     elif task_type == "FLDGNN-NC":
         class_weights = compute_label_weights(data.node_label[node_mask])
         # fed_data = FLNCDataset(data.node_feature[node_mask], subnodes, data.edge_index[:, ei_mask], clients[client_idx].prev_edge_index, data.node_label[node_mask], class_weights, clients[client_idx])
         fed_data = Data(node_feature=data.node_feature[node_mask], node_label_index=subnodes, node_label=data.node_label[node_mask], subnodes=subnodes, 
-                        edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index, 
+                        edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index, edge_feature=data.edge_feature[ei_mask],
                         class_weights=class_weights, location=clients[client_idx],
-                        node_states=[torch.zeros((data.num_nodes, indim)), torch.zeros((data.num_nodes, indim))], keep_ratio=0.2)
+                        node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], keep_ratio=0.0)
 
         fed_data_loader = DataLoader(fed_data, batch_size=1)
     if tvt_mode == "train":

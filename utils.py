@@ -79,41 +79,6 @@ def process_txt_data(txt_path):
 
     return data_list
 
-def process_csv_data(csv_path):
-    with open(csv_path, 'r') as f:
-        lines = [[x for x in line.split(',')]
-                    for line in f.read().split('\n')[:-1]]
-        
-        edge_indices = [[int(line[0]), int(line[1])] for line in lines]
-        edge_index = torch.tensor(edge_indices, dtype=torch.long)
-        edge_index = edge_index - edge_index.min()
-        edge_index = edge_index.t().contiguous()
-        num_nodes = int(edge_index.max()) + 1
-
-        stamps = [
-            datetime.datetime.fromtimestamp(int(float(line[2])))
-            for line in lines
-        ]
-
-    # total_duration = (stamps[-1] - stamps[0]).seconds
-
-    offset = datetime.timedelta(days=5.0) # 193 days, Results in 39 time steps
-    graph_indices, factor = [], 1
-    for t in stamps:
-        factor = factor if t < stamps[0] + factor * offset else factor + 1
-        graph_indices.append(factor - 1)
-    graph_idx = torch.tensor(graph_indices, dtype=torch.long)
-
-    data_list = []
-    for i in range(int(graph_idx.max()) + 1):
-        mask = (graph_idx > (i - 10)) & (graph_idx <= i)
-        data = Data()
-        data.edge_index = edge_index[:, mask]
-        data.num_nodes = num_nodes
-        data_list.append(data)
-
-    return data_list
-
 def get_exclusive_subgraph(current, prev):
     ''' Get the 2-hop neighbourhood of edges that are exclusive to the current subgraph (added and removed) '''
     # Convert to NumPy for efficient comparison

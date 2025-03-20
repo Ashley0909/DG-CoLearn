@@ -1,12 +1,11 @@
 import copy
 import sys
 import os
-import random
+import time
 import numpy as np
 import register
 import torch
 import torch.nn as nn
-import torch.nn.functional as functional
 import math
 
 from utils import get_exclusive_subgraph, lp_prediction, compute_mrr, nc_prediction
@@ -110,6 +109,7 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
         model = models[model_id]
         optimizer = optimizers[model_id]
         scheduler = schedulers[model_id]
+        start_time = time.time()
         optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
 
         ''' Extract 2 hop subgraph of changed pairs of nodes '''
@@ -142,6 +142,8 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
         nn.utils.clip_grad_norm_(model.parameters(), 1.0) # Stop exploding gradients
         optimizer.step() # Update weights based on computed gradients
         scheduler.step()
+        end_time = time.time()
+        print(f"Time taken for Client {model_id} to train: {end_time - start_time}")
 
         optimizers[model_id] = optimizer
         client_train_loss[model_id] += loss

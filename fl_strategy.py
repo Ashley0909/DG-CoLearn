@@ -11,6 +11,7 @@ from fl_clients import distribute_models, train, local_test, global_test
 from fl_aggregations import gnn_aggregate
 from plot_graphs import configure_plotly
 from fl_models import MLPEncoder
+from sim_fedgcn import compute_neighborhood_features, average_feat_aggre
 
 def update_cloud_cache(cache, local_models, ids):
    """ Update each clients' local models in the cache """
@@ -57,19 +58,19 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
    val_ap_fig = configure_plotly(x_labels, val_ap, 'Average Validation Precision (Area under PR Curve)', snapshot)
 
    # One optimizer for each model (re-instantiate optimizers to clear any possible momentum
-   optimizers = []
+   optimizers = {}
    for i in client_ids:
       if task_cfg.optimizer == 'SGD':
-         optimizers.append(optim.SGD(local_models[i].parameters(), lr=task_cfg.lr))
+         optimizers[i] = optim.SGD(local_models[i].parameters(), lr=task_cfg.lr)
       elif task_cfg.optimizer == 'Adam':
-         optimizers.append(optim.Adam(local_models[i].parameters(), lr=task_cfg.lr, weight_decay=5e-4, betas=(0.9, 0.999)))
+         optimizers[i] = optim.Adam(local_models[i].parameters(), lr=task_cfg.lr, weight_decay=5e-4, betas=(0.9, 0.999))
       else:
          print('Err> Invalid optimizer %s specified' % task_cfg.optimizer)
 
-   schedulers = []
+   schedulers = {}
    for i in client_ids:
       # schedulers.append(torch.optim.lr_scheduler.MultiStepLR(optimizers[i], milestones=[30,60,90]))
-      schedulers.append(torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[i], T_max=env_cfg.n_epochs, eta_min=1e-5))
+      schedulers[i] = torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[i], T_max=env_cfg.n_epochs, eta_min=1e-5)
       # schedulers.append(torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers[i],mode='max',factor=0.5,patience=5,verbose=True))
 
    ''' Pretraining Communication '''
@@ -79,22 +80,34 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
       client = c.dataset.location 
       feature = client.upload_features(c.dataset.node_feature, tot_num_nodes, encoder)
       server.client_features.append(feature) # Server collects the clients' features
+   start_time = time.time()
    global_states = server.get_global_node_states() # Server computes global features
+   end_time = time.time()
+   print(f"Time taken for Global Node State Computation: {end_time - start_time}")
    for c in fed_data_train:
       c.dataset.node_states = copy.deepcopy([s.detach() for s in global_states]) # Clients collects the global features
 
    ''' Simulating FedGCN Pretain Communication '''
-   # clients compute feature aggregation
+   # # clients compute feature aggregation
+   # features, subnodes = [], []
+   # for c in fed_data_train:
+   #    data = c.dataset
+   #    one_hop_feat, two_hop_feat = compute_neighborhood_features(data.edge_index, data.node_feature, tot_num_nodes)
+   #    features.append(two_hop_feat)
+   #    subnodes.append(data.subnodes)
    
-   # clients send them to server
-   # server computes average
-   # server redistribute to clients
+   # # clients send them to server and server computes average
+   # final_feat = average_feat_aggre(features)
+   # # server redistribute to clients
+   # for i, c in enumerate(fed_data_train):
+   #    c.dataset.node_feature = final_feat
 
+   best_metrics = defaultdict()
    """ Begin Training """
    for rd in range(env_cfg.n_rounds):
       print("Round", rd)
       best_local_models = copy.deepcopy(local_models)
-      best_val_acc = [float('-inf') for _ in range(len(client_ids))]
+      best_val_acc = [float('-inf') for _ in range(env_cfg.n_clients)]
 
       for epoch in range(env_cfg.n_epochs):
          train_loss = train(env_cfg, task_cfg, local_models, optimizers, schedulers, client_ids, cm_map, fed_data_train, train_loss, rd, epoch, verbose=True)
@@ -127,11 +140,11 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
 
       # Record Best Readings
       # if overall_loss < best_loss:
-      best_metrics = defaultdict()
-      if (env_cfg.mode == "FLDGNN-NC" and global_f1 > best_f1) or (env_cfg.mode == "FLDGNN-LP" and global_ap > best_ap):
+      
+      if (env_cfg.mode == "FLDGNN-NC" and global_f1 > best_f1) or (env_cfg.mode == "FLDGNN-LP" and global_acc > best_acc):
          best_model = global_model
          best_metrics['best_loss'] = overall_loss
-         best_metrics['best_acc'] = global_acc
+         best_metrics['best_acc'], best_acc = global_acc, global_acc
          best_metrics['best_ap'], best_ap = global_ap, global_ap
          best_metrics['best_f1'], best_f1 = global_f1, global_f1
          best_metrics['best_round'] = rd

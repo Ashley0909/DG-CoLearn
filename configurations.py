@@ -46,12 +46,12 @@ class TaskSettings:
         self.model_size = 10.0  #10MB
 
 def init_config(dataset, bw_set):
-    if dataset in ['bitcoinOTC', 'bitcoinAlpha', 'UCI']:
-        env_cfg = EnvSettings(n_clients=10, n_rounds=50, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+    if dataset in ['bitcoinOTC', 'UCI']:
+        env_cfg = EnvSettings(n_clients=10, n_rounds=30, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.03, lr_decay=0.1)
     elif dataset in ['Brain', 'DBLP3', 'DBLP5', 'Reddit']:
         env_cfg = EnvSettings(n_clients=10, n_rounds=50, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.03, lr_decay=1e-1)
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
     else:
         print('[Err] Invalid dataset provided. Options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}')
         exit(0)

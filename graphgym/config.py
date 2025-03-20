@@ -105,7 +105,7 @@ def set_cfg(cfg):
     cfg.dataset.node_encoder_bn = True
 
     # Whether to use an encoder for the edge features
-    cfg.dataset.edge_encoder = True  # TO CHANGE
+    cfg.dataset.edge_encoder = False  # TO CHANGE
 
     # Name of edge encoder
     cfg.dataset.edge_encoder_name = 'roland_general'
@@ -273,10 +273,10 @@ def set_cfg(cfg):
     cfg.gnn.layers_post_mp = 0
 
     # Hidden layer dim. Automatically set if train.auto_match = True
-    cfg.gnn.dim_inner = 16  # TO CHANGE (16 for LP, 100 for DBLP5) # The outer dimension of Conv
+    cfg.gnn.dim_inner = 16  # The outer dimension of Conv
 
     # Type of graph conv: generalconv, gcnconv, sageconv, gatconv, ...
-    cfg.gnn.layer_type = 'gcnconv' # Changed from generalconv
+    cfg.gnn.layer_type = 'gcnconv' # TO CHANGE
 
     # Stage type: 'stack', 'skipsum', 'skipconcat'
     cfg.gnn.stage_type = 'stack'

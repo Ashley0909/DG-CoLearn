@@ -1,4 +1,5 @@
 import os
+import time
 import copy
 from collections import defaultdict
 import numpy as np
@@ -13,7 +14,7 @@ from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 from torch.utils.data import DataLoader
 from fl_clients import EdgeDevice
-from utils import process_txt_data, process_csv_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, label_dirichlet_partition, count_label_occur
+from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, label_dirichlet_partition, count_label_occur
 from graph_partition import our_gpa
 # from plot_graphs import draw_graph
 
@@ -70,23 +71,18 @@ class FLFedDataset:
         return self.fbd_list[item]
 
 def load_gnndata(task_cfg):
+    if not os.path.isdir(task_cfg.path):
+        os.makedirs(task_cfg.path)
+
     if task_cfg.task_type == 'LP':
         if task_cfg.dataset == 'bitcoinOTC':
             data = torchgeometric_datasets.BitcoinOTC(task_cfg.path)
         elif task_cfg.dataset == 'UCI':
-            if not os.path.isdir("data/UCI"):
-                path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
-                extract_gz(path, task_cfg.path)
-                os.unlink(path)
+            path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
+            extract_gz(path, task_cfg.path)
+            os.unlink(path)
             txt_path = os.path.join(task_cfg.path, "CollegeMsg.txt")
             data = process_txt_data(txt_path)
-        elif task_cfg.dataset == 'bitcoinAlpha':
-            if not os.path.isdir("data/bitcoinAlpha"):
-                path = download_url('https://snap.stanford.edu/data/soc-sign-bitcoinalpha.csv.gz', task_cfg.path)
-                extract_gz(path, task_cfg.path)
-                os.unlink(path)
-            csv_path = os.path.join(task_cfg.path, "soc-sign-bitcoinalpha.csv")
-            data = process_csv_data(csv_path)
         else:
             print('E> Invalid link prediction dataset specified. Options are {bitcoinOTC, UCI}')
             exit(-1)
@@ -171,7 +167,7 @@ def partition_data(task_cfg, num_snapshots, data):
 
             train_list.append(g_t0)
             val_list.append(g_t1)
-            test_list.append(g_t2)
+            test_list.append(g_t1)
         else:
             print('E> Invalid task type specified. Options are {LP, NC}')
             exit(-1)
@@ -213,11 +209,11 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, task_cf
     # server.construct_global_adj_matrix(train_data.edge_index, data_size)
     server.record_num_nodes(data_size)
 
-    train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, node_label=train_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None, tvt_type='train')
+    train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=train_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None, tvt_type='train')
     server.record_num_subgraphs(num_subgraphs)
     server.construct_client_adj_matrix(train_subgraphs)
-    val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, node_label=val_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
-    test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, node_label=test_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
+    val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=val_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
+    test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=test_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
 
     if env_cfg.mode == 'FLDGNN-NC':
         count_label_occur(train_subgraphs, train_data.node_label)
@@ -327,8 +323,12 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
     if tvt_type == 'train':
         server.construct_glob_adj_mtx(adjacency_list)
 
+    start_time = time.time()
     if partition_type == 'Metis':
-        _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
+        if num_parts > 1:
+            _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
+        else:
+            partitioning_labels = [0 for _ in range(len(adjacency_list))]
     elif partition_type == 'Louvain':
         G = nx.Graph()
         edges = edge_index.t().tolist()
@@ -338,11 +338,13 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
     elif partition_type == 'Dirichlet':
         partitioning_labels = label_dirichlet_partition(node_label, len(node_label), max(node_label), num_parts, beta=100)
     elif partition_type == 'Ours':
-        print("Partition Graph")
         partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
     else:
-        print('E> Invalid partitioning algorithm specified. Options are {Metis, Ours}')
+        print('E> Invalid partitioning algorithm specified. Options are {Metis, Louvain, Dirichlet, Ours}')
         exit(-1)
+
+    end_time = time.time()
+    print(f"Time taken to partition graph using {partition_type}: {end_time - start_time}")
 
     return torch.tensor(partitioning_labels)
 

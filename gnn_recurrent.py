@@ -153,7 +153,7 @@ stage_dict = {**register.stage_dict, **stage_dict}
 class GNN(nn.Module):
     r"""The General GNN model"""
 
-    def __init__(self, dim_in, dim_out, glob_shape, **kwargs):
+    def __init__(self, dim_in, dim_out, glob_shape, task_type, **kwargs):
         r"""Initializes the GNN model.
 
         Args:
@@ -163,6 +163,17 @@ class GNN(nn.Module):
             of possible integer features to map.
         """
         super(GNN, self).__init__()
+        # Customise Configuration according to task_type
+        if task_type == 'LP':
+            cfg.dataset.task = 'link_pred'
+            cfg.dataset.edge_encoder = True
+            cfg.gnn.layer_type = 'generalconv'
+        else:
+            cfg.dataset.task = 'node'
+            cfg.dataset.edge_encoder = False
+            cfg.gnn.layer_type = 'gcnconv'
+        print(cfg)
+
         GNNStage = stage_dict[cfg.gnn.stage_type]
         GNNHead = head_dict[cfg.dataset.task]
         # Currently only for OGB datasets

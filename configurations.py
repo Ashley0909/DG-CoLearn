@@ -76,10 +76,10 @@ def init_global_model(env_cfg, task_cfg, arg):
         torch.set_default_dtype(torch.float32)
 
     # model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, output_dim=task_cfg.num_classes, num_nodes=task_cfg.out_dim, update='gru').to(device)
-    if env_cfg.mode == 'FLDGNN-LP':
-        model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'])
-    else:
-        model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'])
+    # if env_cfg.mode == 'FLDGNN-LP':
+    #     model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'], task_type=task_cfg.task_type)
+    # else:
+    model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'], task_type=task_cfg.task_type)
     # model.reset_parameters()
     torch.set_default_dtype(torch.float32)
     return model

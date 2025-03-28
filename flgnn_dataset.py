@@ -79,7 +79,7 @@ def load_gnndata(task_cfg):
             data = torchgeometric_datasets.BitcoinOTC(task_cfg.path)
         elif task_cfg.dataset == 'UCI':
             path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
-            extract_gz(path, task_cfg.path)
+            extract_gz(path)
             os.unlink(path)
             txt_path = os.path.join(task_cfg.path, "CollegeMsg.txt")
             data = process_txt_data(txt_path)

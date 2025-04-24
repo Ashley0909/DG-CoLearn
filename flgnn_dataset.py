@@ -209,13 +209,13 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, task_cf
     # server.construct_global_adj_matrix(train_data.edge_index, data_size)
     server.record_num_nodes(data_size)
 
-    train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=train_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None, tvt_type='train')
+    train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=train_data.node_label if task_cfg.task_type == 'NC' else None, tvt_type='train')
     server.record_num_subgraphs(num_subgraphs)
     server.construct_client_adj_matrix(train_subgraphs)
-    val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=val_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
-    test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=test_data.node_label if env_cfg.mode == 'FLDGNN-NC' else None)
+    val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=val_data.node_label if task_cfg.task_type == 'NC' else None)
+    test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=test_data.node_label if task_cfg.task_type == 'NC' else None)
 
-    if env_cfg.mode == 'FLDGNN-NC':
+    if task_cfg.task_type == 'NC':
         count_label_occur(train_subgraphs, train_data.node_label)
     ''' Server gets cce and construct server-side test data '''
     cc_edges_train, _, _ = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
@@ -229,11 +229,11 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, task_cf
     client_train, client_val, client_test = [], [], []
     # According to LP or NC, we allocate the train, val and test to FLLPDataset or FLNCDataset
     for i in range(num_subgraphs): # for each client, allocate subgraph
-        single_train = construct_single_client_data(task_cfg, train_data, train_subgraphs, i, clients, "train", env_cfg.mode)
+        single_train = construct_single_client_data(task_cfg, train_data, train_subgraphs, i, clients, "train", task_cfg.task_type)
         client_train.append(single_train)
-        single_val = construct_single_client_data(task_cfg, val_data, val_subgraphs, i, clients, "val", env_cfg.mode)
+        single_val = construct_single_client_data(task_cfg, val_data, val_subgraphs, i, clients, "val", task_cfg.task_type)
         client_val.append(single_val)
-        single_test = construct_single_client_data(task_cfg, test_data, test_subgraphs, i, clients, "test", env_cfg.mode)
+        single_test = construct_single_client_data(task_cfg, test_data, test_subgraphs, i, clients, "test", task_cfg.task_type)
         client_test.append(single_test)
         print(f"Client {i} has {single_train.dataset.edge_index.shape[1]} positive training edges, {single_val.dataset.edge_index.shape[1]} positive val edges and {single_test.dataset.edge_index.shape[1]} positive test edges")
 
@@ -261,7 +261,7 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
     indim = task_cfg.in_dim//2 # Changed
     indim = 16
 
-    if task_type == "FLDGNN-LP":
+    if task_type == "LP":
         # Generate Negative Edges
         negative_edges = generate_neg_edges(data.edge_index[:, ei_mask], subnodes, data.edge_index[:, ei_mask].size(1))
         edge_label_index = torch.cat([data.edge_index[:, ei_mask], negative_edges], dim=1)
@@ -272,7 +272,7 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
                         node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], location=clients[client_idx], keep_ratio=0.2)
         fed_data_loader = DataLoader(fed_data, batch_size=1)
 
-    elif task_type == "FLDGNN-NC":
+    elif task_type == "NC":
         class_weights = compute_label_weights(data.node_label[node_mask])
         # fed_data = FLNCDataset(data.node_feature[node_mask], subnodes, data.edge_index[:, ei_mask], clients[client_idx].prev_edge_index, data.node_label[node_mask], class_weights, clients[client_idx])
         fed_data = Data(node_feature=data.node_feature[node_mask], node_label_index=subnodes, node_label=data.node_label[node_mask], subnodes=subnodes, 

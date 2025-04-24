@@ -19,20 +19,17 @@ warnings.filterwarnings("ignore")
 def main():
     # Set Configuration
     dataset = str(sys.argv[1])  # string: options={boston, mnist, cifar10, cifar100, bitcoinOTC, DBLP, Reddit}
-    task_mode = str(sys.argv[2])
 
     bw_set = (0.175, 1250) # (client throughput, bandwidth_server) in MB/s
 
     env_cfg, task_cfg = init_config(dataset, bw_set)
-
-    env_cfg.mode = task_mode
 
     # Load Data
     num_snapshots, train_list, val_list, test_list, arg = load_gnndata(task_cfg)
     
     # Create a list of information per snapshots in FLDGNN
     sys.stdout = Logger('fl_nc')
-    print(f"Running {task_mode}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
+    print(f"Running {task_cfg.task_type}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
 
     clients, cindexmap = init_GNN_clients(env_cfg.n_clients, last_ne=None) # Stay the same for all snapshots
     glob_model = init_global_model(env_cfg, task_cfg, arg)

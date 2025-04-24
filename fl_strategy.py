@@ -137,7 +137,7 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_
       test_ap_fig.data[0].y = test_ap  # Update node_label for Test AP Fig
 
       # Record Best Readings      
-      if (env_cfg.mode == "FLDGNN-NC" and global_f1 > best_f1) or (env_cfg.mode == "FLDGNN-LP" and global_acc > best_acc):
+      if (task_cfg.task_type == "NC" and global_f1 > best_f1) or (task_cfg.task_type == "LP" and global_acc > best_acc):
          best_model = global_model
          best_metrics['best_loss'] = overall_loss
          best_metrics['best_acc'], best_acc = global_acc, global_acc

@@ -20,34 +20,18 @@ Runs the Federated Learning process, called by `main.py`
 
 ---
 
-## Configuration
-
-The following is the table to show the corresponding task mode for each dataset.
-
-| Dataset    | Taskmode  |
-| ---------- | --------- |
-| bitcoinOTC | FLDGNN-LP |
-| UCI        | FLDGNN-LP |
-| Brain      | FLDGNN-NC |
-| DBLP3      | FLDGNN-NC |
-| DBLP5      | FLDGNN-NC |
-| Reddit     | FLDGNN-NC |
-
----
-
 
 
 ## Running Code
 
 We can run the program using:
-`python3 main.py $dataset$ $taskmode$`
+`python3 main.py $dataset$`
 
 where
 `dataset`:  datasets, options are {bitcoinOTC, UCI, Brain, DBLP3, DBLP5, Reddit}
-`taskmode`: federated dynamic graph learning task mode, options are {'FLDGNN-LP', 'FLDGNN-NC'}
 
 Example Experiments
 
-`python3 main.py bitcoinOTC FLDGNN-LP`
-`python3 main.py DBLP3 FLDGNN-NC`
-`python3 main.py Reddit FLDGNN-NC`
+`python3 main.py bitcoinOTC`
+`python3 main.py DBLP3`
+`python3 main.py Reddit`

@@ -49,7 +49,7 @@ def main():
     for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
         print("Snapshot", i)
         fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, data_size = get_gnn_clientdata(server, train_list[i], val_list[i], test_list[i], env_cfg, task_cfg, clients)       
-        glob_model, best_metrics, _, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, server, glob_model, clients, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
+        glob_model, best_metrics, _, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, server, glob_model, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
                                                                     i, client_shard_sizes, data_size, test_ap_fig, test_ap, arg['num_nodes'])
         print("Snapshot Ends. Best Round:", best_metrics['best_round'], "Best Metrics:", best_metrics)
         print("=============")

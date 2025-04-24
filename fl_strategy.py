@@ -1,7 +1,6 @@
 import numpy as np
 import copy
 import torch
-import torch.profiler
 import time
 from collections import defaultdict
 import torch.optim as optim
@@ -11,7 +10,7 @@ from fl_clients import distribute_models, train, local_test, global_test
 from fl_aggregations import gnn_aggregate
 from plot_graphs import configure_plotly
 from fl_models import MLPEncoder
-from sim_fedgcn import compute_neighborhood_features, average_feat_aggre
+from sim_fedgcn import compute_neighborhood_features, average_feat_aggre # For simulating FedGCN 
 
 def update_cloud_cache(cache, local_models, ids):
    """ Update each clients' local models in the cache """
@@ -27,7 +26,7 @@ def sample_clients(data_list, cm_map):
          client_list.append(cm_map[client.id])
    return client_list
 
-def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, tot_num_nodes):
+def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, tot_num_nodes):
    # Initialise
    global_model = global_mod   
    local_models = [None for _ in range(env_cfg.n_clients)]
@@ -40,7 +39,6 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
    client_ids = sample_clients(fed_data_train, cm_map)
    print("Participating Clients:", client_ids)
 
-   best_round = -1
    best_loss = float('inf')
    best_acc, best_ap, best_f1 = -1.0, -1.0, -1.0
    best_model = None
@@ -57,7 +55,7 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
 
    val_ap_fig = configure_plotly(x_labels, val_ap, 'Average Validation Precision (Area under PR Curve)', snapshot)
 
-   # One optimizer for each model (re-instantiate optimizers to clear any possible momentum
+   # One optimizer for each model (re-instantiate optimizers to clear any possible momentum)
    optimizers = {}
    for i in client_ids:
       if task_cfg.optimizer == 'SGD':
@@ -138,9 +136,7 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, clients, cm_map, fed_data_tr
       test_ap.append(global_metrics['ap']) # Update metrics data
       test_ap_fig.data[0].y = test_ap  # Update node_label for Test AP Fig
 
-      # Record Best Readings
-      # if overall_loss < best_loss:
-      
+      # Record Best Readings      
       if (env_cfg.mode == "FLDGNN-NC" and global_f1 > best_f1) or (env_cfg.mode == "FLDGNN-LP" and global_acc > best_acc):
          best_model = global_model
          best_metrics['best_loss'] = overall_loss

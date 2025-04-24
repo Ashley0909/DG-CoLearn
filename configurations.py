@@ -6,10 +6,7 @@ from fl_models import ROLANDGNN
 from gnn_recurrent import GNN
 
 class EnvSettings:
-    """
-    Environment Settings for FL
-
-    """
+    """ Environment Settings for FL """
 
     def __init__(self, n_clients, n_rounds, n_epochs, keep_best=True, device='gpu', showplot=False, bw_set=(0.175, 1250), max_T=830):
         self.mode = None
@@ -75,11 +72,6 @@ def init_global_model(env_cfg, task_cfg, arg):
     if device.type == 'cuda':
         torch.set_default_dtype(torch.float32)
 
-    # model = ROLANDGNN(device=device, input_dim=task_cfg.in_dim, output_dim=task_cfg.num_classes, num_nodes=task_cfg.out_dim, update='gru').to(device)
-    # if env_cfg.mode == 'FLDGNN-LP':
-    #     model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'], task_type=task_cfg.task_type)
-    # else:
     model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'], task_type=task_cfg.task_type)
-    # model.reset_parameters()
     torch.set_default_dtype(torch.float32)
     return model

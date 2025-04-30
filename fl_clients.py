@@ -66,8 +66,6 @@ def compute_loss(task_cfg, pred, true):
         # multiclass
         if pred.ndim > 1:
             return ce_loss(pred, true), pred
-            # pred = functional.log_softmax(pred, dim=-1)
-            # return functional.nll_loss(pred, true), pred
         # binary
         else:
             true = true.float()
@@ -134,16 +132,11 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
         else:
             loss, _ = compute_loss(task_cfg, predicted_y, true)
         loss.backward(retain_graph=True)  # Need retain_graph=True for temporal updates
-        # for name, param in model.named_parameters():
-        #     if param.grad is None:
-        #         print(f"{name} has no gradient!")
-        #     else:
-        #         print(f"{name} has grad {param.grad}")
         nn.utils.clip_grad_norm_(model.parameters(), 1.0) # Stop exploding gradients
         optimizer.step() # Update weights based on computed gradients
         scheduler.step()
         end_time = time.time()
-        print(f"Time taken for Client {model_id} to train: {end_time - start_time}")
+        # print(f"Time taken for Client {model_id} to train: {end_time - start_time}")
 
         optimizers[model_id] = optimizer
         client_train_loss[model_id] += loss

@@ -121,7 +121,6 @@ def find_k_furthest_nodes(adj_list, k, isolated_nodes=[]):
 
 ''' Function for resolving conflicting nodes '''
 def resolve_conflicts(node, adj_list, global_size, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels, isolated_nodes):
-    # print("Node", node)
     # colour_adj_list(adj_list, previous_level_subgraph)
     alpha, beta = 0.25, 0.75
     best_subgraph, best_subgraph_score = None, 0
@@ -230,6 +229,6 @@ def our_gpa(adj_list, global_size, node_labels=None, K=2):
         level_queue = copy.deepcopy(next_level)
 
     assignment = [node_to_allocated_subgraph[i].pop() for i in range(len(node_to_allocated_subgraph))]
-    # colour_adj_list(adj_list, assignment)
+    # colour_adj_list(adj_list, assignment) # Show coloured graph
         
     return assignment

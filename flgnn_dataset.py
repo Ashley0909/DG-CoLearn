@@ -16,7 +16,6 @@ from torch.utils.data import DataLoader
 from fl_clients import EdgeDevice
 from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, label_dirichlet_partition, count_label_occur
 from graph_partition import our_gpa
-# from plot_graphs import draw_graph
 
 class FLLPDataset():
     def __init__(self, node_feature, subnodes, edge_index, edge_label_index, edge_label, previous_edge_index, client=None):
@@ -194,7 +193,7 @@ def get_cut_edges(node_assignment, coo_format):
 
     return ccn_dict, torch.tensor(coo_ccn), torch.tensor(ccn_label)
 
-def get_gnn_clientdata(server, train_data, val_data, test_data, env_cfg, task_cfg, clients):
+def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, clients):
     '''A function that first partition the graph to clients, then allocate edges to each clients accordingly.
     
     Hightlighted Inputs:

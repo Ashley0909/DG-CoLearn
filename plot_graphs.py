@@ -33,8 +33,11 @@ def extract_loss_from_file(file_path, search_phrase):
                 # losses.append(loss)
     return losses
 
-def draw_graph(edge_index, name, client=0):
-    path = 'graph_output/'+name+'client'+str(client)
+def draw_graph(edge_index, name, client=None):
+    if client is None:
+        path = 'graph_output/global'+name
+    else:
+        path = 'graph_output/'+name+'client'+str(client)
 
     # Create a graph
     dot = graphviz.Graph()

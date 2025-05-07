@@ -128,7 +128,7 @@ def load_gnndata(task_cfg):
     """ Split each snapshot into train, val and test """
     train_list, val_list, test_list = partition_data(task_cfg, num_snapshots, data)
 
-    return num_snapshots, train_list, val_list, test_list, {'last_embeddings': last_embeddings, 'num_nodes': num_nodes, 'node_label': label}
+    return num_snapshots, train_list, val_list, test_list, {'last_embeddings': last_embeddings, 'num_nodes': num_nodes}
 
 def partition_data(task_cfg, num_snapshots, data):
     """ Partition data in train using t, val using t+1 and test using t+2 """

@@ -28,8 +28,9 @@ def main():
         num_snapshots, train_list, val_list, test_list, arg = load_gnndata(task_cfg)
     
     # Create a list of information per snapshots in FLDGNN
-    # sys.stdout = Logger('fl_nc')
+    sys.stdout = Logger('fl_sbm')
     print(f"Running {task_cfg.task_type}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
+    print("Only Learn New Graph")
 
     clients, cindexmap = init_GNN_clients(env_cfg.n_clients, last_ne=None) # Stay the same for all snapshots
     glob_model = init_global_model(env_cfg, task_cfg, arg)

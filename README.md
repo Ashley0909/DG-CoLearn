@@ -26,10 +26,11 @@ We can run the program using:
 `python3 main.py $dataset$`
 
 where
-`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit}
+`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, SBM}
 
 Example Experiments
 
 `python3 main.py bitcoinOTC`
 `python3 main.py DBLP3`
-`python3 main.py Reddit`
+`python3 main.py Reddit`  
+`python3 main.py SBM`

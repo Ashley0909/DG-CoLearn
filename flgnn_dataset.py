@@ -268,7 +268,7 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
         # fed_data =  FLLPDataset(data.node_feature[node_mask], subnodes, data.edge_index[:, ei_mask], edge_label_index, edge_label, clients[client_idx].prev_edge_index, clients[client_idx])
         fed_data = Data(node_feature=data.node_feature[node_mask], edge_label_index=edge_label_index, edge_label=edge_label, subnodes=subnodes, 
                         edge_feature=data.edge_feature[ei_mask], edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index,
-                        node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], location=clients[client_idx], keep_ratio=0.2)
+                        node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], location=clients[client_idx], keep_ratio=0.4)
         fed_data_loader = DataLoader(fed_data, batch_size=1)
 
     elif task_type == "NC":
@@ -277,7 +277,7 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
         fed_data = Data(node_feature=data.node_feature[node_mask], node_label_index=subnodes, node_label=data.node_label[node_mask], subnodes=subnodes, 
                         edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index, edge_feature=data.edge_feature[ei_mask],
                         class_weights=class_weights, location=clients[client_idx],
-                        node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], keep_ratio=0.0)
+                        node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], keep_ratio=0.8)
 
         fed_data_loader = DataLoader(fed_data, batch_size=1)
     if tvt_mode == "train":

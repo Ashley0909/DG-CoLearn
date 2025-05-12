@@ -2,13 +2,12 @@ import copy
 import sys
 import os
 import time
-import numpy as np
 import register
 import torch
 import torch.nn as nn
 import math
 
-from utils import get_exclusive_subgraph, lp_prediction, compute_mrr, nc_prediction
+from utils import get_exclusive_subgraph, lp_prediction, compute_mrr, nc_prediction, find_common_nodes
 from plot_graphs import draw_graph, plot_h
 from fl_models import ReshapeH
 
@@ -100,46 +99,46 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
         if model_id not in client_ids: # neglect non-participants
             continue
         
-        x, edge_index = data.dataset.node_feature.to(device), data.dataset.edge_index.to(device)
+        edge_index = data.dataset.edge_index.to(device)
         if task_cfg.task_type == 'LP':
             edge_label = data.dataset.edge_label.to(device)
 
         model = models[model_id]
         optimizer = optimizers[model_id]
         scheduler = schedulers[model_id]
-        start_time = time.time()
         optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
 
         ''' Extract 2 hop subgraph of changed pairs of nodes '''
         if rd == 0 and epoch == 0 and data.dataset.previous_edge_index != []:
             exclusive_edge_index = get_exclusive_subgraph(edge_index, data.dataset.previous_edge_index.to('cuda:0'))
-            print("Shrink in graph", edge_index.shape[1] - exclusive_edge_index.shape[1])
+            print(f"Only learn {exclusive_edge_index.shape[1]} edges. Shrink in graph: {edge_index.shape[1] - exclusive_edge_index.shape[1]}")
+            # Record k and \overline{k}
+            data.dataset.edge_index = exclusive_edge_index.to('cpu')
+            all_nodes = copy.deepcopy(data.dataset.subnodes)
+            data.dataset.common = find_common_nodes(all_nodes, exclusive_edge_index)
 
-        if task_cfg.task_type == 'LP':
+        if len(data.dataset.edge_index[0]) != 0:
+            ''' There might be a case where client does not have new graph to learn, if so, we do nothing. '''
+            # Import previous state as node_states
             if client.prev_ne is not None:
                 for i in range(len(data.dataset.node_states)):
-                    data.dataset.node_states[i] = client.prev_ne[i] * (1 - 0.6) + data.dataset.node_states[i] * 0.6
+                    data.dataset.node_states[i] = client.prev_ne[i]
+            start_time = time.time()
             predicted_y, true, client.curr_ne = model(copy.deepcopy(data.dataset))
-        else:
-            if client.prev_ne is not None:
-                for i in range(len(data.dataset.node_states)):
-                    data.dataset.node_states[i] = client.prev_ne[i] * (1 - 0.2) + data.dataset.node_states[i] * 0.2
-            predicted_y, true, client.curr_ne = model(copy.deepcopy(data.dataset))
+            print(f"Time taken for Client {model_id} to train: {time.time() - start_time}")
 
-        # Compute Loss
-        if task_cfg.task_type == 'LP':
-            loss, _ = compute_loss(task_cfg, predicted_y, edge_label.type_as(predicted_y))
-        else:
-            loss, _ = compute_loss(task_cfg, predicted_y, true)
-        loss.backward(retain_graph=True)  # Need retain_graph=True for temporal updates
-        nn.utils.clip_grad_norm_(model.parameters(), 1.0) # Stop exploding gradients
-        optimizer.step() # Update weights based on computed gradients
-        scheduler.step()
-        end_time = time.time()
-        # print(f"Time taken for Client {model_id} to train: {end_time - start_time}")
+            # Compute Loss
+            if task_cfg.task_type == 'LP':
+                loss, _ = compute_loss(task_cfg, predicted_y, edge_label.type_as(predicted_y))
+            else:
+                loss, _ = compute_loss(task_cfg, predicted_y, true)
+            loss.backward(retain_graph=True)  # Need retain_graph=True for temporal updates
+            nn.utils.clip_grad_norm_(model.parameters(), 1.0) # Stop exploding gradients
+            optimizer.step() # Update weights based on computed gradients
+            scheduler.step()
 
-        optimizers[model_id] = optimizer
-        client_train_loss[model_id] += loss
+            optimizers[model_id] = optimizer
+            client_train_loss[model_id] += loss
 
     # Restore printing
     if not verbose:
@@ -201,16 +200,6 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
 def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl):
     """ Testing the aggregated global model by averaging its error on each local data """
     device = env_cfg.device
-    
-    # Define loss based on task
-    if task_cfg.loss == 'mse':  # regression task
-        loss_func = nn.MSELoss(reduction='sum')
-    elif task_cfg.loss == 'nllLoss':  # CNN mnist task
-        loss_func = nn.NLLLoss(reduction='sum')
-    elif task_cfg.loss == 'bce':
-        loss_func = nn.BCEWithLogitsLoss()
-    elif task_cfg.loss == 'ce':
-        loss_func = nn.CrossEntropyLoss()
 
     # Initialize evaluation mode
     global_model.eval()

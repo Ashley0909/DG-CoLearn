@@ -79,7 +79,7 @@ class Server:
 
         server_data = Data(node_feature=node_feature, edge_label_index=edge_index, edge_label=edge_label,
                         edge_feature=edge_feature, edge_index=edge_index, subnodes=subnodes,
-                        node_states=[torch.zeros((self.num_nodes, indim // 2)) for _ in range(2)], keep_ratio=0.0) # after dimension reduction to 16
+                        node_states=[torch.zeros((self.num_nodes, indim // 2)) for _ in range(2)], keep_ratio=0.4) # after dimension reduction to 16
         self.test_loader = DataLoader(server_data, batch_size=1)
 
     def get_node_embedding_needed(self, start_node, k):

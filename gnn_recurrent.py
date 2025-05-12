@@ -172,7 +172,6 @@ class GNN(nn.Module):
             cfg.dataset.task = 'node'
             cfg.dataset.edge_encoder = False
             cfg.gnn.layer_type = 'gcnconv'
-        print(cfg)
 
         GNNStage = stage_dict[cfg.gnn.stage_type]
         GNNHead = head_dict[cfg.dataset.task]

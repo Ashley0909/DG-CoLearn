@@ -19,7 +19,14 @@ from scipy.sparse import coo_matrix
 
 class Logger(object):
     def __init__(self, path):
-        filename = "stats/{}/{}.txt".format(path, datetime.datetime.now().strftime("%Y%m%d_%H%M"))
+        now = datetime.datetime.now()
+        date_str = now.strftime("%Y%m%d")
+        time_str = now.strftime("%H%M")
+
+        log_dir = os.path.join("stats", path, date_str)
+        os.makedirs(log_dir, exist_ok=True)
+
+        filename = os.path.join(log_dir, f"{time_str}.txt")
         self.terminal = sys.stdout
         self.log = open(filename, "w")
 
@@ -344,127 +351,11 @@ def label_dirichlet_partition(
             node_to_subgraph[node] = subgraph_id
     return node_to_subgraph
 
-def intersect1d(t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
-    """
-    Concatenates the two input tensors, finding common elements between these two
+def find_common_nodes(all_nodes, exclusive_edge_index):
+    ''' Get the nodes that are unchanged throughout the snapshots. '''
+    changed_nodes = torch.unique(exclusive_edge_index).to('cpu')
+    mask = ~torch.isin(all_nodes, changed_nodes)
+    common_nodes = all_nodes[mask]
 
-    Parameters
-    ----------
-    t1 : torch.Tensor
-        The first input tensor for the operation.
-    t2 : torch.Tensor
-        The second input tensor for the operation.
+    return common_nodes
 
-    Returns
-    -------
-    intersection : torch.Tensor
-        Intersection of the two input tensors.
-    """
-    combined = torch.cat((t1, t2))
-    uniques, counts = combined.unique(return_counts=True)
-    intersection = uniques[counts > 1]
-    return intersection
-
-def get_in_comm_indexes(
-    edge_index: torch.Tensor,
-    split_node_indexes: list,
-    num_clients: int,
-    L_hop: int,
-    idx_train: torch.Tensor,
-    idx_test: torch.Tensor,
-) -> tuple:
-    """
-    Extract and preprocess data indices and edge information. It determines the nodes that each client
-    will communicate with, based on the L-hop neighborhood, and aggregates the edge information accordingly.
-    It also determines the indices of training and test data points that are available to each client.
-
-    Parameters
-    ----------
-    edge_index : torch.Tensor
-        A tensor representing the edge information (connections between nodes) of the graph dataset.
-    split_node_indexes : list
-        A list of node indices. Each list element corresponds to a subset of nodes assigned to a specific client
-        after data partitioning.
-    num_clients : int
-        The total number of clients.
-    L_hop : int
-        The number of hops to consider when determining the neighborhood of each node. For example, if L_hop=1,
-        the 1-hop neighborhood of a node includes the node itself and all of its immediate neighbors.
-    idx_train : torch.Tensor
-        Tensor containing indices of training data in the graph.
-    idx_test : torch.Tensor
-        Tensor containing indices of test data in the graph.
-
-    Returns
-    -------
-    communicate_node_indexes : list
-        A list of node indices for each client, representing nodes involved in communication.
-    in_com_train_node_indexes : list
-        A list of tensors, where each tensor contains the indices of training data points available to each client.
-    in_com_test_node_indexes : list
-        A list of tensors, where each tensor contains the indices of test data points available to each client.
-    edge_indexes_clients : list
-        A list of tensors representing the edges between nodes within each client's subgraph.
-    """
-    communicate_node_indexes = []
-    in_com_train_node_indexes = []
-    edge_indexes_clients = []
-
-    for i in range(num_clients):
-        communicate_node_index = split_node_indexes[i]
-        if L_hop == 0:
-            (
-                communicate_node_index,
-                current_edge_index,
-                _,
-                __,
-            ) = torch_geometric.utils.k_hop_subgraph(
-                communicate_node_index, 0, edge_index, relabel_nodes=False
-            )
-            del _
-            del __
-        elif L_hop == 1 or L_hop == 2:
-            (
-                communicate_node_index,
-                current_edge_index,
-                _,
-                __,
-            ) = torch_geometric.utils.k_hop_subgraph(
-                communicate_node_index, 1, edge_index, relabel_nodes=False
-            )
-            del _
-            del __
-
-        communicate_node_index = communicate_node_index.to("cpu")
-        current_edge_index = current_edge_index.to("cpu")
-        communicate_node_indexes.append(communicate_node_index)
-        """
-        current_edge_index = torch_sparse.SparseTensor(
-            row=current_edge_index[0],
-            col=current_edge_index[1],
-            sparse_sizes=(len(communicate_node_index), len(communicate_node_index)),
-        )
-        """
-
-        edge_indexes_clients.append(current_edge_index)
-
-        inter = intersect1d(
-            split_node_indexes[i], idx_train
-        )  ###only count the train data of nodes in current server(not communicate nodes)
-
-        in_com_train_node_indexes.append(
-            torch.searchsorted(communicate_node_indexes[i], inter).clone()
-        )  # local id in block matrix
-
-    in_com_test_node_indexes = []
-    for i in range(num_clients):
-        inter = intersect1d(split_node_indexes[i], idx_test)
-        in_com_test_node_indexes.append(
-            torch.searchsorted(communicate_node_indexes[i], inter).clone()
-        )
-    return (
-        communicate_node_indexes,
-        in_com_train_node_indexes,
-        in_com_test_node_indexes,
-        edge_indexes_clients,
-    )

@@ -113,7 +113,7 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_
          # Update metrics data
          val_ap.append(val_metrics['ap'])
          val_ap_fig.data[0].y = val_ap  # Update node_label for Val AP Fig
-         # print('>   @Local> accuracy = ', val_acc) # Keep! for local client performance reference
+         print('>   @Local> accuracy = ', val_acc) # Keep! for local client performance reference
 
          for c in client_ids:
             if val_acc[c] > best_val_acc[c]:

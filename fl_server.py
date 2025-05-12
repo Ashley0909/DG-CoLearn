@@ -4,8 +4,6 @@ import torch
 from torch_geometric.data import Data
 from torch.utils.data import DataLoader
 
-from fl_models import MLPEncoder
-
 class Server:
     ''' A server class to record global_adj_list, number of subgraphs, node_assignment and ccn.'''
     def __init__(self):
@@ -189,9 +187,6 @@ class Server:
         return hop_embeddings
     
     def get_global_node_states(self):
-        # encoder_in_dim = self.client_features[0].shape[1]
-        # encoder_out_dim = encoder_in_dim // 2
-        # encoder = MLPEncoder(in_dim=encoder_in_dim, out_dim=16) # Changed
         node_assign = self.node_assignment.tolist() # which client takes which node
 
         hop_embeddings = []
@@ -207,7 +202,6 @@ class Server:
                     hop_matrix.append(node_feature.tolist())
                 else:
                     hop_matrix.append(torch.zeros(self.client_features[0].shape[1]).tolist())
-            # encoded_features = encoder(torch.tensor(hop_matrix))
             hop_embeddings.append(torch.tensor(hop_matrix))
         return hop_embeddings
             

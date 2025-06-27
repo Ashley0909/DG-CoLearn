@@ -1,8 +1,5 @@
 import torch
-
 from fl_clients import EdgeDevice
-from fl_models import ROLANDGNN
-
 from gnn_recurrent import GNN
 
 class EnvSettings:

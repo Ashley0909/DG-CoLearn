@@ -1,6 +1,7 @@
 import os
 import time
 import copy
+import ray 
 from collections import defaultdict
 import numpy as np
 import torch
@@ -193,13 +194,9 @@ def get_cut_edges(node_assignment, coo_format):
 
     return ccn_dict, torch.tensor(coo_ccn), torch.tensor(ccn_label)
 
-def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, clients):
-    '''A function that first partition the graph to clients, then allocate edges to each clients accordingly.
+def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, clients, log_file, i, max_i):
     
-    Hightlighted Inputs:
-    1. prev_nodes: number of node the test graph has recorded in the previous snapshot (Default=0)
-    2. prev_partition: the node allocation recorded in the previous snapshot (Default=None)
-    '''
+    start_time_subgraphs = time.perf_counter()
     num_subgraphs = gen_train_clients(train_data.edge_index.shape[1], len(clients))
     global_size = train_data.edge_index.shape[1]
     print(f"A total of {global_size} training edges")
@@ -207,23 +204,36 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     data_size = train_data.num_nodes # The total number of nodes in the global training graph
     # server.construct_global_adj_matrix(train_data.edge_index, data_size)
     server.record_num_nodes(data_size)
+    end_time_subgraphs = time.perf_counter()
+    log_file.write(f"[SNAPSHOT {i}/{max_i}] Time taken for Subgraph Generation: {end_time_subgraphs - start_time_subgraphs}\n")
 
-    train_subgraphs = graph_partition(server, train_data.edge_index, train_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=train_data.node_label if task_cfg.task_type == 'NC' else None, tvt_type='train')
+    start_time_partition = time.perf_counter()
+    train_subgraphs = graph_partition(i, max_i, server, train_data.edge_index, train_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=train_data.node_label if task_cfg.task_type == 'NC' else None, tvt_type='train', log_file=log_file)
     server.record_num_subgraphs(num_subgraphs)
     server.construct_client_adj_matrix(train_subgraphs)
-    val_subgraphs = graph_partition(server, val_data.edge_index, val_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=val_data.node_label if task_cfg.task_type == 'NC' else None)
-    test_subgraphs = graph_partition(server, test_data.edge_index, test_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=test_data.node_label if task_cfg.task_type == 'NC' else None)
+    val_subgraphs = graph_partition(i, max_i, server, val_data.edge_index, val_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=val_data.node_label if task_cfg.task_type == 'NC' else None, log_file=log_file)
+    test_subgraphs = graph_partition(i, max_i, server, test_data.edge_index, test_data.num_nodes, num_subgraphs, partition_type='Ours', node_label=test_data.node_label if task_cfg.task_type == 'NC' else None, log_file=log_file)
+    end_time_partition = time.perf_counter()
+    log_file.write(f"[SNAPSHOT {i}/{max_i}] Time taken for Graph Partitioning: {end_time_partition - start_time_partition}\n")
 
     if task_cfg.task_type == 'NC':
+        start_time_label = time.perf_counter()
         count_label_occur(train_subgraphs, train_data.node_label)
+        end_time_label = time.perf_counter()
+        log_file.write(f"[SNAPSHOT {i}/{max_i}, NC]Time taken for Label Counting: {end_time_label - start_time_label}\n")
+
     ''' Server gets cce and construct server-side test data '''
+    start_time_ccn = time.perf_counter()
     cc_edges_train, _, _ = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
     print(f"Total number of cut edges: {sum(len(v) for v in cc_edges_train.values())}")
     server.record_ccn(cc_edges_train)
-
     cce_test, server_ei, server_el = get_cut_edges(test_subgraphs.tolist(), test_data.edge_index.tolist())
     server.construct_ccn_test_data(task_cfg.in_dim, server_ei, server_el, cce_test.keys())
+    end_time_ccn = time.perf_counter()
+    log_file.write(f"[SNAPSHOT {i}/{max_i}] Time taken for CCN Processing: {end_time_ccn - start_time_ccn}\n")
 
+    start_time_client = time.perf_counter()
+    # Client related operations
     client_sizes = [] # the training data size of each client (used for weighted aggregation)
     client_train, client_val, client_test = [], [], []
     # According to LP or NC, we allocate the train, val and test to FLLPDataset or FLNCDataset
@@ -238,14 +248,20 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
 
         # client_sizes.append(len(single_train.dataset.subnodes)) # Client data size is the number of subnodes a client has
         client_sizes.append(single_train.dataset.edge_index.shape[1]) # Client data size is the number of training edges a client has
+    end_time_client = time.perf_counter()
+    log_file.write(f"[SNAPSHOT {i}/{max_i}, RAY] Time taken for Client Data Construction: {end_time_client - start_time_client}\n")
 
+    start_time_fed = time.perf_counter()
     fed_train = FLFedDataset(client_train)
     fed_val = FLFedDataset(client_val)
     fed_test = FLFedDataset(client_test)
+    end_time_fed = time.perf_counter()
+    log_file.write(f"[SNAPSHOT {i}/{max_i}] Time taken for Fed Dataset Creation: {end_time_fed - start_time_fed}\n")
 
     return fed_train, fed_val, fed_test, client_sizes, global_size # changed data_size to total number of edges, not nodes
        
 def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, clients, tvt_mode, task_type):
+    # clients attention
     node_mask = (subgraph_label == client_idx)
     subnodes = torch.arange(data.num_nodes)[node_mask]
 
@@ -267,26 +283,25 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
         edge_label = torch.concat([data.edge_label[ei_mask], torch.zeros(data.edge_index[:, ei_mask].size(1))])
         # fed_data =  FLLPDataset(data.node_feature[node_mask], subnodes, data.edge_index[:, ei_mask], edge_label_index, edge_label, clients[client_idx].prev_edge_index, clients[client_idx])
         fed_data = Data(node_feature=data.node_feature[node_mask], edge_label_index=edge_label_index, edge_label=edge_label, subnodes=subnodes, 
-                        edge_feature=data.edge_feature[ei_mask], edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index,
-                        node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], location=clients[client_idx], keep_ratio=0.4)
+                        edge_feature=data.edge_feature[ei_mask], edge_index=data.edge_index[:, ei_mask],  previous_edge_index=ray.get(clients[client_idx].get_prev_edge_index.remote()),
+                        node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], keep_ratio=0.4, location = clients[client_idx])
         fed_data_loader = DataLoader(fed_data, batch_size=1)
 
     elif task_type == "NC":
         class_weights = compute_label_weights(data.node_label[node_mask])
         # fed_data = FLNCDataset(data.node_feature[node_mask], subnodes, data.edge_index[:, ei_mask], clients[client_idx].prev_edge_index, data.node_label[node_mask], class_weights, clients[client_idx])
         fed_data = Data(node_feature=data.node_feature[node_mask], node_label_index=subnodes, node_label=data.node_label[node_mask], subnodes=subnodes, 
-                        edge_index=data.edge_index[:, ei_mask],  previous_edge_index=clients[client_idx].prev_edge_index, edge_feature=data.edge_feature[ei_mask],
-                        class_weights=class_weights, location=clients[client_idx],
-                        node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], keep_ratio=0.8)
+                        edge_index=data.edge_index[:, ei_mask],  previous_edge_index=ray.get(clients[client_idx].get_prev_edge_index.remote()), edge_feature=data.edge_feature[ei_mask],
+                        class_weights=class_weights, node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], keep_ratio=0.8, location = clients[client_idx])
 
         fed_data_loader = DataLoader(fed_data, batch_size=1)
     if tvt_mode == "train":
-        clients[client_idx].prev_edge_index = subgraph_ei # Clients get new edge index in training by comparing with prev_edge_index
-        clients[client_idx].subnodes = subnodes
+        clients[client_idx].set_prev_edge_index.remote(subgraph_ei) # Clients get new edge index in training by comparing with prev_edge_index
+        clients[client_idx].set_subnodes.remote(subnodes)
     
     return fed_data_loader
 
-def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ours', node_label=None, tvt_type='test'):
+def graph_partition(i, max_i, server, edge_index, num_nodes, num_parts, log_file, partition_type='Ours', node_label=None, tvt_type='test'):
     """ 
     Stay consistent partition for TVT, so prev_partition is to record the partition of testing data (the most recent snapshot)
     Input server instance to store current partition and adj_list if needed
@@ -306,6 +321,7 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
     """
     # If previous partition exists, maintain consistency
     if partition_type == 'Ours' and server.node_assignment is not None and num_parts == server.num_subgraphs:
+        log_file.write(f"[SNAPSHOT {i}/{max_i}, WARNING] Same structure across snapshots, don't repartition\n")
         return server.node_assignment
 
     # Convert graph to undirected for partitioning
@@ -322,7 +338,6 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
     if tvt_type == 'train':
         server.construct_glob_adj_mtx(adjacency_list)
 
-    start_time = time.time()
     if partition_type == 'Metis':
         if num_parts > 1:
             _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
@@ -341,10 +356,6 @@ def graph_partition(server, edge_index, num_nodes, num_parts, partition_type='Ou
     else:
         print('E> Invalid partitioning algorithm specified. Options are {Metis, Louvain, Dirichlet, Ours}')
         exit(-1)
-
-    end_time = time.time()
-    print(f"Time taken to partition graph using {partition_type}: {end_time - start_time}")
-
     return torch.tensor(partitioning_labels)
 
 def gen_train_clients(total_num_edges, max_num_clients, num_edge_per_clients=510):

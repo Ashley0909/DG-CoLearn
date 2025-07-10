@@ -37,6 +37,9 @@ class Logger(object):
     def flush(self):
         pass
 
+    def isatty(self):
+        return False
+
 def download_url(url, save_path):
     response = requests.get(url, stream=True)
     file_path = os.path.join(save_path, url.split("/")[-1])

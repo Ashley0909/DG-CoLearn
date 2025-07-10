@@ -1,0 +1,1391 @@
+[MAIN, RAY] Ray cluster activated time: 0.00033230599728995003 seconds
+[MAIN] Config initialisation time: 0.06376530800116598 seconds
+[MAIN] Data loading time: 2.563273592000769 seconds
+[MAIN] Logger initialisation time: 0.00014378299965756014 seconds
+[MAIN, RAY] Client/Server creation time: 0.05886583400206291 seconds
+[MAIN] Plot configuration time: 0.07636673299930408 seconds
+[MAIN, RAY] local model initialization time: 3.649644237000757 seconds
+[SNAPSHOT 0/8] Time taken for Subgraph Generation: 2.7308000426273793e-05
+[SNAPSHOT 0/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 0/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 0/8] Time taken for Graph Partitioning: 2.4433968470002583
+[SNAPSHOT 0/8, NC]Time taken for Label Counting: 0.008872914000676246
+[SNAPSHOT 0/8] Time taken for CCN Processing: 0.035429380001005484
+[SNAPSHOT 2/8, RAY] Time taken for Client Data Construction: 0.3395622950010875
+[SNAPSHOT 2/8] Time taken for Fed Dataset Creation: 5.055899964645505e-05
+[SNAPSHOT 0/8] Time taken for dygl Initialisation: 6.331996701192111e-06
+[SNAPSHOT 0/8, RAY] Time taken for Distributing Models: 0.021079148002172587
+[SNAPSHOT 0/8, RAY] Time taken for Sampling Clients: 0.03311520400166046
+[SNAPSHOT 0/8] Time taken for Plotly Configuration: 0.01036247099909815
+[SNAPSHOT 0/8, RAY] Time taken for Initializing Optimizers: 0.03515129600054934
+[SNAPSHOT 0/8, RAY] Time taken for Initializing Optimizers: 0.03515129600054934
+[SNAPSHOT 0/8, RAY] Time taken for Pretraining Communication: 0.7511676700014505
+[SNAPSHOT 0/8, Round 0/10] Compare metrics initialization time: 0.001381525999022415
+[SNAPSHOT 0/8, Round 0/10, Epoch 0/5, RAY] Train time: 1.3362181659977068
+[SNAPSHOT 0/8, Round 0/10, Epoch 0/5, RAY] Local test and update metrics time: 0.49293523199958145
+[SNAPSHOT 0/8, Round 0/10, Epoch 1/5, RAY] Train time: 0.36656474499977776
+[SNAPSHOT 0/8, Round 0/10, Epoch 1/5, RAY] Local test and update metrics time: 0.42586863999895286
+[SNAPSHOT 0/8, Round 0/10, Epoch 2/5, RAY] Train time: 0.3295474580008886
+[SNAPSHOT 0/8, Round 0/10, Epoch 2/5, RAY] Local test and update metrics time: 0.36530842899810523
+[SNAPSHOT 0/8, Round 0/10, Epoch 3/5, RAY] Train time: 0.31310889000087627
+[SNAPSHOT 0/8, Round 0/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3699780219976674
+[SNAPSHOT 0/8, Round 0/10, Epoch 4/5, RAY] Train time: 0.31178834800084587
+[SNAPSHOT 0/8, Round 0/10, Epoch 4/5, RAY] Local test and update metrics time: 0.39288640699669486
+[SNAPSHOT 0/8, Round 0/10] Aggregation time: 0.009500385000137612
+[SNAPSHOT 0/8, Round 0/10] Global Test time: 0.1627459519986587
+[SNAPSHOT 0/8, Round 0/10, Epoch 4/5] Update metrics time: 0.00010843299969565123
+[SNAPSHOT 0/8, Round 0/10, NC] Update best metrics time: 6.949994713068008e-07
+[SNAPSHOT 0/8, Round 0/10] Update best model time: 1.6200283425860107e-07
+[SNAPSHOT 0/8, Round 1/10] Compare metrics initialization time: 0.0013688469989574514
+[SNAPSHOT 0/8, Round 1/10, Epoch 0/5, RAY] Train time: 0.35996921100013424
+[SNAPSHOT 0/8, Round 1/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4062075610017928
+[SNAPSHOT 0/8, Round 1/10, Epoch 1/5, RAY] Train time: 0.32202562000020407
+[SNAPSHOT 0/8, Round 1/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4160306510020746
+[SNAPSHOT 0/8, Round 1/10, Epoch 2/5, RAY] Train time: 0.3273624390021723
+[SNAPSHOT 0/8, Round 1/10, Epoch 2/5, RAY] Local test and update metrics time: 0.41540114500094205
+[SNAPSHOT 0/8, Round 1/10, Epoch 3/5, RAY] Train time: 0.31902040999921155
+[SNAPSHOT 0/8, Round 1/10, Epoch 3/5, RAY] Local test and update metrics time: 0.42404764099774184
+[SNAPSHOT 0/8, Round 1/10, Epoch 4/5, RAY] Train time: 0.3063809279992711
+[SNAPSHOT 0/8, Round 1/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3746519599990279
+[SNAPSHOT 0/8, Round 1/10] Aggregation time: 0.0019667289998324122
+[SNAPSHOT 0/8, Round 1/10] Global Test time: 0.06309693699950003
+[SNAPSHOT 0/8, Round 1/10, Epoch 4/5] Update metrics time: 0.00010884000221267343
+[SNAPSHOT 0/8, Round 1/10, NC] Update best metrics time: 6.640002538915724e-07
+[SNAPSHOT 0/8, Round 1/10] Update best model time: 1.6700141713954508e-07
+[SNAPSHOT 0/8, Round 2/10] Compare metrics initialization time: 0.0014909750025253743
+[SNAPSHOT 0/8, Round 2/10, Epoch 0/5, RAY] Train time: 0.3040963470011775
+[SNAPSHOT 0/8, Round 2/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4048023159994045
+[SNAPSHOT 0/8, Round 2/10, Epoch 1/5, RAY] Train time: 0.307137594998494
+[SNAPSHOT 0/8, Round 2/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4152039760010666
+[SNAPSHOT 0/8, Round 2/10, Epoch 2/5, RAY] Train time: 0.30794269000034546
+[SNAPSHOT 0/8, Round 2/10, Epoch 2/5, RAY] Local test and update metrics time: 0.40097333999801776
+[SNAPSHOT 0/8, Round 2/10, Epoch 3/5, RAY] Train time: 0.3287181400010013
+[SNAPSHOT 0/8, Round 2/10, Epoch 3/5, RAY] Local test and update metrics time: 0.39063480599725153
+[SNAPSHOT 0/8, Round 2/10, Epoch 4/5, RAY] Train time: 0.32901705599942943
+[SNAPSHOT 0/8, Round 2/10, Epoch 4/5, RAY] Local test and update metrics time: 0.35444520600140095
+[SNAPSHOT 0/8, Round 2/10] Aggregation time: 0.009769215001142584
+[SNAPSHOT 0/8, Round 2/10] Global Test time: 0.06661220400201273
+[SNAPSHOT 0/8, Round 2/10, Epoch 4/5] Update metrics time: 0.00011577199984458275
+[SNAPSHOT 0/8, Round 2/10, NC] Update best metrics time: 8.120005077216774e-07
+[SNAPSHOT 0/8, Round 2/10] Update best model time: 1.1900192475877702e-07
+[SNAPSHOT 0/8, Round 3/10] Compare metrics initialization time: 0.001382435999403242
+[SNAPSHOT 0/8, Round 3/10, Epoch 0/5, RAY] Train time: 0.30996954800139065
+[SNAPSHOT 0/8, Round 3/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4197165629993833
+[SNAPSHOT 0/8, Round 3/10, Epoch 1/5, RAY] Train time: 0.44639870100218104
+[SNAPSHOT 0/8, Round 3/10, Epoch 1/5, RAY] Local test and update metrics time: 0.44743692799966084
+[SNAPSHOT 0/8, Round 3/10, Epoch 2/5, RAY] Train time: 0.330860098998528
+[SNAPSHOT 0/8, Round 3/10, Epoch 2/5, RAY] Local test and update metrics time: 0.35692075599945383
+[SNAPSHOT 0/8, Round 3/10, Epoch 3/5, RAY] Train time: 0.3013406619975285
+[SNAPSHOT 0/8, Round 3/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3426001920015551
+[SNAPSHOT 0/8, Round 3/10, Epoch 4/5, RAY] Train time: 0.3047279480015277
+[SNAPSHOT 0/8, Round 3/10, Epoch 4/5, RAY] Local test and update metrics time: 0.36844478599959984
+[SNAPSHOT 0/8, Round 3/10] Aggregation time: 0.009455574996536598
+[SNAPSHOT 0/8, Round 3/10] Global Test time: 0.06825881300028414
+[SNAPSHOT 0/8, Round 3/10, Epoch 4/5] Update metrics time: 0.0001141540014941711
+[SNAPSHOT 0/8, Round 3/10, NC] Update best metrics time: 8.790011634118855e-07
+[SNAPSHOT 0/8, Round 3/10] Update best model time: 1.2899909052066505e-07
+[SNAPSHOT 0/8, Round 4/10] Compare metrics initialization time: 0.001519057997938944
+[SNAPSHOT 0/8, Round 4/10, Epoch 0/5, RAY] Train time: 0.3196436719990743
+[SNAPSHOT 0/8, Round 4/10, Epoch 0/5, RAY] Local test and update metrics time: 0.39644652100105304
+[SNAPSHOT 0/8, Round 4/10, Epoch 1/5, RAY] Train time: 0.3290224800002761
+[SNAPSHOT 0/8, Round 4/10, Epoch 1/5, RAY] Local test and update metrics time: 0.41768945199873997
+[SNAPSHOT 0/8, Round 4/10, Epoch 2/5, RAY] Train time: 0.3436832820007112
+[SNAPSHOT 0/8, Round 4/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4347570350000751
+[SNAPSHOT 0/8, Round 4/10, Epoch 3/5, RAY] Train time: 0.3278580250007508
+[SNAPSHOT 0/8, Round 4/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3736762300031842
+[SNAPSHOT 0/8, Round 4/10, Epoch 4/5, RAY] Train time: 0.3608198999972956
+[SNAPSHOT 0/8, Round 4/10, Epoch 4/5, RAY] Local test and update metrics time: 0.38676119899901096
+[SNAPSHOT 0/8, Round 4/10] Aggregation time: 0.009979383001336828
+[SNAPSHOT 0/8, Round 4/10] Global Test time: 0.07085601899962057
+[SNAPSHOT 0/8, Round 4/10, Epoch 4/5] Update metrics time: 0.0001071719998435583
+[SNAPSHOT 0/8, Round 4/10, NC] Update best metrics time: 8.090028131846339e-07
+[SNAPSHOT 0/8, Round 4/10] Update best model time: 1.270018401555717e-07
+[SNAPSHOT 0/8, Round 5/10] Compare metrics initialization time: 0.0013878580029995646
+[SNAPSHOT 0/8, Round 5/10, Epoch 0/5, RAY] Train time: 0.3678848650015425
+[SNAPSHOT 0/8, Round 5/10, Epoch 0/5, RAY] Local test and update metrics time: 0.41112024700123584
+[SNAPSHOT 0/8, Round 5/10, Epoch 1/5, RAY] Train time: 0.3423501640027098
+[SNAPSHOT 0/8, Round 5/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4065670560012222
+[SNAPSHOT 0/8, Round 5/10, Epoch 2/5, RAY] Train time: 0.33276168999873335
+[SNAPSHOT 0/8, Round 5/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4015942830010317
+[SNAPSHOT 0/8, Round 5/10, Epoch 3/5, RAY] Train time: 0.33053184199889074
+[SNAPSHOT 0/8, Round 5/10, Epoch 3/5, RAY] Local test and update metrics time: 0.43269098999735434
+[SNAPSHOT 0/8, Round 5/10, Epoch 4/5, RAY] Train time: 0.3331070220010588
+[SNAPSHOT 0/8, Round 5/10, Epoch 4/5, RAY] Local test and update metrics time: 0.4278976560017327
+[SNAPSHOT 0/8, Round 5/10] Aggregation time: 0.009407571000338066
+[SNAPSHOT 0/8, Round 5/10] Global Test time: 0.06412361799812061
+[SNAPSHOT 0/8, Round 5/10, Epoch 4/5] Update metrics time: 0.00010255799861624837
+[SNAPSHOT 0/8, Round 5/10, NC] Update best metrics time: 8.649985829833895e-07
+[SNAPSHOT 0/8, Round 5/10] Update best model time: 1.7399725038558245e-07
+[SNAPSHOT 0/8, Round 6/10] Compare metrics initialization time: 0.0013805609996779822
+[SNAPSHOT 0/8, Round 6/10, Epoch 0/5, RAY] Train time: 0.35685869400185766
+[SNAPSHOT 0/8, Round 6/10, Epoch 0/5, RAY] Local test and update metrics time: 0.44012170800124295
+[SNAPSHOT 0/8, Round 6/10, Epoch 1/5, RAY] Train time: 0.32488791500145453
+[SNAPSHOT 0/8, Round 6/10, Epoch 1/5, RAY] Local test and update metrics time: 0.456563671999902
+[SNAPSHOT 0/8, Round 6/10, Epoch 2/5, RAY] Train time: 0.33455620300082956
+[SNAPSHOT 0/8, Round 6/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4644084939973254
+[SNAPSHOT 0/8, Round 6/10, Epoch 3/5, RAY] Train time: 0.3479385770006047
+[SNAPSHOT 0/8, Round 6/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4835674879977887
+[SNAPSHOT 0/8, Round 6/10, Epoch 4/5, RAY] Train time: 0.38378668099903734
+[SNAPSHOT 0/8, Round 6/10, Epoch 4/5, RAY] Local test and update metrics time: 0.4648835459993279
+[SNAPSHOT 0/8, Round 6/10] Aggregation time: 0.009374008001032053
+[SNAPSHOT 0/8, Round 6/10] Global Test time: 0.08253285300088464
+[SNAPSHOT 0/8, Round 6/10, Epoch 4/5] Update metrics time: 0.00013139099974068813
+[SNAPSHOT 0/8, Round 6/10, NC] Update best metrics time: 1.1510019248817116e-06
+[SNAPSHOT 0/8, Round 6/10] Update best model time: 1.2600139598362148e-07
+[SNAPSHOT 0/8, Round 7/10] Compare metrics initialization time: 0.001404171998728998
+[SNAPSHOT 0/8, Round 7/10, Epoch 0/5, RAY] Train time: 0.3745809530009865
+[SNAPSHOT 0/8, Round 7/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4899885510021704
+[SNAPSHOT 0/8, Round 7/10, Epoch 1/5, RAY] Train time: 0.3561546349992568
+[SNAPSHOT 0/8, Round 7/10, Epoch 1/5, RAY] Local test and update metrics time: 0.44022297999981674
+[SNAPSHOT 0/8, Round 7/10, Epoch 2/5, RAY] Train time: 0.338931379999849
+[SNAPSHOT 0/8, Round 7/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4641256049981166
+[SNAPSHOT 0/8, Round 7/10, Epoch 3/5, RAY] Train time: 0.35090075499829254
+[SNAPSHOT 0/8, Round 7/10, Epoch 3/5, RAY] Local test and update metrics time: 0.37749237599928165
+[SNAPSHOT 0/8, Round 7/10, Epoch 4/5, RAY] Train time: 0.35021083900210215
+[SNAPSHOT 0/8, Round 7/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3265370629997051
+[SNAPSHOT 0/8, Round 7/10] Aggregation time: 0.009032824000314577
+[SNAPSHOT 0/8, Round 7/10] Global Test time: 0.06817441699968185
+[SNAPSHOT 0/8, Round 7/10, Epoch 4/5] Update metrics time: 0.0001022850010485854
+[SNAPSHOT 0/8, Round 7/10, NC] Update best metrics time: 7.319977157749236e-07
+[SNAPSHOT 0/8, Round 7/10] Update best model time: 1.0400253813713789e-07
+[SNAPSHOT 0/8, Round 8/10] Compare metrics initialization time: 0.0013947509978606831
+[SNAPSHOT 0/8, Round 8/10, Epoch 0/5, RAY] Train time: 0.3455603919974237
+[SNAPSHOT 0/8, Round 8/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4654719190002652
+[SNAPSHOT 0/8, Round 8/10, Epoch 1/5, RAY] Train time: 0.3580779869989783
+[SNAPSHOT 0/8, Round 8/10, Epoch 1/5, RAY] Local test and update metrics time: 0.38330675399993197
+[SNAPSHOT 0/8, Round 8/10, Epoch 2/5, RAY] Train time: 0.30282295100187184
+[SNAPSHOT 0/8, Round 8/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4806224909989396
+[SNAPSHOT 0/8, Round 8/10, Epoch 3/5, RAY] Train time: 0.33598184999937075
+[SNAPSHOT 0/8, Round 8/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3974195819973829
+[SNAPSHOT 0/8, Round 8/10, Epoch 4/5, RAY] Train time: 0.3239816770001198
+[SNAPSHOT 0/8, Round 8/10, Epoch 4/5, RAY] Local test and update metrics time: 0.36031502799960435
+[SNAPSHOT 0/8, Round 8/10] Aggregation time: 0.010159650002606213
+[SNAPSHOT 0/8, Round 8/10] Global Test time: 0.08157683700119378
+[SNAPSHOT 0/8, Round 8/10, Epoch 4/5] Update metrics time: 0.00010600599853205495
+[SNAPSHOT 0/8, Round 8/10, NC] Update best metrics time: 1.0270014172419906e-06
+[SNAPSHOT 0/8, Round 8/10] Update best model time: 1.270018401555717e-07
+[SNAPSHOT 0/8, Round 9/10] Compare metrics initialization time: 0.0013809500014758669
+[SNAPSHOT 0/8, Round 9/10, Epoch 0/5, RAY] Train time: 0.3391851200030942
+[SNAPSHOT 0/8, Round 9/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4167044320020068
+[SNAPSHOT 0/8, Round 9/10, Epoch 1/5, RAY] Train time: 0.33279898399996455
+[SNAPSHOT 0/8, Round 9/10, Epoch 1/5, RAY] Local test and update metrics time: 0.40294925499983947
+[SNAPSHOT 0/8, Round 9/10, Epoch 2/5, RAY] Train time: 0.33839269800228067
+[SNAPSHOT 0/8, Round 9/10, Epoch 2/5, RAY] Local test and update metrics time: 0.39056772199910483
+[SNAPSHOT 0/8, Round 9/10, Epoch 3/5, RAY] Train time: 0.313292183996964
+[SNAPSHOT 0/8, Round 9/10, Epoch 3/5, RAY] Local test and update metrics time: 0.34296761600126047
+[SNAPSHOT 0/8, Round 9/10, Epoch 4/5, RAY] Train time: 0.34191858299891464
+[SNAPSHOT 0/8, Round 9/10, Epoch 4/5, RAY] Local test and update metrics time: 0.37055513500308734
+[SNAPSHOT 0/8, Round 9/10] Aggregation time: 0.010551155999564799
+[SNAPSHOT 0/8, Round 9/10] Global Test time: 0.07168328000261681
+[SNAPSHOT 0/8, Round 9/10, Epoch 4/5] Update metrics time: 0.00010559499787632376
+[SNAPSHOT 0/8, Round 9/10, NC] Update best metrics time: 8.669994713272899e-07
+[SNAPSHOT 0/8, Round 9/10] Update best model time: 1.1399970389902592e-07
+[SNAPSHOT 0/8] Model save time: 0.0006760379983461462
+[MAIN, RAY] Prev_ne update time: 0.32105721299740253 seconds
+[SNAPSHOT 1/8] Time taken for Subgraph Generation: 0.0001342960022157058
+[SNAPSHOT 1/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 1/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 1/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 1/8] Time taken for Graph Partitioning: 0.07561797399830539
+[SNAPSHOT 1/8, NC]Time taken for Label Counting: 0.008819377999316202
+[SNAPSHOT 1/8] Time taken for CCN Processing: 0.04026915600115899
+[SNAPSHOT 2/8, RAY] Time taken for Client Data Construction: 0.3186786000005668
+[SNAPSHOT 2/8] Time taken for Fed Dataset Creation: 5.232900002738461e-05
+[SNAPSHOT 1/8] Time taken for dygl Initialisation: 1.2934000551467761e-05
+[SNAPSHOT 1/8, RAY] Time taken for Distributing Models: 0.05296497999734129
+[SNAPSHOT 1/8, RAY] Time taken for Sampling Clients: 0.03239686799861374
+[SNAPSHOT 1/8] Time taken for Plotly Configuration: 0.010732416001701495
+[SNAPSHOT 1/8, RAY] Time taken for Initializing Optimizers: 0.03700643499905709
+[SNAPSHOT 1/8, RAY] Time taken for Initializing Optimizers: 0.03700643499905709
+[SNAPSHOT 1/8, RAY] Time taken for Pretraining Communication: 37.48645791099989
+[SNAPSHOT 1/8, Round 0/10] Compare metrics initialization time: 0.0013659110009029973
+[SNAPSHOT 1/8, Round 0/10, Epoch 0/5, RAY] Train time: 0.689455840998562
+[SNAPSHOT 1/8, Round 0/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4957836719986517
+[SNAPSHOT 1/8, Round 0/10, Epoch 1/5, RAY] Train time: 0.36423070700038807
+[SNAPSHOT 1/8, Round 0/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4023780909992638
+[SNAPSHOT 1/8, Round 0/10, Epoch 2/5, RAY] Train time: 0.34289576100127306
+[SNAPSHOT 1/8, Round 0/10, Epoch 2/5, RAY] Local test and update metrics time: 0.39501845000268077
+[SNAPSHOT 1/8, Round 0/10, Epoch 3/5, RAY] Train time: 0.3456327700005204
+[SNAPSHOT 1/8, Round 0/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4988754609985335
+[SNAPSHOT 1/8, Round 0/10, Epoch 4/5, RAY] Train time: 0.3461931019992335
+[SNAPSHOT 1/8, Round 0/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3766923420007515
+[SNAPSHOT 1/8, Round 0/10] Aggregation time: 0.009924080997734563
+[SNAPSHOT 1/8, Round 0/10] Global Test time: 0.07156712299911305
+[SNAPSHOT 1/8, Round 0/10, Epoch 4/5] Update metrics time: 0.00013615699936053716
+[SNAPSHOT 1/8, Round 0/10, NC] Update best metrics time: 5.980000423733145e-07
+[SNAPSHOT 1/8, Round 0/10] Update best model time: 1.1500014807097614e-07
+[SNAPSHOT 1/8, Round 1/10] Compare metrics initialization time: 0.001402760997734731
+[SNAPSHOT 1/8, Round 1/10, Epoch 0/5, RAY] Train time: 0.3330120030004764
+[SNAPSHOT 1/8, Round 1/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4032002050007577
+[SNAPSHOT 1/8, Round 1/10, Epoch 1/5, RAY] Train time: 0.32967431400174974
+[SNAPSHOT 1/8, Round 1/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3295059209995088
+[SNAPSHOT 1/8, Round 1/10, Epoch 2/5, RAY] Train time: 0.3324200699971698
+[SNAPSHOT 1/8, Round 1/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4150577619984688
+[SNAPSHOT 1/8, Round 1/10, Epoch 3/5, RAY] Train time: 0.3262341520021437
+[SNAPSHOT 1/8, Round 1/10, Epoch 3/5, RAY] Local test and update metrics time: 0.33444176299963146
+[SNAPSHOT 1/8, Round 1/10, Epoch 4/5, RAY] Train time: 0.33940224400066654
+[SNAPSHOT 1/8, Round 1/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3260503819983569
+[SNAPSHOT 1/8, Round 1/10] Aggregation time: 0.009523381002509268
+[SNAPSHOT 1/8, Round 1/10] Global Test time: 0.07174077500167186
+[SNAPSHOT 1/8, Round 1/10, Epoch 4/5] Update metrics time: 0.00011246299982303753
+[SNAPSHOT 1/8, Round 1/10, NC] Update best metrics time: 7.929993444122374e-07
+[SNAPSHOT 1/8, Round 1/10] Update best model time: 1.0700023267418146e-07
+[SNAPSHOT 1/8, Round 2/10] Compare metrics initialization time: 0.0013926709980296437
+[SNAPSHOT 1/8, Round 2/10, Epoch 0/5, RAY] Train time: 0.3241354310011957
+[SNAPSHOT 1/8, Round 2/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4230167669993534
+[SNAPSHOT 1/8, Round 2/10, Epoch 1/5, RAY] Train time: 0.33498115800102823
+[SNAPSHOT 1/8, Round 2/10, Epoch 1/5, RAY] Local test and update metrics time: 0.33872822299963445
+[SNAPSHOT 1/8, Round 2/10, Epoch 2/5, RAY] Train time: 0.33049450700127636
+[SNAPSHOT 1/8, Round 2/10, Epoch 2/5, RAY] Local test and update metrics time: 0.38033698800063576
+[SNAPSHOT 1/8, Round 2/10, Epoch 3/5, RAY] Train time: 0.3700093840016052
+[SNAPSHOT 1/8, Round 2/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3459679359984875
+[SNAPSHOT 1/8, Round 2/10, Epoch 4/5, RAY] Train time: 0.3497909739999159
+[SNAPSHOT 1/8, Round 2/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3488857869997446
+[SNAPSHOT 1/8, Round 2/10] Aggregation time: 0.008614292000856949
+[SNAPSHOT 1/8, Round 2/10] Global Test time: 0.07307768399914494
+[SNAPSHOT 1/8, Round 2/10, Epoch 4/5] Update metrics time: 0.00011463000191724859
+[SNAPSHOT 1/8, Round 2/10, NC] Update best metrics time: 6.660011422354728e-07
+[SNAPSHOT 1/8, Round 2/10] Update best model time: 1.0999792721122503e-07
+[SNAPSHOT 1/8, Round 3/10] Compare metrics initialization time: 0.001511505000962643
+[SNAPSHOT 1/8, Round 3/10, Epoch 0/5, RAY] Train time: 0.35053070800131536
+[SNAPSHOT 1/8, Round 3/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5006674510004814
+[SNAPSHOT 1/8, Round 3/10, Epoch 1/5, RAY] Train time: 0.35329519099832396
+[SNAPSHOT 1/8, Round 3/10, Epoch 1/5, RAY] Local test and update metrics time: 0.46124899800270214
+[SNAPSHOT 1/8, Round 3/10, Epoch 2/5, RAY] Train time: 0.3620772840004065
+[SNAPSHOT 1/8, Round 3/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3866247280020616
+[SNAPSHOT 1/8, Round 3/10, Epoch 3/5, RAY] Train time: 0.3411878160004562
+[SNAPSHOT 1/8, Round 3/10, Epoch 3/5, RAY] Local test and update metrics time: 0.34393215700038127
+[SNAPSHOT 1/8, Round 3/10, Epoch 4/5, RAY] Train time: 0.3372561080032028
+[SNAPSHOT 1/8, Round 3/10, Epoch 4/5, RAY] Local test and update metrics time: 0.32942773000104353
+[SNAPSHOT 1/8, Round 3/10] Aggregation time: 0.008641308999358444
+[SNAPSHOT 1/8, Round 3/10] Global Test time: 0.060587033000047086
+[SNAPSHOT 1/8, Round 3/10, Epoch 4/5] Update metrics time: 0.00011485399954835884
+[SNAPSHOT 1/8, Round 3/10, NC] Update best metrics time: 6.609989213757217e-07
+[SNAPSHOT 1/8, Round 3/10] Update best model time: 1.320004230365157e-07
+[SNAPSHOT 1/8, Round 4/10] Compare metrics initialization time: 0.0015132250009628478
+[SNAPSHOT 1/8, Round 4/10, Epoch 0/5, RAY] Train time: 0.3324537100015732
+[SNAPSHOT 1/8, Round 4/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4841992779984139
+[SNAPSHOT 1/8, Round 4/10, Epoch 1/5, RAY] Train time: 0.34655775699866354
+[SNAPSHOT 1/8, Round 4/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3384550369992212
+[SNAPSHOT 1/8, Round 4/10, Epoch 2/5, RAY] Train time: 0.3311899540021841
+[SNAPSHOT 1/8, Round 4/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3542177859999356
+[SNAPSHOT 1/8, Round 4/10, Epoch 3/5, RAY] Train time: 0.3232505259984464
+[SNAPSHOT 1/8, Round 4/10, Epoch 3/5, RAY] Local test and update metrics time: 0.346587758998794
+[SNAPSHOT 1/8, Round 4/10, Epoch 4/5, RAY] Train time: 0.37647103299968876
+[SNAPSHOT 1/8, Round 4/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3470801389994449
+[SNAPSHOT 1/8, Round 4/10] Aggregation time: 0.005292613997880835
+[SNAPSHOT 1/8, Round 4/10] Global Test time: 0.06377974999850267
+[SNAPSHOT 1/8, Round 4/10, Epoch 4/5] Update metrics time: 0.00011692000043694861
+[SNAPSHOT 1/8, Round 4/10] Update best model time: 2.500019036233425e-07
+[SNAPSHOT 1/8, Round 5/10] Compare metrics initialization time: 0.0013850190007360652
+[SNAPSHOT 1/8, Round 5/10, Epoch 0/5, RAY] Train time: 0.33083746600095765
+[SNAPSHOT 1/8, Round 5/10, Epoch 0/5, RAY] Local test and update metrics time: 0.475795199003187
+[SNAPSHOT 1/8, Round 5/10, Epoch 1/5, RAY] Train time: 0.3625270900010946
+[SNAPSHOT 1/8, Round 5/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4114720940015104
+[SNAPSHOT 1/8, Round 5/10, Epoch 2/5, RAY] Train time: 0.30596807099936996
+[SNAPSHOT 1/8, Round 5/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3854372690002492
+[SNAPSHOT 1/8, Round 5/10, Epoch 3/5, RAY] Train time: 0.32347287599986885
+[SNAPSHOT 1/8, Round 5/10, Epoch 3/5, RAY] Local test and update metrics time: 0.43628904100114596
+[SNAPSHOT 1/8, Round 5/10, Epoch 4/5, RAY] Train time: 0.3333381009979348
+[SNAPSHOT 1/8, Round 5/10, Epoch 4/5, RAY] Local test and update metrics time: 0.31731084499915596
+[SNAPSHOT 1/8, Round 5/10] Aggregation time: 0.009307693999289768
+[SNAPSHOT 1/8, Round 5/10] Global Test time: 0.06817379199856077
+[SNAPSHOT 1/8, Round 5/10, Epoch 4/5] Update metrics time: 0.00010793100227601826
+[SNAPSHOT 1/8, Round 5/10] Update best model time: 2.2899985197000206e-07
+[SNAPSHOT 1/8, Round 6/10] Compare metrics initialization time: 0.0013631289984914474
+[SNAPSHOT 1/8, Round 6/10, Epoch 0/5, RAY] Train time: 0.32949796300090384
+[SNAPSHOT 1/8, Round 6/10, Epoch 0/5, RAY] Local test and update metrics time: 0.45835105999867665
+[SNAPSHOT 1/8, Round 6/10, Epoch 1/5, RAY] Train time: 0.3365133980005339
+[SNAPSHOT 1/8, Round 6/10, Epoch 1/5, RAY] Local test and update metrics time: 0.38103293500171276
+[SNAPSHOT 1/8, Round 6/10, Epoch 2/5, RAY] Train time: 0.32486503399923095
+[SNAPSHOT 1/8, Round 6/10, Epoch 2/5, RAY] Local test and update metrics time: 0.33074909600327373
+[SNAPSHOT 1/8, Round 6/10, Epoch 3/5, RAY] Train time: 0.3190233300010732
+[SNAPSHOT 1/8, Round 6/10, Epoch 3/5, RAY] Local test and update metrics time: 0.33930513999803225
+[SNAPSHOT 1/8, Round 6/10, Epoch 4/5, RAY] Train time: 0.33910449399991194
+[SNAPSHOT 1/8, Round 6/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3562146029980795
+[SNAPSHOT 1/8, Round 6/10] Aggregation time: 0.00926901899947552
+[SNAPSHOT 1/8, Round 6/10] Global Test time: 0.07010218000141322
+[SNAPSHOT 1/8, Round 6/10, Epoch 4/5] Update metrics time: 0.00011225699927308597
+[SNAPSHOT 1/8, Round 6/10] Update best model time: 2.3699976736679673e-07
+[SNAPSHOT 1/8, Round 7/10] Compare metrics initialization time: 0.0014227430001483299
+[SNAPSHOT 1/8, Round 7/10, Epoch 0/5, RAY] Train time: 0.3502185739998822
+[SNAPSHOT 1/8, Round 7/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5088973689998966
+[SNAPSHOT 1/8, Round 7/10, Epoch 1/5, RAY] Train time: 0.3925052280028467
+[SNAPSHOT 1/8, Round 7/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4224800590018276
+[SNAPSHOT 1/8, Round 7/10, Epoch 2/5, RAY] Train time: 0.37008441999932984
+[SNAPSHOT 1/8, Round 7/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4343668749970675
+[SNAPSHOT 1/8, Round 7/10, Epoch 3/5, RAY] Train time: 0.36769948700020905
+[SNAPSHOT 1/8, Round 7/10, Epoch 3/5, RAY] Local test and update metrics time: 0.34772896399954334
+[SNAPSHOT 1/8, Round 7/10, Epoch 4/5, RAY] Train time: 0.35789699499946437
+[SNAPSHOT 1/8, Round 7/10, Epoch 4/5, RAY] Local test and update metrics time: 0.42206796100072097
+[SNAPSHOT 1/8, Round 7/10] Aggregation time: 0.009781470998859731
+[SNAPSHOT 1/8, Round 7/10] Global Test time: 0.06824063900057808
+[SNAPSHOT 1/8, Round 7/10, Epoch 4/5] Update metrics time: 0.00011223299952689558
+[SNAPSHOT 1/8, Round 7/10] Update best model time: 3.339991963002831e-07
+[SNAPSHOT 1/8, Round 8/10] Compare metrics initialization time: 0.0014019430018379353
+[SNAPSHOT 1/8, Round 8/10, Epoch 0/5, RAY] Train time: 0.35926538899730076
+[SNAPSHOT 1/8, Round 8/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5142740459996276
+[SNAPSHOT 1/8, Round 8/10, Epoch 1/5, RAY] Train time: 0.3731651319976663
+[SNAPSHOT 1/8, Round 8/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4283490730013
+[SNAPSHOT 1/8, Round 8/10, Epoch 2/5, RAY] Train time: 0.37088692399993306
+[SNAPSHOT 1/8, Round 8/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4852046469968627
+[SNAPSHOT 1/8, Round 8/10, Epoch 3/5, RAY] Train time: 0.3690515369999048
+[SNAPSHOT 1/8, Round 8/10, Epoch 3/5, RAY] Local test and update metrics time: 0.34416678399793454
+[SNAPSHOT 1/8, Round 8/10, Epoch 4/5, RAY] Train time: 0.35856814999715425
+[SNAPSHOT 1/8, Round 8/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3626206630033266
+[SNAPSHOT 1/8, Round 8/10] Aggregation time: 0.00498692899782327
+[SNAPSHOT 1/8, Round 8/10] Global Test time: 0.0657254819998343
+[SNAPSHOT 1/8, Round 8/10, Epoch 4/5] Update metrics time: 0.00010862799899769016
+[SNAPSHOT 1/8, Round 8/10] Update best model time: 2.540000423323363e-07
+[SNAPSHOT 1/8, Round 9/10] Compare metrics initialization time: 0.0015325730018957984
+[SNAPSHOT 1/8, Round 9/10, Epoch 0/5, RAY] Train time: 0.3742213149998861
+[SNAPSHOT 1/8, Round 9/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5171840179973515
+[SNAPSHOT 1/8, Round 9/10, Epoch 1/5, RAY] Train time: 0.38328591599929496
+[SNAPSHOT 1/8, Round 9/10, Epoch 1/5, RAY] Local test and update metrics time: 0.40142373200069414
+[SNAPSHOT 1/8, Round 9/10, Epoch 2/5, RAY] Train time: 0.34734020499672624
+[SNAPSHOT 1/8, Round 9/10, Epoch 2/5, RAY] Local test and update metrics time: 0.38135704299929785
+[SNAPSHOT 1/8, Round 9/10, Epoch 3/5, RAY] Train time: 0.34692517099756515
+[SNAPSHOT 1/8, Round 9/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3629479170012928
+[SNAPSHOT 1/8, Round 9/10, Epoch 4/5, RAY] Train time: 0.3313685350003652
+[SNAPSHOT 1/8, Round 9/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3594946209996124
+[SNAPSHOT 1/8, Round 9/10] Aggregation time: 0.00944045099822688
+[SNAPSHOT 1/8, Round 9/10] Global Test time: 0.08272227199995541
+[SNAPSHOT 1/8, Round 9/10, Epoch 4/5] Update metrics time: 0.00011472899859654717
+[SNAPSHOT 1/8, Round 9/10] Update best model time: 2.580018190201372e-07
+[SNAPSHOT 1/8] Model save time: 0.0005181059968890622
+[MAIN, RAY] Prev_ne update time: 0.30871466399912606 seconds
+[SNAPSHOT 2/8] Time taken for Subgraph Generation: 0.000304955003230134
+[SNAPSHOT 2/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 2/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 2/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 2/8] Time taken for Graph Partitioning: 0.0879113970004255
+[SNAPSHOT 2/8, NC]Time taken for Label Counting: 0.008919089999835705
+[SNAPSHOT 2/8] Time taken for CCN Processing: 0.04295682700103498
+[SNAPSHOT 2/8, RAY] Time taken for Client Data Construction: 0.4266969250020338
+[SNAPSHOT 2/8] Time taken for Fed Dataset Creation: 4.8866997531149536e-05
+[SNAPSHOT 2/8] Time taken for dygl Initialisation: 5.271998816169798e-06
+[SNAPSHOT 2/8, RAY] Time taken for Distributing Models: 0.028601317997527076
+[SNAPSHOT 2/8, RAY] Time taken for Sampling Clients: 0.03182415499759372
+[SNAPSHOT 2/8] Time taken for Plotly Configuration: 0.01038897100079339
+[SNAPSHOT 2/8, RAY] Time taken for Initializing Optimizers: 0.03612473300017882
+[SNAPSHOT 2/8, RAY] Time taken for Initializing Optimizers: 0.03612473300017882
+[SNAPSHOT 2/8, RAY] Time taken for Pretraining Communication: 51.49269277900021
+[SNAPSHOT 2/8, Round 0/10] Compare metrics initialization time: 0.001710696000372991
+[SNAPSHOT 2/8, Round 0/10, Epoch 0/5, RAY] Train time: 0.4988491720032471
+[SNAPSHOT 2/8, Round 0/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4965164770001138
+[SNAPSHOT 2/8, Round 0/10, Epoch 1/5, RAY] Train time: 0.3841459089999262
+[SNAPSHOT 2/8, Round 0/10, Epoch 1/5, RAY] Local test and update metrics time: 0.44803646999935154
+[SNAPSHOT 2/8, Round 0/10, Epoch 2/5, RAY] Train time: 0.37627675800104043
+[SNAPSHOT 2/8, Round 0/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4973232789998292
+[SNAPSHOT 2/8, Round 0/10, Epoch 3/5, RAY] Train time: 0.35340547599844285
+[SNAPSHOT 2/8, Round 0/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4652275970001938
+[SNAPSHOT 2/8, Round 0/10, Epoch 4/5, RAY] Train time: 0.3679557319992455
+[SNAPSHOT 2/8, Round 0/10, Epoch 4/5, RAY] Local test and update metrics time: 0.5237958389989217
+[SNAPSHOT 2/8, Round 0/10] Aggregation time: 0.00926794100087136
+[SNAPSHOT 2/8, Round 0/10] Global Test time: 0.06911398400188773
+[SNAPSHOT 2/8, Round 0/10, Epoch 4/5] Update metrics time: 0.00011308200191706419
+[SNAPSHOT 2/8, Round 0/10, NC] Update best metrics time: 6.980008038226515e-07
+[SNAPSHOT 2/8, Round 0/10] Update best model time: 1.0300209396518767e-07
+[SNAPSHOT 2/8, Round 1/10] Compare metrics initialization time: 0.001393229998939205
+[SNAPSHOT 2/8, Round 1/10, Epoch 0/5, RAY] Train time: 0.38660099399930914
+[SNAPSHOT 2/8, Round 1/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5236196430014388
+[SNAPSHOT 2/8, Round 1/10, Epoch 1/5, RAY] Train time: 0.3699027990005561
+[SNAPSHOT 2/8, Round 1/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4862498330003291
+[SNAPSHOT 2/8, Round 1/10, Epoch 2/5, RAY] Train time: 0.40146668099987437
+[SNAPSHOT 2/8, Round 1/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4172019889992953
+[SNAPSHOT 2/8, Round 1/10, Epoch 3/5, RAY] Train time: 0.3684382920000644
+[SNAPSHOT 2/8, Round 1/10, Epoch 3/5, RAY] Local test and update metrics time: 0.39152465499864775
+[SNAPSHOT 2/8, Round 1/10, Epoch 4/5, RAY] Train time: 0.36168108000128996
+[SNAPSHOT 2/8, Round 1/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3794933300014236
+[SNAPSHOT 2/8, Round 1/10] Aggregation time: 0.009857434997684322
+[SNAPSHOT 2/8, Round 1/10] Global Test time: 0.07933011400018586
+[SNAPSHOT 2/8, Round 1/10, Epoch 4/5] Update metrics time: 0.0001969110016943887
+[SNAPSHOT 2/8, Round 1/10, NC] Update best metrics time: 1.3809985830448568e-06
+[SNAPSHOT 2/8, Round 1/10] Update best model time: 2.0199877326376736e-07
+[SNAPSHOT 2/8, Round 2/10] Compare metrics initialization time: 0.0020594609995896462
+[SNAPSHOT 2/8, Round 2/10, Epoch 0/5, RAY] Train time: 0.350865224001609
+[SNAPSHOT 2/8, Round 2/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5043704310010071
+[SNAPSHOT 2/8, Round 2/10, Epoch 1/5, RAY] Train time: 0.37231398599760723
+[SNAPSHOT 2/8, Round 2/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4854605860018637
+[SNAPSHOT 2/8, Round 2/10, Epoch 2/5, RAY] Train time: 0.33916410799793084
+[SNAPSHOT 2/8, Round 2/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4258157760014001
+[SNAPSHOT 2/8, Round 2/10, Epoch 3/5, RAY] Train time: 0.3572765530007018
+[SNAPSHOT 2/8, Round 2/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4032113829998707
+[SNAPSHOT 2/8, Round 2/10, Epoch 4/5, RAY] Train time: 0.335496346000582
+[SNAPSHOT 2/8, Round 2/10, Epoch 4/5, RAY] Local test and update metrics time: 0.38023343500026385
+[SNAPSHOT 2/8, Round 2/10] Aggregation time: 0.009584540002833819
+[SNAPSHOT 2/8, Round 2/10] Global Test time: 0.06855944900235045
+[SNAPSHOT 2/8, Round 2/10, Epoch 4/5] Update metrics time: 0.00011315400115563534
+[SNAPSHOT 2/8, Round 2/10, NC] Update best metrics time: 7.250018825288862e-07
+[SNAPSHOT 2/8, Round 2/10] Update best model time: 1.1700103641487658e-07
+[SNAPSHOT 2/8, Round 3/10] Compare metrics initialization time: 0.0013976209993415978
+[SNAPSHOT 2/8, Round 3/10, Epoch 0/5, RAY] Train time: 0.34532867300004
+[SNAPSHOT 2/8, Round 3/10, Epoch 0/5, RAY] Local test and update metrics time: 0.44541413599654334
+[SNAPSHOT 2/8, Round 3/10, Epoch 1/5, RAY] Train time: 0.40703436299736495
+[SNAPSHOT 2/8, Round 3/10, Epoch 1/5, RAY] Local test and update metrics time: 0.5021218490001047
+[SNAPSHOT 2/8, Round 3/10, Epoch 2/5, RAY] Train time: 0.4017804190007155
+[SNAPSHOT 2/8, Round 3/10, Epoch 2/5, RAY] Local test and update metrics time: 0.49137292399973376
+[SNAPSHOT 2/8, Round 3/10, Epoch 3/5, RAY] Train time: 0.4259256160003133
+[SNAPSHOT 2/8, Round 3/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4503926899997168
+[SNAPSHOT 2/8, Round 3/10, Epoch 4/5, RAY] Train time: 0.3761938610005018
+[SNAPSHOT 2/8, Round 3/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3892235669991351
+[SNAPSHOT 2/8, Round 3/10] Aggregation time: 0.00900105799883022
+[SNAPSHOT 2/8, Round 3/10] Global Test time: 0.06902957100101048
+[SNAPSHOT 2/8, Round 3/10, Epoch 4/5] Update metrics time: 0.00011486099901958369
+[SNAPSHOT 2/8, Round 3/10] Update best model time: 3.799978003371507e-07
+[SNAPSHOT 2/8, Round 4/10] Compare metrics initialization time: 0.0016593990003457293
+[SNAPSHOT 2/8, Round 4/10, Epoch 0/5, RAY] Train time: 0.36313002800307004
+[SNAPSHOT 2/8, Round 4/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4695474389991432
+[SNAPSHOT 2/8, Round 4/10, Epoch 1/5, RAY] Train time: 0.38999453900032677
+[SNAPSHOT 2/8, Round 4/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3840886030011461
+[SNAPSHOT 2/8, Round 4/10, Epoch 2/5, RAY] Train time: 0.35489803699965705
+[SNAPSHOT 2/8, Round 4/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3886189449985977
+[SNAPSHOT 2/8, Round 4/10, Epoch 3/5, RAY] Train time: 0.36982200700003887
+[SNAPSHOT 2/8, Round 4/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3672530529984215
+[SNAPSHOT 2/8, Round 4/10, Epoch 4/5, RAY] Train time: 0.3491570619989943
+[SNAPSHOT 2/8, Round 4/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3491152919996239
+[SNAPSHOT 2/8, Round 4/10] Aggregation time: 0.008402341001783498
+[SNAPSHOT 2/8, Round 4/10] Global Test time: 0.08696873900044011
+[SNAPSHOT 2/8, Round 4/10, Epoch 4/5] Update metrics time: 0.00022091600112617016
+[SNAPSHOT 2/8, Round 4/10, NC] Update best metrics time: 1.0420008038636297e-06
+[SNAPSHOT 2/8, Round 4/10] Update best model time: 1.7799902707338333e-07
+[SNAPSHOT 2/8, Round 5/10] Compare metrics initialization time: 0.0020558680007525254
+[SNAPSHOT 2/8, Round 5/10, Epoch 0/5, RAY] Train time: 0.3803847109993512
+[SNAPSHOT 2/8, Round 5/10, Epoch 0/5, RAY] Local test and update metrics time: 0.483055125001556
+[SNAPSHOT 2/8, Round 5/10, Epoch 1/5, RAY] Train time: 0.3599433340023097
+[SNAPSHOT 2/8, Round 5/10, Epoch 1/5, RAY] Local test and update metrics time: 0.41348935200221604
+[SNAPSHOT 2/8, Round 5/10, Epoch 2/5, RAY] Train time: 0.3635910819975834
+[SNAPSHOT 2/8, Round 5/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3884625739992771
+[SNAPSHOT 2/8, Round 5/10, Epoch 3/5, RAY] Train time: 0.3502751640007773
+[SNAPSHOT 2/8, Round 5/10, Epoch 3/5, RAY] Local test and update metrics time: 0.39921067700197455
+[SNAPSHOT 2/8, Round 5/10, Epoch 4/5, RAY] Train time: 0.3750402680016123
+[SNAPSHOT 2/8, Round 5/10, Epoch 4/5, RAY] Local test and update metrics time: 0.38384919700183673
+[SNAPSHOT 2/8, Round 5/10] Aggregation time: 0.008992958999442635
+[SNAPSHOT 2/8, Round 5/10] Global Test time: 0.06800577999820234
+[SNAPSHOT 2/8, Round 5/10, Epoch 4/5] Update metrics time: 0.0001556409988552332
+[SNAPSHOT 2/8, Round 5/10, NC] Update best metrics time: 7.990020094439387e-07
+[SNAPSHOT 2/8, Round 5/10] Update best model time: 1.0599978850223124e-07
+[SNAPSHOT 2/8, Round 6/10] Compare metrics initialization time: 0.0013831690012011677
+[SNAPSHOT 2/8, Round 6/10, Epoch 0/5, RAY] Train time: 0.34373077799682505
+[SNAPSHOT 2/8, Round 6/10, Epoch 0/5, RAY] Local test and update metrics time: 0.43117818500104477
+[SNAPSHOT 2/8, Round 6/10, Epoch 1/5, RAY] Train time: 0.3371177369990619
+[SNAPSHOT 2/8, Round 6/10, Epoch 1/5, RAY] Local test and update metrics time: 0.40557886899841833
+[SNAPSHOT 2/8, Round 6/10, Epoch 2/5, RAY] Train time: 0.34851601799891796
+[SNAPSHOT 2/8, Round 6/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4340637550012616
+[SNAPSHOT 2/8, Round 6/10, Epoch 3/5, RAY] Train time: 0.3300139940001827
+[SNAPSHOT 2/8, Round 6/10, Epoch 3/5, RAY] Local test and update metrics time: 0.39691312599825324
+[SNAPSHOT 2/8, Round 6/10, Epoch 4/5, RAY] Train time: 0.34231664199978695
+[SNAPSHOT 2/8, Round 6/10, Epoch 4/5, RAY] Local test and update metrics time: 0.4166087569974479
+[SNAPSHOT 2/8, Round 6/10] Aggregation time: 0.009012883998366306
+[SNAPSHOT 2/8, Round 6/10] Global Test time: 0.060493300999951316
+[SNAPSHOT 2/8, Round 6/10, Epoch 4/5] Update metrics time: 0.00011478699889266863
+[SNAPSHOT 2/8, Round 6/10, NC] Update best metrics time: 8.189999789465219e-07
+[SNAPSHOT 2/8, Round 6/10] Update best model time: 1.090011210180819e-07
+[SNAPSHOT 2/8, Round 7/10] Compare metrics initialization time: 0.0013995640001667198
+[SNAPSHOT 2/8, Round 7/10, Epoch 0/5, RAY] Train time: 0.3322299239989661
+[SNAPSHOT 2/8, Round 7/10, Epoch 0/5, RAY] Local test and update metrics time: 0.41877082100108964
+[SNAPSHOT 2/8, Round 7/10, Epoch 1/5, RAY] Train time: 0.32964603599975817
+[SNAPSHOT 2/8, Round 7/10, Epoch 1/5, RAY] Local test and update metrics time: 0.38214078699820675
+[SNAPSHOT 2/8, Round 7/10, Epoch 2/5, RAY] Train time: 0.33433079500173335
+[SNAPSHOT 2/8, Round 7/10, Epoch 2/5, RAY] Local test and update metrics time: 0.34535556500122766
+[SNAPSHOT 2/8, Round 7/10, Epoch 3/5, RAY] Train time: 0.3408865199999127
+[SNAPSHOT 2/8, Round 7/10, Epoch 3/5, RAY] Local test and update metrics time: 0.30542888899799436
+[SNAPSHOT 2/8, Round 7/10, Epoch 4/5, RAY] Train time: 0.3353487909989781
+[SNAPSHOT 2/8, Round 7/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3548334369988879
+[SNAPSHOT 2/8, Round 7/10] Aggregation time: 0.009910898999805795
+[SNAPSHOT 2/8, Round 7/10] Global Test time: 0.0664697989996057
+[SNAPSHOT 2/8, Round 7/10, Epoch 4/5] Update metrics time: 0.00012116300058551133
+[SNAPSHOT 2/8, Round 7/10] Update best model time: 2.1600135369226336e-07
+[SNAPSHOT 2/8, Round 8/10] Compare metrics initialization time: 0.0013819759988109581
+[SNAPSHOT 2/8, Round 8/10, Epoch 0/5, RAY] Train time: 0.34296669399918756
+[SNAPSHOT 2/8, Round 8/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4691950279993762
+[SNAPSHOT 2/8, Round 8/10, Epoch 1/5, RAY] Train time: 0.3840036700021301
+[SNAPSHOT 2/8, Round 8/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3716037170015625
+[SNAPSHOT 2/8, Round 8/10, Epoch 2/5, RAY] Train time: 0.3444390549993841
+[SNAPSHOT 2/8, Round 8/10, Epoch 2/5, RAY] Local test and update metrics time: 0.41161641600047005
+[SNAPSHOT 2/8, Round 8/10, Epoch 3/5, RAY] Train time: 0.36484930599908694
+[SNAPSHOT 2/8, Round 8/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3966823659975489
+[SNAPSHOT 2/8, Round 8/10, Epoch 4/5, RAY] Train time: 0.3858300200008671
+[SNAPSHOT 2/8, Round 8/10, Epoch 4/5, RAY] Local test and update metrics time: 0.4576621470005193
+[SNAPSHOT 2/8, Round 8/10] Aggregation time: 0.009513924000202678
+[SNAPSHOT 2/8, Round 8/10] Global Test time: 0.07088613800078747
+[SNAPSHOT 2/8, Round 8/10, Epoch 4/5] Update metrics time: 0.00011950200132559985
+[SNAPSHOT 2/8, Round 8/10] Update best model time: 2.3299799067899585e-07
+[SNAPSHOT 2/8, Round 9/10] Compare metrics initialization time: 0.0013990090010338463
+[SNAPSHOT 2/8, Round 9/10, Epoch 0/5, RAY] Train time: 0.4067183669976657
+[SNAPSHOT 2/8, Round 9/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5650549149977451
+[SNAPSHOT 2/8, Round 9/10, Epoch 1/5, RAY] Train time: 0.4250285199996142
+[SNAPSHOT 2/8, Round 9/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4011131490005937
+[SNAPSHOT 2/8, Round 9/10, Epoch 2/5, RAY] Train time: 0.37477821900029085
+[SNAPSHOT 2/8, Round 9/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4157908619999944
+[SNAPSHOT 2/8, Round 9/10, Epoch 3/5, RAY] Train time: 0.381741511002474
+[SNAPSHOT 2/8, Round 9/10, Epoch 3/5, RAY] Local test and update metrics time: 0.39230076300009387
+[SNAPSHOT 2/8, Round 9/10, Epoch 4/5, RAY] Train time: 0.38059471000087797
+[SNAPSHOT 2/8, Round 9/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3798778360032884
+[SNAPSHOT 2/8, Round 9/10] Aggregation time: 0.009625299000617815
+[SNAPSHOT 2/8, Round 9/10] Global Test time: 0.062496129001374356
+[SNAPSHOT 2/8, Round 9/10, Epoch 4/5] Update metrics time: 0.0001198679965455085
+[SNAPSHOT 2/8, Round 9/10] Update best model time: 2.1799860405735672e-07
+[SNAPSHOT 2/8] Model save time: 0.0010232649983663578
+[MAIN, RAY] Prev_ne update time: 0.3186209270024847 seconds
+[SNAPSHOT 3/8] Time taken for Subgraph Generation: 0.00012586600132635795
+[SNAPSHOT 3/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 3/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 3/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 3/8] Time taken for Graph Partitioning: 0.15212550299838767
+[SNAPSHOT 3/8, NC]Time taken for Label Counting: 0.008867691998602822
+[SNAPSHOT 3/8] Time taken for CCN Processing: 0.04583948199797305
+[SNAPSHOT 2/8, RAY] Time taken for Client Data Construction: 0.3419006339972839
+[SNAPSHOT 2/8] Time taken for Fed Dataset Creation: 4.1215000237571076e-05
+[SNAPSHOT 3/8] Time taken for dygl Initialisation: 8.635000995127484e-06
+[SNAPSHOT 3/8, RAY] Time taken for Distributing Models: 0.06376066699885996
+[SNAPSHOT 3/8, RAY] Time taken for Sampling Clients: 0.03201345500201569
+[SNAPSHOT 3/8] Time taken for Plotly Configuration: 0.010624174999975367
+[SNAPSHOT 3/8, RAY] Time taken for Initializing Optimizers: 0.03793325199876563
+[SNAPSHOT 3/8, RAY] Time taken for Initializing Optimizers: 0.03793325199876563
+[SNAPSHOT 3/8, RAY] Time taken for Pretraining Communication: 72.13080213700232
+[SNAPSHOT 3/8, Round 0/10] Compare metrics initialization time: 0.001683891998254694
+[SNAPSHOT 3/8, Round 0/10, Epoch 0/5, RAY] Train time: 0.49917867399926763
+[SNAPSHOT 3/8, Round 0/10, Epoch 0/5, RAY] Local test and update metrics time: 0.47275059599996894
+[SNAPSHOT 3/8, Round 0/10, Epoch 1/5, RAY] Train time: 0.36645474300166825
+[SNAPSHOT 3/8, Round 0/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4166396299988264
+[SNAPSHOT 3/8, Round 0/10, Epoch 2/5, RAY] Train time: 0.3675314319989411
+[SNAPSHOT 3/8, Round 0/10, Epoch 2/5, RAY] Local test and update metrics time: 0.35223202600172954
+[SNAPSHOT 3/8, Round 0/10, Epoch 3/5, RAY] Train time: 0.36497375199905946
+[SNAPSHOT 3/8, Round 0/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3625045799999498
+[SNAPSHOT 3/8, Round 0/10, Epoch 4/5, RAY] Train time: 0.35953317700113985
+[SNAPSHOT 3/8, Round 0/10, Epoch 4/5, RAY] Local test and update metrics time: 0.36743515499983914
+[SNAPSHOT 3/8, Round 0/10] Aggregation time: 0.010033619997557253
+[SNAPSHOT 3/8, Round 0/10] Global Test time: 0.08705158099837718
+[SNAPSHOT 3/8, Round 0/10, Epoch 4/5] Update metrics time: 0.00014608100173063576
+[SNAPSHOT 3/8, Round 0/10, NC] Update best metrics time: 8.319984772242606e-07
+[SNAPSHOT 3/8, Round 0/10] Update best model time: 1.4599936548620462e-07
+[SNAPSHOT 3/8, Round 1/10] Compare metrics initialization time: 0.001435357000445947
+[SNAPSHOT 3/8, Round 1/10, Epoch 0/5, RAY] Train time: 0.33267626800079597
+[SNAPSHOT 3/8, Round 1/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4270697520005342
+[SNAPSHOT 3/8, Round 1/10, Epoch 1/5, RAY] Train time: 0.3390301660001569
+[SNAPSHOT 3/8, Round 1/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4289898869974422
+[SNAPSHOT 3/8, Round 1/10, Epoch 2/5, RAY] Train time: 0.34665128200140316
+[SNAPSHOT 3/8, Round 1/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4635905869981798
+[SNAPSHOT 3/8, Round 1/10, Epoch 3/5, RAY] Train time: 0.3683707099989988
+[SNAPSHOT 3/8, Round 1/10, Epoch 3/5, RAY] Local test and update metrics time: 0.413239526002144
+[SNAPSHOT 3/8, Round 1/10, Epoch 4/5, RAY] Train time: 0.36551714000233915
+[SNAPSHOT 3/8, Round 1/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3943152900028508
+[SNAPSHOT 3/8, Round 1/10] Aggregation time: 0.010156606000236934
+[SNAPSHOT 3/8, Round 1/10] Global Test time: 0.060460330998466816
+[SNAPSHOT 3/8, Round 1/10, Epoch 4/5] Update metrics time: 0.0001246350002475083
+[SNAPSHOT 3/8, Round 1/10, NC] Update best metrics time: 1.119999069487676e-06
+[SNAPSHOT 3/8, Round 1/10] Update best model time: 2.6900306693278253e-07
+[SNAPSHOT 3/8, Round 2/10] Compare metrics initialization time: 0.00141961299959803
+[SNAPSHOT 3/8, Round 2/10, Epoch 0/5, RAY] Train time: 0.350255940000352
+[SNAPSHOT 3/8, Round 2/10, Epoch 0/5, RAY] Local test and update metrics time: 0.45682663600018714
+[SNAPSHOT 3/8, Round 2/10, Epoch 1/5, RAY] Train time: 0.35162804600258823
+[SNAPSHOT 3/8, Round 2/10, Epoch 1/5, RAY] Local test and update metrics time: 0.39553935900039505
+[SNAPSHOT 3/8, Round 2/10, Epoch 2/5, RAY] Train time: 0.34372519699900295
+[SNAPSHOT 3/8, Round 2/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3838872199994512
+[SNAPSHOT 3/8, Round 2/10, Epoch 3/5, RAY] Train time: 0.33774670099955983
+[SNAPSHOT 3/8, Round 2/10, Epoch 3/5, RAY] Local test and update metrics time: 0.38892317499994533
+[SNAPSHOT 3/8, Round 2/10, Epoch 4/5, RAY] Train time: 0.35051261500120745
+[SNAPSHOT 3/8, Round 2/10, Epoch 4/5, RAY] Local test and update metrics time: 0.37484202300038305
+[SNAPSHOT 3/8, Round 2/10] Aggregation time: 0.009327381998446072
+[SNAPSHOT 3/8, Round 2/10] Global Test time: 0.07512841099742218
+[SNAPSHOT 3/8, Round 2/10, Epoch 4/5] Update metrics time: 0.0001271190012630541
+[SNAPSHOT 3/8, Round 2/10, NC] Update best metrics time: 1.157997758127749e-06
+[SNAPSHOT 3/8, Round 2/10] Update best model time: 1.2300006346777081e-07
+[SNAPSHOT 3/8, Round 3/10] Compare metrics initialization time: 0.0014600579997932073
+[SNAPSHOT 3/8, Round 3/10, Epoch 0/5, RAY] Train time: 0.3411286980008299
+[SNAPSHOT 3/8, Round 3/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4359009390027495
+[SNAPSHOT 3/8, Round 3/10, Epoch 1/5, RAY] Train time: 0.3255103709998366
+[SNAPSHOT 3/8, Round 3/10, Epoch 1/5, RAY] Local test and update metrics time: 0.44252905100074713
+[SNAPSHOT 3/8, Round 3/10, Epoch 2/5, RAY] Train time: 0.33220163700025296
+[SNAPSHOT 3/8, Round 3/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4086698620012612
+[SNAPSHOT 3/8, Round 3/10, Epoch 3/5, RAY] Train time: 0.32812928600105806
+[SNAPSHOT 3/8, Round 3/10, Epoch 3/5, RAY] Local test and update metrics time: 0.44457978599893977
+[SNAPSHOT 3/8, Round 3/10, Epoch 4/5, RAY] Train time: 0.34735232800085214
+[SNAPSHOT 3/8, Round 3/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3704913959991245
+[SNAPSHOT 3/8, Round 3/10] Aggregation time: 0.005497163001564331
+[SNAPSHOT 3/8, Round 3/10] Global Test time: 0.06970847100092215
+[SNAPSHOT 3/8, Round 3/10, Epoch 4/5] Update metrics time: 0.00012762500045937486
+[SNAPSHOT 3/8, Round 3/10, NC] Update best metrics time: 9.139985195361078e-07
+[SNAPSHOT 3/8, Round 3/10] Update best model time: 1.1200245353393257e-07
+[SNAPSHOT 3/8, Round 4/10] Compare metrics initialization time: 0.0013760030014964286
+[SNAPSHOT 3/8, Round 4/10, Epoch 0/5, RAY] Train time: 0.3502930139984528
+[SNAPSHOT 3/8, Round 4/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4418047130020568
+[SNAPSHOT 3/8, Round 4/10, Epoch 1/5, RAY] Train time: 0.39974499299933086
+[SNAPSHOT 3/8, Round 4/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3731848429997626
+[SNAPSHOT 3/8, Round 4/10, Epoch 2/5, RAY] Train time: 0.35148353499971563
+[SNAPSHOT 3/8, Round 4/10, Epoch 2/5, RAY] Local test and update metrics time: 0.36304983400259516
+[SNAPSHOT 3/8, Round 4/10, Epoch 3/5, RAY] Train time: 0.35900496799877146
+[SNAPSHOT 3/8, Round 4/10, Epoch 3/5, RAY] Local test and update metrics time: 0.34299471600024845
+[SNAPSHOT 3/8, Round 4/10, Epoch 4/5, RAY] Train time: 0.3281962319997547
+[SNAPSHOT 3/8, Round 4/10, Epoch 4/5, RAY] Local test and update metrics time: 0.36389436799800023
+[SNAPSHOT 3/8, Round 4/10] Aggregation time: 0.004927378999127541
+[SNAPSHOT 3/8, Round 4/10] Global Test time: 0.08454650400017272
+[SNAPSHOT 3/8, Round 4/10, Epoch 4/5] Update metrics time: 0.00012219900236232206
+[SNAPSHOT 3/8, Round 4/10] Update best model time: 2.4600012693554163e-07
+[SNAPSHOT 3/8, Round 5/10] Compare metrics initialization time: 0.0013902390019211452
+[SNAPSHOT 3/8, Round 5/10, Epoch 0/5, RAY] Train time: 0.3413632029987639
+[SNAPSHOT 3/8, Round 5/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4295968080004968
+[SNAPSHOT 3/8, Round 5/10, Epoch 1/5, RAY] Train time: 0.3365856260024884
+[SNAPSHOT 3/8, Round 5/10, Epoch 1/5, RAY] Local test and update metrics time: 0.39936498400129494
+[SNAPSHOT 3/8, Round 5/10, Epoch 2/5, RAY] Train time: 0.3504085450003913
+[SNAPSHOT 3/8, Round 5/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4455136610013142
+[SNAPSHOT 3/8, Round 5/10, Epoch 3/5, RAY] Train time: 0.3364402460028941
+[SNAPSHOT 3/8, Round 5/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4330901309986075
+[SNAPSHOT 3/8, Round 5/10, Epoch 4/5, RAY] Train time: 0.34105118800289347
+[SNAPSHOT 3/8, Round 5/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3598524129993166
+[SNAPSHOT 3/8, Round 5/10] Aggregation time: 0.004571153000142658
+[SNAPSHOT 3/8, Round 5/10] Global Test time: 0.05906611300088116
+[SNAPSHOT 3/8, Round 5/10, Epoch 4/5] Update metrics time: 0.00013188700177124701
+[SNAPSHOT 3/8, Round 5/10] Update best model time: 2.6099951355718076e-07
+[SNAPSHOT 3/8, Round 6/10] Compare metrics initialization time: 0.0015108269981283229
+[SNAPSHOT 3/8, Round 6/10, Epoch 0/5, RAY] Train time: 0.345551558999432
+[SNAPSHOT 3/8, Round 6/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4206776589999208
+[SNAPSHOT 3/8, Round 6/10, Epoch 1/5, RAY] Train time: 0.31969748999836156
+[SNAPSHOT 3/8, Round 6/10, Epoch 1/5, RAY] Local test and update metrics time: 0.43499042999974336
+[SNAPSHOT 3/8, Round 6/10, Epoch 2/5, RAY] Train time: 0.3411277279992646
+[SNAPSHOT 3/8, Round 6/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4002050710005278
+[SNAPSHOT 3/8, Round 6/10, Epoch 3/5, RAY] Train time: 0.34144294100042316
+[SNAPSHOT 3/8, Round 6/10, Epoch 3/5, RAY] Local test and update metrics time: 0.43468942099934793
+[SNAPSHOT 3/8, Round 6/10, Epoch 4/5, RAY] Train time: 0.3250366030006262
+[SNAPSHOT 3/8, Round 6/10, Epoch 4/5, RAY] Local test and update metrics time: 0.44394720799755305
+[SNAPSHOT 3/8, Round 6/10] Aggregation time: 0.009369317998789484
+[SNAPSHOT 3/8, Round 6/10] Global Test time: 0.06757491600001231
+[SNAPSHOT 3/8, Round 6/10, Epoch 4/5] Update metrics time: 0.00012875100219389424
+[SNAPSHOT 3/8, Round 6/10] Update best model time: 2.2899985197000206e-07
+[SNAPSHOT 3/8, Round 7/10] Compare metrics initialization time: 0.001482258001487935
+[SNAPSHOT 3/8, Round 7/10, Epoch 0/5, RAY] Train time: 0.3357105249997403
+[SNAPSHOT 3/8, Round 7/10, Epoch 0/5, RAY] Local test and update metrics time: 0.440632360001473
+[SNAPSHOT 3/8, Round 7/10, Epoch 1/5, RAY] Train time: 0.3452748829986376
+[SNAPSHOT 3/8, Round 7/10, Epoch 1/5, RAY] Local test and update metrics time: 0.39720722299898625
+[SNAPSHOT 3/8, Round 7/10, Epoch 2/5, RAY] Train time: 0.31841268399875844
+[SNAPSHOT 3/8, Round 7/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3584969179973996
+[SNAPSHOT 3/8, Round 7/10, Epoch 3/5, RAY] Train time: 0.33902627600036794
+[SNAPSHOT 3/8, Round 7/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3212006329995347
+[SNAPSHOT 3/8, Round 7/10, Epoch 4/5, RAY] Train time: 0.33071743300024536
+[SNAPSHOT 3/8, Round 7/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3171102990017971
+[SNAPSHOT 3/8, Round 7/10] Aggregation time: 0.009511923999525607
+[SNAPSHOT 3/8, Round 7/10] Global Test time: 0.06845367799905944
+[SNAPSHOT 3/8, Round 7/10, Epoch 4/5] Update metrics time: 0.0001277110022783745
+[SNAPSHOT 3/8, Round 7/10] Update best model time: 4.249995981808752e-07
+[SNAPSHOT 3/8, Round 8/10] Compare metrics initialization time: 0.001401418001478305
+[SNAPSHOT 3/8, Round 8/10, Epoch 0/5, RAY] Train time: 0.3119470570018166
+[SNAPSHOT 3/8, Round 8/10, Epoch 0/5, RAY] Local test and update metrics time: 0.416698611999891
+[SNAPSHOT 3/8, Round 8/10, Epoch 1/5, RAY] Train time: 0.3294998189994658
+[SNAPSHOT 3/8, Round 8/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3667580850014929
+[SNAPSHOT 3/8, Round 8/10, Epoch 2/5, RAY] Train time: 0.3227590890019201
+[SNAPSHOT 3/8, Round 8/10, Epoch 2/5, RAY] Local test and update metrics time: 0.39479863599990495
+[SNAPSHOT 3/8, Round 8/10, Epoch 3/5, RAY] Train time: 0.30874058900008094
+[SNAPSHOT 3/8, Round 8/10, Epoch 3/5, RAY] Local test and update metrics time: 0.34706653700050083
+[SNAPSHOT 3/8, Round 8/10, Epoch 4/5, RAY] Train time: 0.310216779998882
+[SNAPSHOT 3/8, Round 8/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3236376700006076
+[SNAPSHOT 3/8, Round 8/10] Aggregation time: 0.009608168998965994
+[SNAPSHOT 3/8, Round 8/10] Global Test time: 0.07191417799913324
+[SNAPSHOT 3/8, Round 8/10, Epoch 4/5] Update metrics time: 0.00012361100016278215
+[SNAPSHOT 3/8, Round 8/10] Update best model time: 2.710003172978759e-07
+[SNAPSHOT 3/8, Round 9/10] Compare metrics initialization time: 0.0013999889997649007
+[SNAPSHOT 3/8, Round 9/10, Epoch 0/5, RAY] Train time: 0.30231492099846946
+[SNAPSHOT 3/8, Round 9/10, Epoch 0/5, RAY] Local test and update metrics time: 0.41231226099989726
+[SNAPSHOT 3/8, Round 9/10, Epoch 1/5, RAY] Train time: 0.3137605319971044
+[SNAPSHOT 3/8, Round 9/10, Epoch 1/5, RAY] Local test and update metrics time: 0.34951157799878274
+[SNAPSHOT 3/8, Round 9/10, Epoch 2/5, RAY] Train time: 0.3111930530030804
+[SNAPSHOT 3/8, Round 9/10, Epoch 2/5, RAY] Local test and update metrics time: 0.33953103499879944
+[SNAPSHOT 3/8, Round 9/10, Epoch 3/5, RAY] Train time: 0.31729144800192444
+[SNAPSHOT 3/8, Round 9/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3517302909967839
+[SNAPSHOT 3/8, Round 9/10, Epoch 4/5, RAY] Train time: 0.3142132530010713
+[SNAPSHOT 3/8, Round 9/10, Epoch 4/5, RAY] Local test and update metrics time: 0.305099749002693
+[SNAPSHOT 3/8, Round 9/10] Aggregation time: 0.009470459997828584
+[SNAPSHOT 3/8, Round 9/10] Global Test time: 0.07605684900045162
+[SNAPSHOT 3/8, Round 9/10, Epoch 4/5] Update metrics time: 0.00018490899674361572
+[SNAPSHOT 3/8, Round 9/10] Update best model time: 4.3599720811471343e-07
+[SNAPSHOT 3/8] Model save time: 0.0007298809978237841
+[MAIN, RAY] Prev_ne update time: 0.32073167199996533 seconds
+[SNAPSHOT 4/8] Time taken for Subgraph Generation: 0.0001269610002054833
+[SNAPSHOT 4/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 4/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 4/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 4/8] Time taken for Graph Partitioning: 0.08896473700224306
+[SNAPSHOT 4/8, NC]Time taken for Label Counting: 0.008884523002052447
+[SNAPSHOT 4/8] Time taken for CCN Processing: 0.04520197000238113
+[SNAPSHOT 2/8, RAY] Time taken for Client Data Construction: 0.4216940410005918
+[SNAPSHOT 2/8] Time taken for Fed Dataset Creation: 4.858900138060562e-05
+[SNAPSHOT 4/8] Time taken for dygl Initialisation: 6.112000846769661e-06
+[SNAPSHOT 4/8, RAY] Time taken for Distributing Models: 0.021498182002687827
+[SNAPSHOT 4/8, RAY] Time taken for Sampling Clients: 0.031879590002063196
+[SNAPSHOT 4/8] Time taken for Plotly Configuration: 0.009946195998054463
+[SNAPSHOT 4/8, RAY] Time taken for Initializing Optimizers: 0.036651985999924364
+[SNAPSHOT 4/8, RAY] Time taken for Initializing Optimizers: 0.036651985999924364
+[SNAPSHOT 4/8, RAY] Time taken for Pretraining Communication: 86.043607323998
+[SNAPSHOT 4/8, Round 0/10] Compare metrics initialization time: 0.0014147439978842158
+[SNAPSHOT 4/8, Round 0/10, Epoch 0/5, RAY] Train time: 0.4338616319982975
+[SNAPSHOT 4/8, Round 0/10, Epoch 0/5, RAY] Local test and update metrics time: 0.3976226980012143
+[SNAPSHOT 4/8, Round 0/10, Epoch 1/5, RAY] Train time: 0.29595863799841027
+[SNAPSHOT 4/8, Round 0/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3754824829993595
+[SNAPSHOT 4/8, Round 0/10, Epoch 2/5, RAY] Train time: 0.31770177699945634
+[SNAPSHOT 4/8, Round 0/10, Epoch 2/5, RAY] Local test and update metrics time: 0.31665537300068536
+[SNAPSHOT 4/8, Round 0/10, Epoch 3/5, RAY] Train time: 0.29781725000066217
+[SNAPSHOT 4/8, Round 0/10, Epoch 3/5, RAY] Local test and update metrics time: 0.30322809599965694
+[SNAPSHOT 4/8, Round 0/10, Epoch 4/5, RAY] Train time: 0.30514803800178925
+[SNAPSHOT 4/8, Round 0/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3242782449997321
+[SNAPSHOT 4/8, Round 0/10] Aggregation time: 0.010361386001022765
+[SNAPSHOT 4/8, Round 0/10] Global Test time: 0.07600929599720985
+[SNAPSHOT 4/8, Round 0/10, Epoch 4/5] Update metrics time: 0.00014468099834630266
+[SNAPSHOT 4/8, Round 0/10, NC] Update best metrics time: 7.150010787881911e-07
+[SNAPSHOT 4/8, Round 0/10] Update best model time: 1.3400131138041615e-07
+[SNAPSHOT 4/8, Round 1/10] Compare metrics initialization time: 0.0013711669998883735
+[SNAPSHOT 4/8, Round 1/10, Epoch 0/5, RAY] Train time: 0.29865035799957695
+[SNAPSHOT 4/8, Round 1/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4079428500008362
+[SNAPSHOT 4/8, Round 1/10, Epoch 1/5, RAY] Train time: 0.32097274899933836
+[SNAPSHOT 4/8, Round 1/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4139063510010601
+[SNAPSHOT 4/8, Round 1/10, Epoch 2/5, RAY] Train time: 0.30958088600164047
+[SNAPSHOT 4/8, Round 1/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4140258210027241
+[SNAPSHOT 4/8, Round 1/10, Epoch 3/5, RAY] Train time: 0.3157162090028578
+[SNAPSHOT 4/8, Round 1/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4058026219972817
+[SNAPSHOT 4/8, Round 1/10, Epoch 4/5, RAY] Train time: 0.3037931500002742
+[SNAPSHOT 4/8, Round 1/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3662763569991512
+[SNAPSHOT 4/8, Round 1/10] Aggregation time: 0.009953343000233872
+[SNAPSHOT 4/8, Round 1/10] Global Test time: 0.07264655199833214
+[SNAPSHOT 4/8, Round 1/10, Epoch 4/5] Update metrics time: 0.00015139599781832658
+[SNAPSHOT 4/8, Round 1/10, NC] Update best metrics time: 6.67001586407423e-07
+[SNAPSHOT 4/8, Round 1/10] Update best model time: 1.1500014807097614e-07
+[SNAPSHOT 4/8, Round 2/10] Compare metrics initialization time: 0.0013695640009245835
+[SNAPSHOT 4/8, Round 2/10, Epoch 0/5, RAY] Train time: 0.3323518140023225
+[SNAPSHOT 4/8, Round 2/10, Epoch 0/5, RAY] Local test and update metrics time: 0.41074969900000724
+[SNAPSHOT 4/8, Round 2/10, Epoch 1/5, RAY] Train time: 0.31550531000175397
+[SNAPSHOT 4/8, Round 2/10, Epoch 1/5, RAY] Local test and update metrics time: 0.309024545000284
+[SNAPSHOT 4/8, Round 2/10, Epoch 2/5, RAY] Train time: 0.3220954249991337
+[SNAPSHOT 4/8, Round 2/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3073232390015619
+[SNAPSHOT 4/8, Round 2/10, Epoch 3/5, RAY] Train time: 0.30376096200052416
+[SNAPSHOT 4/8, Round 2/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3303837019993807
+[SNAPSHOT 4/8, Round 2/10, Epoch 4/5, RAY] Train time: 0.34259412699975655
+[SNAPSHOT 4/8, Round 2/10, Epoch 4/5, RAY] Local test and update metrics time: 0.34289581600023666
+[SNAPSHOT 4/8, Round 2/10] Aggregation time: 0.005254263000097126
+[SNAPSHOT 4/8, Round 2/10] Global Test time: 0.07116028800010099
+[SNAPSHOT 4/8, Round 2/10, Epoch 4/5] Update metrics time: 0.000139209001645213
+[SNAPSHOT 4/8, Round 2/10, NC] Update best metrics time: 9.739997040014714e-07
+[SNAPSHOT 4/8, Round 2/10] Update best model time: 1.270018401555717e-07
+[SNAPSHOT 4/8, Round 3/10] Compare metrics initialization time: 0.0014649600016127806
+[SNAPSHOT 4/8, Round 3/10, Epoch 0/5, RAY] Train time: 0.31358548299976974
+[SNAPSHOT 4/8, Round 3/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4291867839965562
+[SNAPSHOT 4/8, Round 3/10, Epoch 1/5, RAY] Train time: 0.3113266330001352
+[SNAPSHOT 4/8, Round 3/10, Epoch 1/5, RAY] Local test and update metrics time: 0.37486623600125313
+[SNAPSHOT 4/8, Round 3/10, Epoch 2/5, RAY] Train time: 0.3333980289971805
+[SNAPSHOT 4/8, Round 3/10, Epoch 2/5, RAY] Local test and update metrics time: 0.37209177300246665
+[SNAPSHOT 4/8, Round 3/10, Epoch 3/5, RAY] Train time: 0.3350178219989175
+[SNAPSHOT 4/8, Round 3/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3423741560000053
+[SNAPSHOT 4/8, Round 3/10, Epoch 4/5, RAY] Train time: 0.3245287739991909
+[SNAPSHOT 4/8, Round 3/10, Epoch 4/5, RAY] Local test and update metrics time: 0.37580749800326885
+[SNAPSHOT 4/8, Round 3/10] Aggregation time: 0.009362925000459654
+[SNAPSHOT 4/8, Round 3/10] Global Test time: 0.07250380199911888
+[SNAPSHOT 4/8, Round 3/10, Epoch 4/5] Update metrics time: 0.00012162200073362328
+[SNAPSHOT 4/8, Round 3/10, NC] Update best metrics time: 1.047999830916524e-06
+[SNAPSHOT 4/8, Round 3/10] Update best model time: 9.599898476153612e-08
+[SNAPSHOT 4/8, Round 4/10] Compare metrics initialization time: 0.00139829500039923
+[SNAPSHOT 4/8, Round 4/10, Epoch 0/5, RAY] Train time: 0.36686623800051166
+[SNAPSHOT 4/8, Round 4/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4231385710008908
+[SNAPSHOT 4/8, Round 4/10, Epoch 1/5, RAY] Train time: 0.3332857729983516
+[SNAPSHOT 4/8, Round 4/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3685431520025304
+[SNAPSHOT 4/8, Round 4/10, Epoch 2/5, RAY] Train time: 0.37412890000268817
+[SNAPSHOT 4/8, Round 4/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3965470870025456
+[SNAPSHOT 4/8, Round 4/10, Epoch 3/5, RAY] Train time: 0.3213197759978357
+[SNAPSHOT 4/8, Round 4/10, Epoch 3/5, RAY] Local test and update metrics time: 0.41929807999986224
+[SNAPSHOT 4/8, Round 4/10, Epoch 4/5, RAY] Train time: 0.39255816700097057
+[SNAPSHOT 4/8, Round 4/10, Epoch 4/5, RAY] Local test and update metrics time: 0.435632335000264
+[SNAPSHOT 4/8, Round 4/10] Aggregation time: 0.009360034000565065
+[SNAPSHOT 4/8, Round 4/10] Global Test time: 0.08368729799985886
+[SNAPSHOT 4/8, Round 4/10, Epoch 4/5] Update metrics time: 0.00012716099809040315
+[SNAPSHOT 4/8, Round 4/10, NC] Update best metrics time: 1.2239979696460068e-06
+[SNAPSHOT 4/8, Round 4/10] Update best model time: 1.0599978850223124e-07
+[SNAPSHOT 4/8, Round 5/10] Compare metrics initialization time: 0.0013927770014561247
+[SNAPSHOT 4/8, Round 5/10, Epoch 0/5, RAY] Train time: 0.36231233999933465
+[SNAPSHOT 4/8, Round 5/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4403419859991118
+[SNAPSHOT 4/8, Round 5/10, Epoch 1/5, RAY] Train time: 0.33192403900102363
+[SNAPSHOT 4/8, Round 5/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4349433909992513
+[SNAPSHOT 4/8, Round 5/10, Epoch 2/5, RAY] Train time: 0.34574641799918027
+[SNAPSHOT 4/8, Round 5/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4159093740017852
+[SNAPSHOT 4/8, Round 5/10, Epoch 3/5, RAY] Train time: 0.3163868520023243
+[SNAPSHOT 4/8, Round 5/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4112651290015492
+[SNAPSHOT 4/8, Round 5/10, Epoch 4/5, RAY] Train time: 0.3446175060016685
+[SNAPSHOT 4/8, Round 5/10, Epoch 4/5, RAY] Local test and update metrics time: 0.37165567300326074
+[SNAPSHOT 4/8, Round 5/10] Aggregation time: 0.009585501000401564
+[SNAPSHOT 4/8, Round 5/10] Global Test time: 0.06855120999898645
+[SNAPSHOT 4/8, Round 5/10, Epoch 4/5] Update metrics time: 0.0001244730010512285
+[SNAPSHOT 4/8, Round 5/10, NC] Update best metrics time: 7.879971235524863e-07
+[SNAPSHOT 4/8, Round 5/10] Update best model time: 1.219996192958206e-07
+[SNAPSHOT 4/8, Round 6/10] Compare metrics initialization time: 0.0013579730002675205
+[SNAPSHOT 4/8, Round 6/10, Epoch 0/5, RAY] Train time: 0.2958813419973012
+[SNAPSHOT 4/8, Round 6/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4003321860000142
+[SNAPSHOT 4/8, Round 6/10, Epoch 1/5, RAY] Train time: 0.33909858299739426
+[SNAPSHOT 4/8, Round 6/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3269213160019717
+[SNAPSHOT 4/8, Round 6/10, Epoch 2/5, RAY] Train time: 0.3213859380011854
+[SNAPSHOT 4/8, Round 6/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3137683669992839
+[SNAPSHOT 4/8, Round 6/10, Epoch 3/5, RAY] Train time: 0.34891322400289937
+[SNAPSHOT 4/8, Round 6/10, Epoch 3/5, RAY] Local test and update metrics time: 0.31901206499969703
+[SNAPSHOT 4/8, Round 6/10, Epoch 4/5, RAY] Train time: 0.33613967600103933
+[SNAPSHOT 4/8, Round 6/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3201680349993694
+[SNAPSHOT 4/8, Round 6/10] Aggregation time: 0.001895512999908533
+[SNAPSHOT 4/8, Round 6/10] Global Test time: 0.06460517999948934
+[SNAPSHOT 4/8, Round 6/10, Epoch 4/5] Update metrics time: 0.00012753799819620326
+[SNAPSHOT 4/8, Round 6/10, NC] Update best metrics time: 1.2179989425931126e-06
+[SNAPSHOT 4/8, Round 6/10] Update best model time: 1.1599695426411927e-07
+[SNAPSHOT 4/8, Round 7/10] Compare metrics initialization time: 0.0014293519998318516
+[SNAPSHOT 4/8, Round 7/10, Epoch 0/5, RAY] Train time: 0.3328104190004524
+[SNAPSHOT 4/8, Round 7/10, Epoch 0/5, RAY] Local test and update metrics time: 0.43502341199928196
+[SNAPSHOT 4/8, Round 7/10, Epoch 1/5, RAY] Train time: 0.3448212150033214
+[SNAPSHOT 4/8, Round 7/10, Epoch 1/5, RAY] Local test and update metrics time: 0.37277152000024216
+[SNAPSHOT 4/8, Round 7/10, Epoch 2/5, RAY] Train time: 0.33773367699905066
+[SNAPSHOT 4/8, Round 7/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3775721279998834
+[SNAPSHOT 4/8, Round 7/10, Epoch 3/5, RAY] Train time: 0.3694722600012028
+[SNAPSHOT 4/8, Round 7/10, Epoch 3/5, RAY] Local test and update metrics time: 0.37672721900162287
+[SNAPSHOT 4/8, Round 7/10, Epoch 4/5, RAY] Train time: 0.33940798600087874
+[SNAPSHOT 4/8, Round 7/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3770183039996482
+[SNAPSHOT 4/8, Round 7/10] Aggregation time: 0.00976158799676341
+[SNAPSHOT 4/8, Round 7/10] Global Test time: 0.06675399899904733
+[SNAPSHOT 4/8, Round 7/10, Epoch 4/5] Update metrics time: 0.00012506400162237696
+[SNAPSHOT 4/8, Round 7/10, NC] Update best metrics time: 7.349990482907742e-07
+[SNAPSHOT 4/8, Round 7/10] Update best model time: 1.1900192475877702e-07
+[SNAPSHOT 4/8, Round 8/10] Compare metrics initialization time: 0.0013909480003349017
+[SNAPSHOT 4/8, Round 8/10, Epoch 0/5, RAY] Train time: 0.3581040609969932
+[SNAPSHOT 4/8, Round 8/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4460486800016952
+[SNAPSHOT 4/8, Round 8/10, Epoch 1/5, RAY] Train time: 0.36048147000110475
+[SNAPSHOT 4/8, Round 8/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4084940100001404
+[SNAPSHOT 4/8, Round 8/10, Epoch 2/5, RAY] Train time: 0.34852001999752247
+[SNAPSHOT 4/8, Round 8/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3660471139992296
+[SNAPSHOT 4/8, Round 8/10, Epoch 3/5, RAY] Train time: 0.3386211729994102
+[SNAPSHOT 4/8, Round 8/10, Epoch 3/5, RAY] Local test and update metrics time: 0.34027739000157453
+[SNAPSHOT 4/8, Round 8/10, Epoch 4/5, RAY] Train time: 0.3640879539998423
+[SNAPSHOT 4/8, Round 8/10, Epoch 4/5, RAY] Local test and update metrics time: 0.35507912400134956
+[SNAPSHOT 4/8, Round 8/10] Aggregation time: 0.005385753000155091
+[SNAPSHOT 4/8, Round 8/10] Global Test time: 0.07100240799991298
+[SNAPSHOT 4/8, Round 8/10, Epoch 4/5] Update metrics time: 0.00012888700075563975
+[SNAPSHOT 4/8, Round 8/10] Update best model time: 3.040004230570048e-07
+[SNAPSHOT 4/8, Round 9/10] Compare metrics initialization time: 0.0015207899996312335
+[SNAPSHOT 4/8, Round 9/10, Epoch 0/5, RAY] Train time: 0.36082256299778237
+[SNAPSHOT 4/8, Round 9/10, Epoch 0/5, RAY] Local test and update metrics time: 0.463166782999906
+[SNAPSHOT 4/8, Round 9/10, Epoch 1/5, RAY] Train time: 0.37303238499953295
+[SNAPSHOT 4/8, Round 9/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4434807570032717
+[SNAPSHOT 4/8, Round 9/10, Epoch 2/5, RAY] Train time: 0.3518401229994197
+[SNAPSHOT 4/8, Round 9/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4345740600001591
+[SNAPSHOT 4/8, Round 9/10, Epoch 3/5, RAY] Train time: 0.3190346769988537
+[SNAPSHOT 4/8, Round 9/10, Epoch 3/5, RAY] Local test and update metrics time: 0.37724456100113457
+[SNAPSHOT 4/8, Round 9/10, Epoch 4/5, RAY] Train time: 0.3376333300002443
+[SNAPSHOT 4/8, Round 9/10, Epoch 4/5, RAY] Local test and update metrics time: 0.34461454700067407
+[SNAPSHOT 4/8, Round 9/10] Aggregation time: 0.00972398600060842
+[SNAPSHOT 4/8, Round 9/10] Global Test time: 0.07470525100143277
+[SNAPSHOT 4/8, Round 9/10, Epoch 4/5] Update metrics time: 0.00012598800094565377
+[SNAPSHOT 4/8, Round 9/10] Update best model time: 2.400010998826474e-07
+[SNAPSHOT 4/8] Model save time: 0.0005891049986530561
+[MAIN, RAY] Prev_ne update time: 0.31230384800073807 seconds
+[SNAPSHOT 5/8] Time taken for Subgraph Generation: 0.00011797899787779897
+[SNAPSHOT 5/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 5/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 5/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 5/8] Time taken for Graph Partitioning: 0.08512032300131978
+[SNAPSHOT 5/8, NC]Time taken for Label Counting: 0.008880527999281185
+[SNAPSHOT 5/8] Time taken for CCN Processing: 0.046214574002078734
+[SNAPSHOT 2/8, RAY] Time taken for Client Data Construction: 0.427614503998484
+[SNAPSHOT 2/8] Time taken for Fed Dataset Creation: 4.7060999349923804e-05
+[SNAPSHOT 5/8] Time taken for dygl Initialisation: 9.325001883553341e-06
+[SNAPSHOT 5/8, RAY] Time taken for Distributing Models: 0.023158036998211173
+[SNAPSHOT 5/8, RAY] Time taken for Sampling Clients: 0.0335576809993654
+[SNAPSHOT 5/8] Time taken for Plotly Configuration: 0.00967582399971434
+[SNAPSHOT 5/8, RAY] Time taken for Initializing Optimizers: 0.035460013001284096
+[SNAPSHOT 5/8, RAY] Time taken for Initializing Optimizers: 0.035460013001284096
+[SNAPSHOT 5/8, RAY] Time taken for Pretraining Communication: 82.00405110399879
+[SNAPSHOT 5/8, Round 0/10] Compare metrics initialization time: 0.001676913998380769
+[SNAPSHOT 5/8, Round 0/10, Epoch 0/5, RAY] Train time: 0.5050169080022897
+[SNAPSHOT 5/8, Round 0/10, Epoch 0/5, RAY] Local test and update metrics time: 0.46819252199929906
+[SNAPSHOT 5/8, Round 0/10, Epoch 1/5, RAY] Train time: 0.33039375899898005
+[SNAPSHOT 5/8, Round 0/10, Epoch 1/5, RAY] Local test and update metrics time: 0.40366958799859276
+[SNAPSHOT 5/8, Round 0/10, Epoch 2/5, RAY] Train time: 0.3298044530019979
+[SNAPSHOT 5/8, Round 0/10, Epoch 2/5, RAY] Local test and update metrics time: 0.44754215300054057
+[SNAPSHOT 5/8, Round 0/10, Epoch 3/5, RAY] Train time: 0.3328267129982123
+[SNAPSHOT 5/8, Round 0/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3838059319969034
+[SNAPSHOT 5/8, Round 0/10, Epoch 4/5, RAY] Train time: 0.35429668500000844
+[SNAPSHOT 5/8, Round 0/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3748345599997265
+[SNAPSHOT 5/8, Round 0/10] Aggregation time: 0.009424778003449319
+[SNAPSHOT 5/8, Round 0/10] Global Test time: 0.07514644599723397
+[SNAPSHOT 5/8, Round 0/10, Epoch 4/5] Update metrics time: 0.0002541659996495582
+[SNAPSHOT 5/8, Round 0/10, NC] Update best metrics time: 1.096002961276099e-06
+[SNAPSHOT 5/8, Round 0/10] Update best model time: 1.9399885786697268e-07
+[SNAPSHOT 5/8, Round 1/10] Compare metrics initialization time: 0.0020258100012142677
+[SNAPSHOT 5/8, Round 1/10, Epoch 0/5, RAY] Train time: 0.3360483109972847
+[SNAPSHOT 5/8, Round 1/10, Epoch 0/5, RAY] Local test and update metrics time: 0.47923810399879585
+[SNAPSHOT 5/8, Round 1/10, Epoch 1/5, RAY] Train time: 0.34035386099640164
+[SNAPSHOT 5/8, Round 1/10, Epoch 1/5, RAY] Local test and update metrics time: 0.37740298100106884
+[SNAPSHOT 5/8, Round 1/10, Epoch 2/5, RAY] Train time: 0.32969364400196355
+[SNAPSHOT 5/8, Round 1/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3364261530005024
+[SNAPSHOT 5/8, Round 1/10, Epoch 3/5, RAY] Train time: 0.34261832300035167
+[SNAPSHOT 5/8, Round 1/10, Epoch 3/5, RAY] Local test and update metrics time: 0.31409177699970314
+[SNAPSHOT 5/8, Round 1/10, Epoch 4/5, RAY] Train time: 0.3469666290002351
+[SNAPSHOT 5/8, Round 1/10, Epoch 4/5, RAY] Local test and update metrics time: 0.32776986000317265
+[SNAPSHOT 5/8, Round 1/10] Aggregation time: 0.009617847001209157
+[SNAPSHOT 5/8, Round 1/10] Global Test time: 0.0764988880000601
+[SNAPSHOT 5/8, Round 1/10, Epoch 4/5] Update metrics time: 0.0003440610016696155
+[SNAPSHOT 5/8, Round 1/10, NC] Update best metrics time: 1.8840000848285854e-06
+[SNAPSHOT 5/8, Round 1/10] Update best model time: 2.8400245355442166e-07
+[SNAPSHOT 5/8, Round 2/10] Compare metrics initialization time: 0.0027149349989485927
+[SNAPSHOT 5/8, Round 2/10, Epoch 0/5, RAY] Train time: 0.33116086100199027
+[SNAPSHOT 5/8, Round 2/10, Epoch 0/5, RAY] Local test and update metrics time: 0.47644534500068403
+[SNAPSHOT 5/8, Round 2/10, Epoch 1/5, RAY] Train time: 0.358464577999257
+[SNAPSHOT 5/8, Round 2/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4692374439982814
+[SNAPSHOT 5/8, Round 2/10, Epoch 2/5, RAY] Train time: 0.3470851220008626
+[SNAPSHOT 5/8, Round 2/10, Epoch 2/5, RAY] Local test and update metrics time: 0.43900991899863584
+[SNAPSHOT 5/8, Round 2/10, Epoch 3/5, RAY] Train time: 0.3269997550014523
+[SNAPSHOT 5/8, Round 2/10, Epoch 3/5, RAY] Local test and update metrics time: 0.42227449100028025
+[SNAPSHOT 5/8, Round 2/10, Epoch 4/5, RAY] Train time: 0.35222725700077717
+[SNAPSHOT 5/8, Round 2/10, Epoch 4/5, RAY] Local test and update metrics time: 0.43864727999971365
+[SNAPSHOT 5/8, Round 2/10] Aggregation time: 0.00967699299872038
+[SNAPSHOT 5/8, Round 2/10] Global Test time: 0.07362081799874431
+[SNAPSHOT 5/8, Round 2/10, Epoch 4/5] Update metrics time: 0.00018701899898587726
+[SNAPSHOT 5/8, Round 2/10, NC] Update best metrics time: 9.34000127017498e-07
+[SNAPSHOT 5/8, Round 2/10] Update best model time: 1.1600059224292636e-07
+[SNAPSHOT 5/8, Round 3/10] Compare metrics initialization time: 0.0014022680006746668
+[SNAPSHOT 5/8, Round 3/10, Epoch 0/5, RAY] Train time: 0.3499634159998095
+[SNAPSHOT 5/8, Round 3/10, Epoch 0/5, RAY] Local test and update metrics time: 0.47543679299997166
+[SNAPSHOT 5/8, Round 3/10, Epoch 1/5, RAY] Train time: 0.34647486199901323
+[SNAPSHOT 5/8, Round 3/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3389854880006169
+[SNAPSHOT 5/8, Round 3/10, Epoch 2/5, RAY] Train time: 0.3404801789984049
+[SNAPSHOT 5/8, Round 3/10, Epoch 2/5, RAY] Local test and update metrics time: 0.38885052100158646
+[SNAPSHOT 5/8, Round 3/10, Epoch 3/5, RAY] Train time: 0.32803052099916385
+[SNAPSHOT 5/8, Round 3/10, Epoch 3/5, RAY] Local test and update metrics time: 0.38039049500002875
+[SNAPSHOT 5/8, Round 3/10, Epoch 4/5, RAY] Train time: 0.32185351000225637
+[SNAPSHOT 5/8, Round 3/10, Epoch 4/5, RAY] Local test and update metrics time: 0.4403233939992788
+[SNAPSHOT 5/8, Round 3/10] Aggregation time: 0.005846041000040714
+[SNAPSHOT 5/8, Round 3/10] Global Test time: 0.06811295800071093
+[SNAPSHOT 5/8, Round 3/10, Epoch 4/5] Update metrics time: 0.00013082000077702105
+[SNAPSHOT 5/8, Round 3/10, NC] Update best metrics time: 1.067000994225964e-06
+[SNAPSHOT 5/8, Round 3/10] Update best model time: 1.0899748303927481e-07
+[SNAPSHOT 5/8, Round 4/10] Compare metrics initialization time: 0.001586619000590872
+[SNAPSHOT 5/8, Round 4/10, Epoch 0/5, RAY] Train time: 0.3330803789976926
+[SNAPSHOT 5/8, Round 4/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4952471680007875
+[SNAPSHOT 5/8, Round 4/10, Epoch 1/5, RAY] Train time: 0.3670273060015461
+[SNAPSHOT 5/8, Round 4/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3827486330010288
+[SNAPSHOT 5/8, Round 4/10, Epoch 2/5, RAY] Train time: 0.35987600699809263
+[SNAPSHOT 5/8, Round 4/10, Epoch 2/5, RAY] Local test and update metrics time: 0.36085779499990167
+[SNAPSHOT 5/8, Round 4/10, Epoch 3/5, RAY] Train time: 0.32736127200041665
+[SNAPSHOT 5/8, Round 4/10, Epoch 3/5, RAY] Local test and update metrics time: 0.333344541999395
+[SNAPSHOT 5/8, Round 4/10, Epoch 4/5, RAY] Train time: 0.3047733809980855
+[SNAPSHOT 5/8, Round 4/10, Epoch 4/5, RAY] Local test and update metrics time: 0.32961091399920406
+[SNAPSHOT 5/8, Round 4/10] Aggregation time: 0.008819646001938963
+[SNAPSHOT 5/8, Round 4/10] Global Test time: 0.07441534700046759
+[SNAPSHOT 5/8, Round 4/10, Epoch 4/5] Update metrics time: 0.00013462499919114634
+[SNAPSHOT 5/8, Round 4/10] Update best model time: 2.769993443507701e-07
+[SNAPSHOT 5/8, Round 5/10] Compare metrics initialization time: 0.0014031509999767877
+[SNAPSHOT 5/8, Round 5/10, Epoch 0/5, RAY] Train time: 0.3296071749973635
+[SNAPSHOT 5/8, Round 5/10, Epoch 0/5, RAY] Local test and update metrics time: 0.42929720299798646
+[SNAPSHOT 5/8, Round 5/10, Epoch 1/5, RAY] Train time: 0.3172484419992543
+[SNAPSHOT 5/8, Round 5/10, Epoch 1/5, RAY] Local test and update metrics time: 0.37439069999891217
+[SNAPSHOT 5/8, Round 5/10, Epoch 2/5, RAY] Train time: 0.32388403300137725
+[SNAPSHOT 5/8, Round 5/10, Epoch 2/5, RAY] Local test and update metrics time: 0.316950561998965
+[SNAPSHOT 5/8, Round 5/10, Epoch 3/5, RAY] Train time: 0.3746095870010322
+[SNAPSHOT 5/8, Round 5/10, Epoch 3/5, RAY] Local test and update metrics time: 0.35677054000188946
+[SNAPSHOT 5/8, Round 5/10, Epoch 4/5, RAY] Train time: 0.32524957900022855
+[SNAPSHOT 5/8, Round 5/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3692826660007995
+[SNAPSHOT 5/8, Round 5/10] Aggregation time: 0.009354270001495024
+[SNAPSHOT 5/8, Round 5/10] Global Test time: 0.06961182499799179
+[SNAPSHOT 5/8, Round 5/10, Epoch 4/5] Update metrics time: 0.0001303649987676181
+[SNAPSHOT 5/8, Round 5/10] Update best model time: 3.809982445091009e-07
+[SNAPSHOT 5/8, Round 6/10] Compare metrics initialization time: 0.0015166619996307418
+[SNAPSHOT 5/8, Round 6/10, Epoch 0/5, RAY] Train time: 0.32269389999783016
+[SNAPSHOT 5/8, Round 6/10, Epoch 0/5, RAY] Local test and update metrics time: 0.44082450900168624
+[SNAPSHOT 5/8, Round 6/10, Epoch 1/5, RAY] Train time: 0.3345687370019732
+[SNAPSHOT 5/8, Round 6/10, Epoch 1/5, RAY] Local test and update metrics time: 0.45101885099938954
+[SNAPSHOT 5/8, Round 6/10, Epoch 2/5, RAY] Train time: 0.33024839800054906
+[SNAPSHOT 5/8, Round 6/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4575054099987028
+[SNAPSHOT 5/8, Round 6/10, Epoch 3/5, RAY] Train time: 0.33496931600166135
+[SNAPSHOT 5/8, Round 6/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3659010039991699
+[SNAPSHOT 5/8, Round 6/10, Epoch 4/5, RAY] Train time: 0.3231963709986303
+[SNAPSHOT 5/8, Round 6/10, Epoch 4/5, RAY] Local test and update metrics time: 0.36898949299938977
+[SNAPSHOT 5/8, Round 6/10] Aggregation time: 0.009384674001921667
+[SNAPSHOT 5/8, Round 6/10] Global Test time: 0.06697168400205555
+[SNAPSHOT 5/8, Round 6/10, Epoch 4/5] Update metrics time: 0.00016365000192308798
+[SNAPSHOT 5/8, Round 6/10] Update best model time: 3.4699769457802176e-07
+[SNAPSHOT 5/8, Round 7/10] Compare metrics initialization time: 0.0014721700026711915
+[SNAPSHOT 5/8, Round 7/10, Epoch 0/5, RAY] Train time: 0.3084442189974652
+[SNAPSHOT 5/8, Round 7/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4955775790003827
+[SNAPSHOT 5/8, Round 7/10, Epoch 1/5, RAY] Train time: 0.3558511850023933
+[SNAPSHOT 5/8, Round 7/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3680065400003514
+[SNAPSHOT 5/8, Round 7/10, Epoch 2/5, RAY] Train time: 0.34306554599970696
+[SNAPSHOT 5/8, Round 7/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3510891129990341
+[SNAPSHOT 5/8, Round 7/10, Epoch 3/5, RAY] Train time: 0.3630817780031066
+[SNAPSHOT 5/8, Round 7/10, Epoch 3/5, RAY] Local test and update metrics time: 0.45340313800261356
+[SNAPSHOT 5/8, Round 7/10, Epoch 4/5, RAY] Train time: 0.34491672500007553
+[SNAPSHOT 5/8, Round 7/10, Epoch 4/5, RAY] Local test and update metrics time: 0.4771179970011872
+[SNAPSHOT 5/8, Round 7/10] Aggregation time: 0.009181321001960896
+[SNAPSHOT 5/8, Round 7/10] Global Test time: 0.06841173900102149
+[SNAPSHOT 5/8, Round 7/10, Epoch 4/5] Update metrics time: 0.0001405929979227949
+[SNAPSHOT 5/8, Round 7/10] Update best model time: 3.249988367315382e-07
+[SNAPSHOT 5/8, Round 8/10] Compare metrics initialization time: 0.0014014840016898233
+[SNAPSHOT 5/8, Round 8/10, Epoch 0/5, RAY] Train time: 0.36385292900013155
+[SNAPSHOT 5/8, Round 8/10, Epoch 0/5, RAY] Local test and update metrics time: 0.49063139200006844
+[SNAPSHOT 5/8, Round 8/10, Epoch 1/5, RAY] Train time: 0.37469462100125384
+[SNAPSHOT 5/8, Round 8/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4916803880005318
+[SNAPSHOT 5/8, Round 8/10, Epoch 2/5, RAY] Train time: 0.3611278320022393
+[SNAPSHOT 5/8, Round 8/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4111679029992956
+[SNAPSHOT 5/8, Round 8/10, Epoch 3/5, RAY] Train time: 0.3438312739999674
+[SNAPSHOT 5/8, Round 8/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3982571820015437
+[SNAPSHOT 5/8, Round 8/10, Epoch 4/5, RAY] Train time: 0.3407382699988375
+[SNAPSHOT 5/8, Round 8/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3485717669973383
+[SNAPSHOT 5/8, Round 8/10] Aggregation time: 0.007035832000838127
+[SNAPSHOT 5/8, Round 8/10] Global Test time: 0.06715234700095607
+[SNAPSHOT 5/8, Round 8/10, Epoch 4/5] Update metrics time: 0.00013008200039621443
+[SNAPSHOT 5/8, Round 8/10] Update best model time: 2.9299917514435947e-07
+[SNAPSHOT 5/8, Round 9/10] Compare metrics initialization time: 0.001369165001960937
+[SNAPSHOT 5/8, Round 9/10, Epoch 0/5, RAY] Train time: 0.3160870319989044
+[SNAPSHOT 5/8, Round 9/10, Epoch 0/5, RAY] Local test and update metrics time: 0.47396697599833715
+[SNAPSHOT 5/8, Round 9/10, Epoch 1/5, RAY] Train time: 0.3673893620034505
+[SNAPSHOT 5/8, Round 9/10, Epoch 1/5, RAY] Local test and update metrics time: 0.36214444399956847
+[SNAPSHOT 5/8, Round 9/10, Epoch 2/5, RAY] Train time: 0.34479037600249285
+[SNAPSHOT 5/8, Round 9/10, Epoch 2/5, RAY] Local test and update metrics time: 0.35296081300111837
+[SNAPSHOT 5/8, Round 9/10, Epoch 3/5, RAY] Train time: 0.3361341470008483
+[SNAPSHOT 5/8, Round 9/10, Epoch 3/5, RAY] Local test and update metrics time: 0.37955101799889235
+[SNAPSHOT 5/8, Round 9/10, Epoch 4/5, RAY] Train time: 0.32864085800247267
+[SNAPSHOT 5/8, Round 9/10, Epoch 4/5, RAY] Local test and update metrics time: 0.32173570099985227
+[SNAPSHOT 5/8, Round 9/10] Aggregation time: 0.009339793999970425
+[SNAPSHOT 5/8, Round 9/10] Global Test time: 0.0683145129987679
+[SNAPSHOT 5/8, Round 9/10, Epoch 4/5] Update metrics time: 0.00013295700046001002
+[SNAPSHOT 5/8, Round 9/10] Update best model time: 2.500019036233425e-07
+[SNAPSHOT 5/8] Model save time: 0.0005268089989840519
+[MAIN, RAY] Prev_ne update time: 0.31005936300061876 seconds
+[SNAPSHOT 6/8] Time taken for Subgraph Generation: 0.00016477999815833755
+[SNAPSHOT 6/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 6/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 6/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 6/8] Time taken for Graph Partitioning: 0.08628680299807456
+[SNAPSHOT 6/8, NC]Time taken for Label Counting: 0.008853720002662158
+[SNAPSHOT 6/8] Time taken for CCN Processing: 0.04419032700025127
+[SNAPSHOT 2/8, RAY] Time taken for Client Data Construction: 0.41550939499938977
+[SNAPSHOT 2/8] Time taken for Fed Dataset Creation: 5.022900222684257e-05
+[SNAPSHOT 6/8] Time taken for dygl Initialisation: 5.306999810272828e-06
+[SNAPSHOT 6/8, RAY] Time taken for Distributing Models: 0.06060166799943545
+[SNAPSHOT 6/8, RAY] Time taken for Sampling Clients: 0.032524826001463225
+[SNAPSHOT 6/8] Time taken for Plotly Configuration: 0.010878650999075035
+[SNAPSHOT 6/8, RAY] Time taken for Initializing Optimizers: 0.03691715699824272
+[SNAPSHOT 6/8, RAY] Time taken for Initializing Optimizers: 0.03691715699824272
+[SNAPSHOT 6/8, RAY] Time taken for Pretraining Communication: 85.18904300299982
+[SNAPSHOT 6/8, Round 0/10] Compare metrics initialization time: 0.0016803359976620413
+[SNAPSHOT 6/8, Round 0/10, Epoch 0/5, RAY] Train time: 0.5614285779993224
+[SNAPSHOT 6/8, Round 0/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5208329060005781
+[SNAPSHOT 6/8, Round 0/10, Epoch 1/5, RAY] Train time: 0.37549312800183543
+[SNAPSHOT 6/8, Round 0/10, Epoch 1/5, RAY] Local test and update metrics time: 0.49100173599799746
+[SNAPSHOT 6/8, Round 0/10, Epoch 2/5, RAY] Train time: 0.36597229199833237
+[SNAPSHOT 6/8, Round 0/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4587356230003934
+[SNAPSHOT 6/8, Round 0/10, Epoch 3/5, RAY] Train time: 0.35622980799962534
+[SNAPSHOT 6/8, Round 0/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4424453649990028
+[SNAPSHOT 6/8, Round 0/10, Epoch 4/5, RAY] Train time: 0.3665095409996866
+[SNAPSHOT 6/8, Round 0/10, Epoch 4/5, RAY] Local test and update metrics time: 0.43762215599781484
+[SNAPSHOT 6/8, Round 0/10] Aggregation time: 0.010838658003194723
+[SNAPSHOT 6/8, Round 0/10] Global Test time: 0.06951673900039168
+[SNAPSHOT 6/8, Round 0/10, Epoch 4/5] Update metrics time: 0.00013311300062923692
+[SNAPSHOT 6/8, Round 0/10, NC] Update best metrics time: 8.329989213962108e-07
+[SNAPSHOT 6/8, Round 0/10] Update best model time: 1.3699900591745973e-07
+[SNAPSHOT 6/8, Round 1/10] Compare metrics initialization time: 0.0013882569983252324
+[SNAPSHOT 6/8, Round 1/10, Epoch 0/5, RAY] Train time: 0.34156376300234115
+[SNAPSHOT 6/8, Round 1/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5068463870011328
+[SNAPSHOT 6/8, Round 1/10, Epoch 1/5, RAY] Train time: 0.355694260000746
+[SNAPSHOT 6/8, Round 1/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4673814899979334
+[SNAPSHOT 6/8, Round 1/10, Epoch 2/5, RAY] Train time: 0.35387289299978875
+[SNAPSHOT 6/8, Round 1/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3793991370002914
+[SNAPSHOT 6/8, Round 1/10, Epoch 3/5, RAY] Train time: 0.3583358359974227
+[SNAPSHOT 6/8, Round 1/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3630398379973485
+[SNAPSHOT 6/8, Round 1/10, Epoch 4/5, RAY] Train time: 0.34535061300266534
+[SNAPSHOT 6/8, Round 1/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3604199229994265
+[SNAPSHOT 6/8, Round 1/10] Aggregation time: 0.009552802999678534
+[SNAPSHOT 6/8, Round 1/10] Global Test time: 0.0711184299980232
+[SNAPSHOT 6/8, Round 1/10, Epoch 4/5] Update metrics time: 0.0001343020012427587
+[SNAPSHOT 6/8, Round 1/10] Update best model time: 3.389977791812271e-07
+[SNAPSHOT 6/8, Round 2/10] Compare metrics initialization time: 0.0013764830000582151
+[SNAPSHOT 6/8, Round 2/10, Epoch 0/5, RAY] Train time: 0.337009720999049
+[SNAPSHOT 6/8, Round 2/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4688417460019991
+[SNAPSHOT 6/8, Round 2/10, Epoch 1/5, RAY] Train time: 0.3573259459990368
+[SNAPSHOT 6/8, Round 2/10, Epoch 1/5, RAY] Local test and update metrics time: 0.32991229300023406
+[SNAPSHOT 6/8, Round 2/10, Epoch 2/5, RAY] Train time: 0.33963957599917194
+[SNAPSHOT 6/8, Round 2/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3837598899990553
+[SNAPSHOT 6/8, Round 2/10, Epoch 3/5, RAY] Train time: 0.3313393910029845
+[SNAPSHOT 6/8, Round 2/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3649792600008368
+[SNAPSHOT 6/8, Round 2/10, Epoch 4/5, RAY] Train time: 0.3381612689991016
+[SNAPSHOT 6/8, Round 2/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3318284599990875
+[SNAPSHOT 6/8, Round 2/10] Aggregation time: 0.009221817999787163
+[SNAPSHOT 6/8, Round 2/10] Global Test time: 0.09160980200249469
+[SNAPSHOT 6/8, Round 2/10, Epoch 4/5] Update metrics time: 0.0001361799986625556
+[SNAPSHOT 6/8, Round 2/10] Update best model time: 2.3699976736679673e-07
+[SNAPSHOT 6/8, Round 3/10] Compare metrics initialization time: 0.0014100989974394906
+[SNAPSHOT 6/8, Round 3/10, Epoch 0/5, RAY] Train time: 0.31044080500214477
+[SNAPSHOT 6/8, Round 3/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4461431790005008
+[SNAPSHOT 6/8, Round 3/10, Epoch 1/5, RAY] Train time: 0.31952353800079436
+[SNAPSHOT 6/8, Round 3/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3320604619984806
+[SNAPSHOT 6/8, Round 3/10, Epoch 2/5, RAY] Train time: 0.3290008170006331
+[SNAPSHOT 6/8, Round 3/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4283928990007553
+[SNAPSHOT 6/8, Round 3/10, Epoch 3/5, RAY] Train time: 0.45020561600176734
+[SNAPSHOT 6/8, Round 3/10, Epoch 3/5, RAY] Local test and update metrics time: 0.5089745759978541
+[SNAPSHOT 6/8, Round 3/10, Epoch 4/5, RAY] Train time: 0.4587318250014505
+[SNAPSHOT 6/8, Round 3/10, Epoch 4/5, RAY] Local test and update metrics time: 1.0794091299976571
+[SNAPSHOT 6/8, Round 3/10] Aggregation time: 0.009294606999901589
+[SNAPSHOT 6/8, Round 3/10] Global Test time: 0.06647541200072737
+[SNAPSHOT 6/8, Round 3/10, Epoch 4/5] Update metrics time: 0.00013417300215223804
+[SNAPSHOT 6/8, Round 3/10] Update best model time: 2.5599729269742966e-07
+[SNAPSHOT 6/8, Round 4/10] Compare metrics initialization time: 0.0014035450003575534
+[SNAPSHOT 6/8, Round 4/10, Epoch 0/5, RAY] Train time: 0.4187905110011343
+[SNAPSHOT 6/8, Round 4/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5844593969995913
+[SNAPSHOT 6/8, Round 4/10, Epoch 1/5, RAY] Train time: 0.3857210079986544
+[SNAPSHOT 6/8, Round 4/10, Epoch 1/5, RAY] Local test and update metrics time: 0.464156952999474
+[SNAPSHOT 6/8, Round 4/10, Epoch 2/5, RAY] Train time: 0.48848711700338754
+[SNAPSHOT 6/8, Round 4/10, Epoch 2/5, RAY] Local test and update metrics time: 0.5158625320000283
+[SNAPSHOT 6/8, Round 4/10, Epoch 3/5, RAY] Train time: 0.4164094400002796
+[SNAPSHOT 6/8, Round 4/10, Epoch 3/5, RAY] Local test and update metrics time: 0.7137231449996762
+[SNAPSHOT 6/8, Round 4/10, Epoch 4/5, RAY] Train time: 0.4840460189989244
+[SNAPSHOT 6/8, Round 4/10, Epoch 4/5, RAY] Local test and update metrics time: 0.46885731300062616
+[SNAPSHOT 6/8, Round 4/10] Aggregation time: 0.009469005999562796
+[SNAPSHOT 6/8, Round 4/10] Global Test time: 0.06503945000076783
+[SNAPSHOT 6/8, Round 4/10, Epoch 4/5] Update metrics time: 0.0001431279997632373
+[SNAPSHOT 6/8, Round 4/10] Update best model time: 3.62000719178468e-07
+[SNAPSHOT 6/8, Round 5/10] Compare metrics initialization time: 0.0014194379982654937
+[SNAPSHOT 6/8, Round 5/10, Epoch 0/5, RAY] Train time: 0.5207738969984348
+[SNAPSHOT 6/8, Round 5/10, Epoch 0/5, RAY] Local test and update metrics time: 0.9818206119998649
+[SNAPSHOT 6/8, Round 5/10, Epoch 1/5, RAY] Train time: 0.46304330799830495
+[SNAPSHOT 6/8, Round 5/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4495760979989427
+[SNAPSHOT 6/8, Round 5/10, Epoch 2/5, RAY] Train time: 1.0654052409990982
+[SNAPSHOT 6/8, Round 5/10, Epoch 2/5, RAY] Local test and update metrics time: 0.5306746479982394
+[SNAPSHOT 6/8, Round 5/10, Epoch 3/5, RAY] Train time: 0.40837871999974595
+[SNAPSHOT 6/8, Round 5/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4008831629980705
+[SNAPSHOT 6/8, Round 5/10, Epoch 4/5, RAY] Train time: 0.37498997999864514
+[SNAPSHOT 6/8, Round 5/10, Epoch 4/5, RAY] Local test and update metrics time: 0.7832510739972349
+[SNAPSHOT 6/8, Round 5/10] Aggregation time: 0.009583306000422454
+[SNAPSHOT 6/8, Round 5/10] Global Test time: 0.06885493200024939
+[SNAPSHOT 6/8, Round 5/10, Epoch 4/5] Update metrics time: 0.00016082500224001706
+[SNAPSHOT 6/8, Round 5/10] Update best model time: 2.749984560068697e-07
+[SNAPSHOT 6/8, Round 6/10] Compare metrics initialization time: 0.0013949189997219946
+[SNAPSHOT 6/8, Round 6/10, Epoch 0/5, RAY] Train time: 0.4601205699982529
+[SNAPSHOT 6/8, Round 6/10, Epoch 0/5, RAY] Local test and update metrics time: 0.6507117440014554
+[SNAPSHOT 6/8, Round 6/10, Epoch 1/5, RAY] Train time: 0.6014353559985466
+[SNAPSHOT 6/8, Round 6/10, Epoch 1/5, RAY] Local test and update metrics time: 0.6371032049974019
+[SNAPSHOT 6/8, Round 6/10, Epoch 2/5, RAY] Train time: 0.3841345380023995
+[SNAPSHOT 6/8, Round 6/10, Epoch 2/5, RAY] Local test and update metrics time: 0.630831696002133
+[SNAPSHOT 6/8, Round 6/10, Epoch 3/5, RAY] Train time: 0.37938121800107183
+[SNAPSHOT 6/8, Round 6/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3546643179979583
+[SNAPSHOT 6/8, Round 6/10, Epoch 4/5, RAY] Train time: 0.44160404300055234
+[SNAPSHOT 6/8, Round 6/10, Epoch 4/5, RAY] Local test and update metrics time: 0.4327409270008502
+[SNAPSHOT 6/8, Round 6/10] Aggregation time: 0.0051273340031912085
+[SNAPSHOT 6/8, Round 6/10] Global Test time: 0.07455232100255671
+[SNAPSHOT 6/8, Round 6/10, Epoch 4/5] Update metrics time: 0.00020265499915694818
+[SNAPSHOT 6/8, Round 6/10] Update best model time: 3.360000846441835e-07
+[SNAPSHOT 6/8, Round 7/10] Compare metrics initialization time: 0.002007262999541126
+[SNAPSHOT 6/8, Round 7/10, Epoch 0/5, RAY] Train time: 0.4517359410019708
+[SNAPSHOT 6/8, Round 7/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5074454739988141
+[SNAPSHOT 6/8, Round 7/10, Epoch 1/5, RAY] Train time: 0.4577030630025547
+[SNAPSHOT 6/8, Round 7/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4918171399986022
+[SNAPSHOT 6/8, Round 7/10, Epoch 2/5, RAY] Train time: 0.38372742800129345
+[SNAPSHOT 6/8, Round 7/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4081378830014728
+[SNAPSHOT 6/8, Round 7/10, Epoch 3/5, RAY] Train time: 0.3772063830001571
+[SNAPSHOT 6/8, Round 7/10, Epoch 3/5, RAY] Local test and update metrics time: 0.430289009000262
+[SNAPSHOT 6/8, Round 7/10, Epoch 4/5, RAY] Train time: 0.36371168199912063
+[SNAPSHOT 6/8, Round 7/10, Epoch 4/5, RAY] Local test and update metrics time: 0.4248348210021504
+[SNAPSHOT 6/8, Round 7/10] Aggregation time: 0.010076362999825506
+[SNAPSHOT 6/8, Round 7/10] Global Test time: 0.07180708399755531
+[SNAPSHOT 6/8, Round 7/10, Epoch 4/5] Update metrics time: 0.00017609200222068466
+[SNAPSHOT 6/8, Round 7/10] Update best model time: 3.710010787472129e-07
+[SNAPSHOT 6/8, Round 8/10] Compare metrics initialization time: 0.0013948909981991164
+[SNAPSHOT 6/8, Round 8/10, Epoch 0/5, RAY] Train time: 0.3488650299987057
+[SNAPSHOT 6/8, Round 8/10, Epoch 0/5, RAY] Local test and update metrics time: 0.45787319900045986
+[SNAPSHOT 6/8, Round 8/10, Epoch 1/5, RAY] Train time: 0.34400982900115196
+[SNAPSHOT 6/8, Round 8/10, Epoch 1/5, RAY] Local test and update metrics time: 0.38976710100178025
+[SNAPSHOT 6/8, Round 8/10, Epoch 2/5, RAY] Train time: 0.35225258500213386
+[SNAPSHOT 6/8, Round 8/10, Epoch 2/5, RAY] Local test and update metrics time: 0.40289568599837366
+[SNAPSHOT 6/8, Round 8/10, Epoch 3/5, RAY] Train time: 0.3591744499972265
+[SNAPSHOT 6/8, Round 8/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4659894559990789
+[SNAPSHOT 6/8, Round 8/10, Epoch 4/5, RAY] Train time: 0.3474106360008591
+[SNAPSHOT 6/8, Round 8/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3668508120026672
+[SNAPSHOT 6/8, Round 8/10] Aggregation time: 0.009462483001698274
+[SNAPSHOT 6/8, Round 8/10] Global Test time: 0.07278038599906722
+[SNAPSHOT 6/8, Round 8/10, Epoch 4/5] Update metrics time: 0.00015159599934122525
+[SNAPSHOT 6/8, Round 8/10] Update best model time: 3.5500124795362353e-07
+[SNAPSHOT 6/8, Round 9/10] Compare metrics initialization time: 0.001468531001592055
+[SNAPSHOT 6/8, Round 9/10, Epoch 0/5, RAY] Train time: 0.33751266699982807
+[SNAPSHOT 6/8, Round 9/10, Epoch 0/5, RAY] Local test and update metrics time: 0.428419184001541
+[SNAPSHOT 6/8, Round 9/10, Epoch 1/5, RAY] Train time: 0.3258414529991569
+[SNAPSHOT 6/8, Round 9/10, Epoch 1/5, RAY] Local test and update metrics time: 0.36213052600214723
+[SNAPSHOT 6/8, Round 9/10, Epoch 2/5, RAY] Train time: 0.3666226690002077
+[SNAPSHOT 6/8, Round 9/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3873919420002494
+[SNAPSHOT 6/8, Round 9/10, Epoch 3/5, RAY] Train time: 0.33518252299836604
+[SNAPSHOT 6/8, Round 9/10, Epoch 3/5, RAY] Local test and update metrics time: 0.447000793999905
+[SNAPSHOT 6/8, Round 9/10, Epoch 4/5, RAY] Train time: 0.35496065999905113
+[SNAPSHOT 6/8, Round 9/10, Epoch 4/5, RAY] Local test and update metrics time: 0.421480008000799
+[SNAPSHOT 6/8, Round 9/10] Aggregation time: 0.006027535000612261
+[SNAPSHOT 6/8, Round 9/10] Global Test time: 0.07152599799883319
+[SNAPSHOT 6/8, Round 9/10, Epoch 4/5] Update metrics time: 0.000146033002238255
+[SNAPSHOT 6/8, Round 9/10] Update best model time: 2.3300162865780294e-07
+[SNAPSHOT 6/8] Model save time: 0.0005107050019432791
+[MAIN, RAY] Prev_ne update time: 0.3540047490023426 seconds
+[SNAPSHOT 7/8] Time taken for Subgraph Generation: 0.00011472400001366623
+[SNAPSHOT 7/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 7/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 7/8, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 7/8] Time taken for Graph Partitioning: 0.08492796900100075
+[SNAPSHOT 7/8, NC]Time taken for Label Counting: 0.008872483002051013
+[SNAPSHOT 7/8] Time taken for CCN Processing: 0.043665638000675244
+[SNAPSHOT 2/8, RAY] Time taken for Client Data Construction: 0.4171006180004042
+[SNAPSHOT 2/8] Time taken for Fed Dataset Creation: 4.423700011102483e-05
+[SNAPSHOT 7/8] Time taken for dygl Initialisation: 5.697998858522624e-06
+[SNAPSHOT 7/8, RAY] Time taken for Distributing Models: 0.0626857610004663
+[SNAPSHOT 7/8, RAY] Time taken for Sampling Clients: 0.03443951599911088
+[SNAPSHOT 7/8] Time taken for Plotly Configuration: 0.01083522100088885
+[SNAPSHOT 7/8, RAY] Time taken for Initializing Optimizers: 0.03574777100220672
+[SNAPSHOT 7/8, RAY] Time taken for Initializing Optimizers: 0.03574777100220672
+[SNAPSHOT 7/8, RAY] Time taken for Pretraining Communication: 75.55380213100216
+[SNAPSHOT 7/8, Round 0/10] Compare metrics initialization time: 0.0016866559999471065
+[SNAPSHOT 7/8, Round 0/10, Epoch 0/5, RAY] Train time: 0.5081863189989235
+[SNAPSHOT 7/8, Round 0/10, Epoch 0/5, RAY] Local test and update metrics time: 0.5023367200010398
+[SNAPSHOT 7/8, Round 0/10, Epoch 1/5, RAY] Train time: 0.3760350029988331
+[SNAPSHOT 7/8, Round 0/10, Epoch 1/5, RAY] Local test and update metrics time: 0.4568451390005066
+[SNAPSHOT 7/8, Round 0/10, Epoch 2/5, RAY] Train time: 0.3443726420009625
+[SNAPSHOT 7/8, Round 0/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4586957749997964
+[SNAPSHOT 7/8, Round 0/10, Epoch 3/5, RAY] Train time: 0.3492178980013705
+[SNAPSHOT 7/8, Round 0/10, Epoch 3/5, RAY] Local test and update metrics time: 0.363106708999112
+[SNAPSHOT 7/8, Round 0/10, Epoch 4/5, RAY] Train time: 0.3272939970011066
+[SNAPSHOT 7/8, Round 0/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3852329630026361
+[SNAPSHOT 7/8, Round 0/10] Aggregation time: 0.00960142999974778
+[SNAPSHOT 7/8, Round 0/10] Global Test time: 0.0686111159993743
+[SNAPSHOT 7/8, Round 0/10, Epoch 4/5] Update metrics time: 0.0001358720001007896
+[SNAPSHOT 7/8, Round 0/10, NC] Update best metrics time: 5.360016075428575e-07
+[SNAPSHOT 7/8, Round 0/10] Update best model time: 1.2899909052066505e-07
+[SNAPSHOT 7/8, Round 1/10] Compare metrics initialization time: 0.0013842059997841716
+[SNAPSHOT 7/8, Round 1/10, Epoch 0/5, RAY] Train time: 0.34491046000039205
+[SNAPSHOT 7/8, Round 1/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4774309610002092
+[SNAPSHOT 7/8, Round 1/10, Epoch 1/5, RAY] Train time: 0.35971654999957536
+[SNAPSHOT 7/8, Round 1/10, Epoch 1/5, RAY] Local test and update metrics time: 0.38472011200065026
+[SNAPSHOT 7/8, Round 1/10, Epoch 2/5, RAY] Train time: 0.3389837840004475
+[SNAPSHOT 7/8, Round 1/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3973864340005093
+[SNAPSHOT 7/8, Round 1/10, Epoch 3/5, RAY] Train time: 0.31525915199745214
+[SNAPSHOT 7/8, Round 1/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3496604900028615
+[SNAPSHOT 7/8, Round 1/10, Epoch 4/5, RAY] Train time: 0.3216778499991051
+[SNAPSHOT 7/8, Round 1/10, Epoch 4/5, RAY] Local test and update metrics time: 0.30653223899935256
+[SNAPSHOT 7/8, Round 1/10] Aggregation time: 0.009118173002207186
+[SNAPSHOT 7/8, Round 1/10] Global Test time: 0.07578886200280976
+[SNAPSHOT 7/8, Round 1/10, Epoch 4/5] Update metrics time: 0.00016713200238882564
+[SNAPSHOT 7/8, Round 1/10, NC] Update best metrics time: 1.1849988368339837e-06
+[SNAPSHOT 7/8, Round 1/10] Update best model time: 1.500011421740055e-07
+[SNAPSHOT 7/8, Round 2/10] Compare metrics initialization time: 0.0014699629973620176
+[SNAPSHOT 7/8, Round 2/10, Epoch 0/5, RAY] Train time: 0.32536861399785266
+[SNAPSHOT 7/8, Round 2/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4452848660002928
+[SNAPSHOT 7/8, Round 2/10, Epoch 1/5, RAY] Train time: 0.33196342500014
+[SNAPSHOT 7/8, Round 2/10, Epoch 1/5, RAY] Local test and update metrics time: 0.41987947699817596
+[SNAPSHOT 7/8, Round 2/10, Epoch 2/5, RAY] Train time: 0.3548794810012623
+[SNAPSHOT 7/8, Round 2/10, Epoch 2/5, RAY] Local test and update metrics time: 0.36247239200019976
+[SNAPSHOT 7/8, Round 2/10, Epoch 3/5, RAY] Train time: 0.32084060800116276
+[SNAPSHOT 7/8, Round 2/10, Epoch 3/5, RAY] Local test and update metrics time: 0.33102950399916153
+[SNAPSHOT 7/8, Round 2/10, Epoch 4/5, RAY] Train time: 0.32758517199908965
+[SNAPSHOT 7/8, Round 2/10, Epoch 4/5, RAY] Local test and update metrics time: 0.32407395699920016
+[SNAPSHOT 7/8, Round 2/10] Aggregation time: 0.009243099000741495
+[SNAPSHOT 7/8, Round 2/10] Global Test time: 0.06837906600048882
+[SNAPSHOT 7/8, Round 2/10, Epoch 4/5] Update metrics time: 0.0001388100026815664
+[SNAPSHOT 7/8, Round 2/10] Update best model time: 2.1500090952031314e-07
+[SNAPSHOT 7/8, Round 3/10] Compare metrics initialization time: 0.0015105389975360595
+[SNAPSHOT 7/8, Round 3/10, Epoch 0/5, RAY] Train time: 0.3051067440028419
+[SNAPSHOT 7/8, Round 3/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4356033549993299
+[SNAPSHOT 7/8, Round 3/10, Epoch 1/5, RAY] Train time: 0.30716398500226205
+[SNAPSHOT 7/8, Round 3/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3820542180001212
+[SNAPSHOT 7/8, Round 3/10, Epoch 2/5, RAY] Train time: 0.3296804540004814
+[SNAPSHOT 7/8, Round 3/10, Epoch 2/5, RAY] Local test and update metrics time: 0.4679190210008528
+[SNAPSHOT 7/8, Round 3/10, Epoch 3/5, RAY] Train time: 0.3225544419983635
+[SNAPSHOT 7/8, Round 3/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3852739539979666
+[SNAPSHOT 7/8, Round 3/10, Epoch 4/5, RAY] Train time: 0.32759768699907
+[SNAPSHOT 7/8, Round 3/10, Epoch 4/5, RAY] Local test and update metrics time: 0.39672587099994416
+[SNAPSHOT 7/8, Round 3/10] Aggregation time: 0.009207982002408244
+[SNAPSHOT 7/8, Round 3/10] Global Test time: 0.07107283499863115
+[SNAPSHOT 7/8, Round 3/10, Epoch 4/5] Update metrics time: 0.00015793899729033
+[SNAPSHOT 7/8, Round 3/10] Update best model time: 3.580025804694742e-07
+[SNAPSHOT 7/8, Round 4/10] Compare metrics initialization time: 0.0014140239982225467
+[SNAPSHOT 7/8, Round 4/10, Epoch 0/5, RAY] Train time: 0.3547702210016723
+[SNAPSHOT 7/8, Round 4/10, Epoch 0/5, RAY] Local test and update metrics time: 0.47257291600180906
+[SNAPSHOT 7/8, Round 4/10, Epoch 1/5, RAY] Train time: 0.34845592999772634
+[SNAPSHOT 7/8, Round 4/10, Epoch 1/5, RAY] Local test and update metrics time: 0.40062712200233364
+[SNAPSHOT 7/8, Round 4/10, Epoch 2/5, RAY] Train time: 0.3318165019991284
+[SNAPSHOT 7/8, Round 4/10, Epoch 2/5, RAY] Local test and update metrics time: 0.39974126699962653
+[SNAPSHOT 7/8, Round 4/10, Epoch 3/5, RAY] Train time: 0.30855271499967785
+[SNAPSHOT 7/8, Round 4/10, Epoch 3/5, RAY] Local test and update metrics time: 0.4019279730018752
+[SNAPSHOT 7/8, Round 4/10, Epoch 4/5, RAY] Train time: 0.32791314399946714
+[SNAPSHOT 7/8, Round 4/10, Epoch 4/5, RAY] Local test and update metrics time: 0.39251027800128213
+[SNAPSHOT 7/8, Round 4/10] Aggregation time: 0.009671671999967657
+[SNAPSHOT 7/8, Round 4/10] Global Test time: 0.06690079500185675
+[SNAPSHOT 7/8, Round 4/10, Epoch 4/5] Update metrics time: 0.00014002000170876272
+[SNAPSHOT 7/8, Round 4/10] Update best model time: 2.730012056417763e-07
+[SNAPSHOT 7/8, Round 5/10] Compare metrics initialization time: 0.0014847130005364306
+[SNAPSHOT 7/8, Round 5/10, Epoch 0/5, RAY] Train time: 0.3268875249996199
+[SNAPSHOT 7/8, Round 5/10, Epoch 0/5, RAY] Local test and update metrics time: 0.47652754500086303
+[SNAPSHOT 7/8, Round 5/10, Epoch 1/5, RAY] Train time: 0.3207391080031812
+[SNAPSHOT 7/8, Round 5/10, Epoch 1/5, RAY] Local test and update metrics time: 0.41151480299959076
+[SNAPSHOT 7/8, Round 5/10, Epoch 2/5, RAY] Train time: 0.30144777500026976
+[SNAPSHOT 7/8, Round 5/10, Epoch 2/5, RAY] Local test and update metrics time: 0.47741429899906507
+[SNAPSHOT 7/8, Round 5/10, Epoch 3/5, RAY] Train time: 0.33611088399993605
+[SNAPSHOT 7/8, Round 5/10, Epoch 3/5, RAY] Local test and update metrics time: 0.43014992399912444
+[SNAPSHOT 7/8, Round 5/10, Epoch 4/5, RAY] Train time: 0.3357482520004851
+[SNAPSHOT 7/8, Round 5/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3527100009996502
+[SNAPSHOT 7/8, Round 5/10] Aggregation time: 0.009427957000298193
+[SNAPSHOT 7/8, Round 5/10] Global Test time: 0.0683567790001689
+[SNAPSHOT 7/8, Round 5/10, Epoch 4/5] Update metrics time: 0.00017210100122611038
+[SNAPSHOT 7/8, Round 5/10] Update best model time: 2.499982656445354e-07
+[SNAPSHOT 7/8, Round 6/10] Compare metrics initialization time: 0.0013825640016875695
+[SNAPSHOT 7/8, Round 6/10, Epoch 0/5, RAY] Train time: 0.3096531089977361
+[SNAPSHOT 7/8, Round 6/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4198482489991875
+[SNAPSHOT 7/8, Round 6/10, Epoch 1/5, RAY] Train time: 0.31542489899948123
+[SNAPSHOT 7/8, Round 6/10, Epoch 1/5, RAY] Local test and update metrics time: 0.37005684900213964
+[SNAPSHOT 7/8, Round 6/10, Epoch 2/5, RAY] Train time: 0.33424374099922716
+[SNAPSHOT 7/8, Round 6/10, Epoch 2/5, RAY] Local test and update metrics time: 0.34650313000020105
+[SNAPSHOT 7/8, Round 6/10, Epoch 3/5, RAY] Train time: 0.342389893001382
+[SNAPSHOT 7/8, Round 6/10, Epoch 3/5, RAY] Local test and update metrics time: 0.40260429000045406
+[SNAPSHOT 7/8, Round 6/10, Epoch 4/5, RAY] Train time: 0.3371241579989146
+[SNAPSHOT 7/8, Round 6/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3690166999986104
+[SNAPSHOT 7/8, Round 6/10] Aggregation time: 0.009524102999421302
+[SNAPSHOT 7/8, Round 6/10] Global Test time: 0.06769057599740336
+[SNAPSHOT 7/8, Round 6/10, Epoch 4/5] Update metrics time: 0.00014720799663336948
+[SNAPSHOT 7/8, Round 6/10] Update best model time: 2.890010364353657e-07
+[SNAPSHOT 7/8, Round 7/10] Compare metrics initialization time: 0.001394977000018116
+[SNAPSHOT 7/8, Round 7/10, Epoch 0/5, RAY] Train time: 0.34156259299925296
+[SNAPSHOT 7/8, Round 7/10, Epoch 0/5, RAY] Local test and update metrics time: 0.421512706001522
+[SNAPSHOT 7/8, Round 7/10, Epoch 1/5, RAY] Train time: 0.3379961290011124
+[SNAPSHOT 7/8, Round 7/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3901799999985087
+[SNAPSHOT 7/8, Round 7/10, Epoch 2/5, RAY] Train time: 0.328113947998645
+[SNAPSHOT 7/8, Round 7/10, Epoch 2/5, RAY] Local test and update metrics time: 0.35454675599976326
+[SNAPSHOT 7/8, Round 7/10, Epoch 3/5, RAY] Train time: 0.31773966399850906
+[SNAPSHOT 7/8, Round 7/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3540384889965935
+[SNAPSHOT 7/8, Round 7/10, Epoch 4/5, RAY] Train time: 0.3267805989999033
+[SNAPSHOT 7/8, Round 7/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3715905169992766
+[SNAPSHOT 7/8, Round 7/10] Aggregation time: 0.01011552799900528
+[SNAPSHOT 7/8, Round 7/10] Global Test time: 0.07057454499954474
+[SNAPSHOT 7/8, Round 7/10, Epoch 4/5] Update metrics time: 0.00015983600314939395
+[SNAPSHOT 7/8, Round 7/10] Update best model time: 3.540008037816733e-07
+[SNAPSHOT 7/8, Round 8/10] Compare metrics initialization time: 0.0014188219975039829
+[SNAPSHOT 7/8, Round 8/10, Epoch 0/5, RAY] Train time: 0.3422805510017497
+[SNAPSHOT 7/8, Round 8/10, Epoch 0/5, RAY] Local test and update metrics time: 0.4183622339987778
+[SNAPSHOT 7/8, Round 8/10, Epoch 1/5, RAY] Train time: 0.32982643700233893
+[SNAPSHOT 7/8, Round 8/10, Epoch 1/5, RAY] Local test and update metrics time: 0.3571450569979788
+[SNAPSHOT 7/8, Round 8/10, Epoch 2/5, RAY] Train time: 0.3253353119980602
+[SNAPSHOT 7/8, Round 8/10, Epoch 2/5, RAY] Local test and update metrics time: 0.44953508700200473
+[SNAPSHOT 7/8, Round 8/10, Epoch 3/5, RAY] Train time: 0.32510758999706013
+[SNAPSHOT 7/8, Round 8/10, Epoch 3/5, RAY] Local test and update metrics time: 0.41862219700124115
+[SNAPSHOT 7/8, Round 8/10, Epoch 4/5, RAY] Train time: 0.3523710769986792
+[SNAPSHOT 7/8, Round 8/10, Epoch 4/5, RAY] Local test and update metrics time: 0.4187889470013033
+[SNAPSHOT 7/8, Round 8/10] Aggregation time: 0.009372034997795708
+[SNAPSHOT 7/8, Round 8/10] Global Test time: 0.06400681800005259
+[SNAPSHOT 7/8, Round 8/10, Epoch 4/5] Update metrics time: 0.00015621900092810392
+[SNAPSHOT 7/8, Round 8/10] Update best model time: 4.209978214930743e-07
+[SNAPSHOT 7/8, Round 9/10] Compare metrics initialization time: 0.0014528069987136405
+[SNAPSHOT 7/8, Round 9/10, Epoch 0/5, RAY] Train time: 0.37741578799978015
+[SNAPSHOT 7/8, Round 9/10, Epoch 0/5, RAY] Local test and update metrics time: 0.47509147500022664
+[SNAPSHOT 7/8, Round 9/10, Epoch 1/5, RAY] Train time: 0.377015335001488
+[SNAPSHOT 7/8, Round 9/10, Epoch 1/5, RAY] Local test and update metrics time: 0.34137198600001284
+[SNAPSHOT 7/8, Round 9/10, Epoch 2/5, RAY] Train time: 0.3344585509985336
+[SNAPSHOT 7/8, Round 9/10, Epoch 2/5, RAY] Local test and update metrics time: 0.3476907369986293
+[SNAPSHOT 7/8, Round 9/10, Epoch 3/5, RAY] Train time: 0.3257814239987056
+[SNAPSHOT 7/8, Round 9/10, Epoch 3/5, RAY] Local test and update metrics time: 0.3365810479990614
+[SNAPSHOT 7/8, Round 9/10, Epoch 4/5, RAY] Train time: 0.36032553399854805
+[SNAPSHOT 7/8, Round 9/10, Epoch 4/5, RAY] Local test and update metrics time: 0.3503264169994509
+[SNAPSHOT 7/8, Round 9/10] Aggregation time: 0.009341420998680405
+[SNAPSHOT 7/8, Round 9/10] Global Test time: 0.07856319800339406
+[SNAPSHOT 7/8, Round 9/10, Epoch 4/5] Update metrics time: 0.00016648000018903986
+[SNAPSHOT 7/8, Round 9/10] Update best model time: 2.6499765226617455e-07
+[SNAPSHOT 7/8] Model save time: 0.0005415760024334304
+[MAIN, RAY] Prev_ne update time: 0.3045778439991409 seconds
+Accuracy per snap: [0.6913642563975574, 0.7061117820506227, 0.6713669805764494, 0.6738427902678406, 0.6414125437138233, 0.6321685531850623, 0.6163531187424868, 0.6094783977253262]Avg Accuracy: 0.6552623028323961
+Avg F1: 0.6552623028323961

@@ -13,10 +13,8 @@ class ReshapeH():
         if h.shape[0] == self.glob_shape:
             return h
         
-        reshaped = torch.zeros((self.glob_shape, h.shape[1]))
-        # reshaped = copy.deepcopy(self.empty_h)
+        reshaped = torch.zeros((self.glob_shape, h.shape[1]), device=h.device)
         reshaped[subnodes] = h
-
         return reshaped
     
 class MLPEncoder(nn.Module):

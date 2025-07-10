@@ -1,0 +1,110 @@
+[MAIN, RAY] Ray cluster activated time: 0.00031833800312597305 seconds
+[MAIN] Config initialisation time: 0.054066643002443016 seconds
+[MAIN] Data loading time: 0.5578845240015653 seconds
+[MAIN] Logger initialisation time: 0.00011858400102937594 seconds
+[MAIN, RAY] Client/Server creation time: 0.06260530399595154 seconds
+[MAIN] Plot configuration time: 0.012118225000449456 seconds
+[MAIN, RAY] local model initialization time: 6.157634021001286 seconds
+[SNAPSHOT 0/3] Time taken for Subgraph Generation: 2.601899905130267e-05
+[SNAPSHOT 0/3, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 0/3, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 0/3] Time taken for Graph Partitioning: 0.14637698300066404
+[SNAPSHOT 0/3, NC]Time taken for Label Counting: 0.0004734539979835972
+[SNAPSHOT 0/3] Time taken for CCN Processing: 0.010192245994403493
+[SNAPSHOT 2/3, RAY] Time taken for Client Data Construction: 0.41313137600081973
+[SNAPSHOT 2/3] Time taken for Fed Dataset Creation: 0.00014016299974173307
+[SNAPSHOT 0/3] Time taken for dygl Initialisation: 1.3504002708941698e-05
+[SNAPSHOT 0/3, RAY] Time taken for Distributing Models: 0.03215522599930409
+[SNAPSHOT 0/3, RAY] Time taken for Sampling Clients: 0.03394355500495294
+[SNAPSHOT 0/3] Time taken for Plotly Configuration: 0.008121525002934504
+[SNAPSHOT 0/3, RAY] Time taken for Initializing Optimizers: 0.03642341100203339
+[SNAPSHOT 0/3, RAY] Time taken for Initializing Optimizers: 0.03642341100203339
+[SNAPSHOT 0/3, RAY] Time taken for Pretraining Communication: 2.1236599990006653
+[SNAPSHOT 0/3, Round 0/1] Compare metrics initialization time: 0.0013021639970247634
+[SNAPSHOT 0/3, Round 0/1, Epoch 0/5, RAY] Train time: 1.1172337999960291
+[SNAPSHOT 0/3, Round 0/1, Epoch 0/5, RAY] Local test and update metrics time: 0.23802568199607776
+[SNAPSHOT 0/3, Round 0/1, Epoch 1/5, RAY] Train time: 0.09840360900125233
+[SNAPSHOT 0/3, Round 0/1, Epoch 1/5, RAY] Local test and update metrics time: 0.1399598289935966
+[SNAPSHOT 0/3, Round 0/1, Epoch 2/5, RAY] Train time: 0.10627696399751585
+[SNAPSHOT 0/3, Round 0/1, Epoch 2/5, RAY] Local test and update metrics time: 0.11214554300386226
+[SNAPSHOT 0/3, Round 0/1, Epoch 3/5, RAY] Train time: 0.11381290700228419
+[SNAPSHOT 0/3, Round 0/1, Epoch 3/5, RAY] Local test and update metrics time: 0.10764357700099936
+[SNAPSHOT 0/3, Round 0/1, Epoch 4/5, RAY] Train time: 0.11583790599979693
+[SNAPSHOT 0/3, Round 0/1, Epoch 4/5, RAY] Local test and update metrics time: 0.11901664399920264
+[SNAPSHOT 0/3, Round 0/1] Aggregation time: 0.009390776998770889
+[SNAPSHOT 0/3, Round 0/1] Global Test time: 0.16157968700281344
+[SNAPSHOT 0/3, Round 0/1, Epoch 4/5] Update metrics time: 0.00010405899956822395
+[SNAPSHOT 0/3, Round 0/1, NC] Update best metrics time: 6.28999259788543e-07
+[SNAPSHOT 0/3, Round 0/1] Update best model time: 1.540029188618064e-07
+[SNAPSHOT 0/3] Model save time: 0.0005673490013577975
+[MAIN, RAY] Prev_ne update time: 0.05738702699454734 seconds
+[SNAPSHOT 1/3] Time taken for Subgraph Generation: 9.664500248618424e-05
+[SNAPSHOT 1/3, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 1/3, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 1/3, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 1/3] Time taken for Graph Partitioning: 0.02407410500018159
+[SNAPSHOT 1/3, NC]Time taken for Label Counting: 0.0004049679992021993
+[SNAPSHOT 1/3] Time taken for CCN Processing: 0.010319055996660609
+[SNAPSHOT 2/3, RAY] Time taken for Client Data Construction: 0.43337017400335753
+[SNAPSHOT 2/3] Time taken for Fed Dataset Creation: 6.929899973329157e-05
+[SNAPSHOT 1/3] Time taken for dygl Initialisation: 6.661000952590257e-06
+[SNAPSHOT 1/3, RAY] Time taken for Distributing Models: 0.025859235000098124
+[SNAPSHOT 1/3, RAY] Time taken for Sampling Clients: 0.034504773997468874
+[SNAPSHOT 1/3] Time taken for Plotly Configuration: 0.007443878996127751
+[SNAPSHOT 1/3, RAY] Time taken for Initializing Optimizers: 0.036197891997289844
+[SNAPSHOT 1/3, RAY] Time taken for Initializing Optimizers: 0.036197891997289844
+[SNAPSHOT 1/3, RAY] Time taken for Pretraining Communication: 2.044390064998879
+[SNAPSHOT 1/3, Round 0/1] Compare metrics initialization time: 0.0012907709970022552
+[SNAPSHOT 1/3, Round 0/1, Epoch 0/5, RAY] Train time: 0.20217681799840648
+[SNAPSHOT 1/3, Round 0/1, Epoch 0/5, RAY] Local test and update metrics time: 0.21023608800169313
+[SNAPSHOT 1/3, Round 0/1, Epoch 1/5, RAY] Train time: 0.11554947100376012
+[SNAPSHOT 1/3, Round 0/1, Epoch 1/5, RAY] Local test and update metrics time: 0.1609986059993389
+[SNAPSHOT 1/3, Round 0/1, Epoch 2/5, RAY] Train time: 0.10838508899905719
+[SNAPSHOT 1/3, Round 0/1, Epoch 2/5, RAY] Local test and update metrics time: 0.1453109799986123
+[SNAPSHOT 1/3, Round 0/1, Epoch 3/5, RAY] Train time: 0.11123132500506472
+[SNAPSHOT 1/3, Round 0/1, Epoch 3/5, RAY] Local test and update metrics time: 0.11343201599811437
+[SNAPSHOT 1/3, Round 0/1, Epoch 4/5, RAY] Train time: 0.08262226199440192
+[SNAPSHOT 1/3, Round 0/1, Epoch 4/5, RAY] Local test and update metrics time: 0.11741969799913932
+[SNAPSHOT 1/3, Round 0/1] Aggregation time: 0.007520959996327292
+[SNAPSHOT 1/3, Round 0/1] Global Test time: 0.05950674199993955
+[SNAPSHOT 1/3, Round 0/1, Epoch 4/5] Update metrics time: 0.0001085780022549443
+[SNAPSHOT 1/3, Round 0/1, NC] Update best metrics time: 7.819980964995921e-07
+[SNAPSHOT 1/3, Round 0/1] Update best model time: 1.4399847714230418e-07
+[SNAPSHOT 1/3] Model save time: 0.0004939840000588447
+[MAIN, RAY] Prev_ne update time: 0.05234238000412006 seconds
+[SNAPSHOT 2/3] Time taken for Subgraph Generation: 2.9002992960158736e-05
+[SNAPSHOT 2/3, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 2/3, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 2/3, WARNING] Same structure across snapshots, don't repartition
+[SNAPSHOT 2/3] Time taken for Graph Partitioning: 0.013543960994866211
+[SNAPSHOT 2/3, NC]Time taken for Label Counting: 0.00042963300074916333
+[SNAPSHOT 2/3] Time taken for CCN Processing: 0.00985786900128005
+[SNAPSHOT 2/3, RAY] Time taken for Client Data Construction: 0.43673121600295417
+[SNAPSHOT 2/3] Time taken for Fed Dataset Creation: 0.0001033469961839728
+[SNAPSHOT 2/3] Time taken for dygl Initialisation: 1.9114995666313916e-05
+[SNAPSHOT 2/3, RAY] Time taken for Distributing Models: 0.03100087599887047
+[SNAPSHOT 2/3, RAY] Time taken for Sampling Clients: 0.03255152299971087
+[SNAPSHOT 2/3] Time taken for Plotly Configuration: 0.007386168006632943
+[SNAPSHOT 2/3, RAY] Time taken for Initializing Optimizers: 0.03449848899617791
+[SNAPSHOT 2/3, RAY] Time taken for Initializing Optimizers: 0.03449848899617791
+[SNAPSHOT 2/3, RAY] Time taken for Pretraining Communication: 2.0189898389944574
+[SNAPSHOT 2/3, Round 0/1] Compare metrics initialization time: 0.001375540996377822
+[SNAPSHOT 2/3, Round 0/1, Epoch 0/5, RAY] Train time: 0.13652214600006118
+[SNAPSHOT 2/3, Round 0/1, Epoch 0/5, RAY] Local test and update metrics time: 0.21317349400487728
+[SNAPSHOT 2/3, Round 0/1, Epoch 1/5, RAY] Train time: 0.10388046400476014
+[SNAPSHOT 2/3, Round 0/1, Epoch 1/5, RAY] Local test and update metrics time: 0.13347240100119961
+[SNAPSHOT 2/3, Round 0/1, Epoch 2/5, RAY] Train time: 0.10910301400144817
+[SNAPSHOT 2/3, Round 0/1, Epoch 2/5, RAY] Local test and update metrics time: 0.109490189999633
+[SNAPSHOT 2/3, Round 0/1, Epoch 3/5, RAY] Train time: 0.10651573000359349
+[SNAPSHOT 2/3, Round 0/1, Epoch 3/5, RAY] Local test and update metrics time: 0.10846234999917215
+[SNAPSHOT 2/3, Round 0/1, Epoch 4/5, RAY] Train time: 0.11414140000124462
+[SNAPSHOT 2/3, Round 0/1, Epoch 4/5, RAY] Local test and update metrics time: 0.09988801999861607
+[SNAPSHOT 2/3, Round 0/1] Aggregation time: 0.009416264998435508
+[SNAPSHOT 2/3, Round 0/1] Global Test time: 0.08149985899945023
+[SNAPSHOT 2/3, Round 0/1, Epoch 4/5] Update metrics time: 0.0001272229928872548
+[SNAPSHOT 2/3, Round 0/1, NC] Update best metrics time: 9.499999578110874e-07
+[SNAPSHOT 2/3, Round 0/1] Update best model time: 1.5199475456029177e-07
+[SNAPSHOT 2/3] Model save time: 0.0007303000020328909
+[MAIN, RAY] Prev_ne update time: 0.05826707999949576 seconds
+Accuracy per snap: [0.1156852809026722, 0.08850714502888417, 0.09876355528529442]Avg Accuracy: 0.1009853270722836
+Avg F1: 0.1009853270722836

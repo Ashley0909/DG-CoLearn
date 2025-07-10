@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import ray
 from graphgym.config import cfg
 from graphgym.models.head import head_dict
 from graphgym.models.layer import (GeneralLayer, GeneralMultiLayer,
@@ -149,7 +149,6 @@ stage_dict = {**register.stage_dict, **stage_dict}
 
 
 ########### Model: start + stage + head ############
-
 class GNN(nn.Module):
     r"""The General GNN model"""
 

@@ -39,6 +39,7 @@ class Server:
     
         self.global_adj_mtx = global_adj_matrix
         self.global_adj_mtx_gpu = self._sparse_to_torch_gpu(global_adj_matrix)
+        torch.cuda.synchronize()
 
     def construct_client_adj_matrix(self, node_assignment):
         ''' Save node assignment. '''
@@ -57,6 +58,7 @@ class Server:
 
         self.clients_adj_matrices = clients_adj_matrix
         self.clients_adj_matrices_gpu = [self._sparse_to_torch_gpu(mtx) for mtx in clients_adj_matrix]
+        torch.cuda.synchronize()
 
     def _sparse_to_torch_gpu(self, sparse_matrix):
         '''Convert scipy.sparse.csr_matrix to torch.sparse tensor on GPU.'''
@@ -203,5 +205,7 @@ class Server:
                 else:
                     hop_matrix.append(torch.zeros(self.client_features[0].shape[1]).tolist())
             hop_embeddings.append(torch.tensor(hop_matrix))
+        torch.cuda.synchronize()
+            
         return hop_embeddings
             

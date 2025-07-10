@@ -124,7 +124,9 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
                 for i in range(len(data.dataset.node_states)):
                     data.dataset.node_states[i] = client.prev_ne[i]
             start_time = time.time()
+            torch.cuda.synchronize()
             predicted_y, true, client.curr_ne = model(copy.deepcopy(data.dataset))
+            torch.cuda.synchronize()
             print(f"Time taken for Client {model_id} to train: {time.time() - start_time}")
 
             # Compute Loss

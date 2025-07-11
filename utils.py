@@ -16,7 +16,6 @@ from sklearn.metrics import average_precision_score
 from sklearn.metrics import f1_score, accuracy_score
 from scipy.sparse import coo_matrix
 
-
 class Logger(object):
     def __init__(self, path):
         now = datetime.datetime.now()

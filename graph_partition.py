@@ -2,6 +2,7 @@ from collections import defaultdict, deque
 import copy
 import numpy as np
 import itertools
+import torch
 
 from plot_graphs import draw_adj_list, colour_adj_list
 
@@ -51,7 +52,7 @@ def connect_graphs(splittable_cc, adj_list):
             synthetic_edges.append((last, first))
             last = list(cc)[-1]
 
-    return adj_list, synthetic_edges
+    return adj_list, set(synthetic_edges) # Use set for faster checkup
 
 def count_edges(adj_list, nodes_set, synthetic_edges):
     '''Count the number of edges in a subgraph given its nodes.'''
@@ -119,8 +120,10 @@ def find_k_furthest_nodes(adj_list, k, isolated_nodes=[]):
 
     return selected[:k]
 
-''' Function for resolving conflicting nodes '''
 def resolve_conflicts(node, adj_list, global_size, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels, isolated_nodes):
+    """ 
+    Decide node allocation by comparing their label balance score.
+    """
     # colour_adj_list(adj_list, previous_level_subgraph)
     alpha, beta = 0.25, 0.75
     best_subgraph, best_subgraph_score = None, 0
@@ -154,6 +157,27 @@ def resolve_conflicts(node, adj_list, global_size, subgraph_allocated, previous_
         if score > best_subgraph_score:
             best_subgraph = subgraph
             best_subgraph_score = score
+
+    # print(f"Node {node} allocated to Subgraph {best_subgraph}")
+    return best_subgraph
+
+def node_label_resolve(node, subgraph_allocated, previous_level_subgraph, node_labels):
+    """ 
+    Decide node allocation by comparing their label balance score.
+    """
+    # colour_adj_list(adj_list, previous_level_subgraph)
+    best_subgraph, best_subgraph_score = None, 0.0
+    for subgraph in subgraph_allocated: # compute score for given root        
+        if node_labels is not None: # Add labels classification score
+            current_subgraph = np.array(list(previous_level_subgraph[subgraph] - {node}))
+            label_count = sum(1 for n in current_subgraph if node_labels[n] == node_labels[node])
+            node_label_score = 1 - (label_count / len(current_subgraph))
+        else:
+            node_label_score = 0
+
+        if node_label_score > best_subgraph_score:
+            best_subgraph = subgraph
+            best_subgraph_score = node_label_score
 
     # print(f"Node {node} allocated to Subgraph {best_subgraph}")
     return best_subgraph
@@ -213,6 +237,67 @@ def our_gpa(adj_list, global_size, node_labels=None, K=2):
                         previous_subgraph_root = root
 
                 best_subgraph = resolve_conflicts(node, adj_list, global_size, subgraph_allocated, previous_level_subgraph, synthetic_edges, node_labels, isolated_nodes)
+                node_to_allocated_subgraph[node] &= {best_subgraph}
+                if node in previous_level_subgraph[previous_subgraph_root]:
+                    previous_level_subgraph[previous_subgraph_root].remove(node)
+                previous_level_subgraph[best_subgraph].add(node)
+        
+        # Consider nodes to visit next :)
+        next_level = []
+        for node in nodes_visited_this_level:
+            node_subgraph = next(iter(node_to_allocated_subgraph[node]))
+            for neighbour in adj_list[node]:
+                if neighbour not in previous_level_subgraph[node_subgraph] and (neighbour, node_subgraph) not in nodes_visited and neighbour not in roots:
+                    next_level.append([neighbour, node_subgraph])
+
+        level_queue = copy.deepcopy(next_level)
+
+    assignment = [node_to_allocated_subgraph[i].pop() for i in range(len(node_to_allocated_subgraph))]
+    # colour_adj_list(adj_list, assignment) # Show coloured graph
+        
+    return torch.tensor(assignment)
+
+def CoLearnPartition(adj_list, global_size, node_labels=None, K=2):
+    previous_level_subgraph = defaultdict(set)
+    node_to_allocated_subgraph = defaultdict(set)
+    nodes_visited = set()
+    boarder_nodes = set()
+
+    # Identify all connected components
+    connected_components, isolated_nodes = get_all_connected_components(adj_list)
+    adj_list, synthetic_edges = connect_graphs(connected_components, adj_list)
+
+    # Allocate all isolated nodes first
+    for i, iso in enumerate(isolated_nodes):
+        node_to_allocated_subgraph[iso] = {i%K}
+
+    roots = find_k_furthest_nodes(adj_list, K, isolated_nodes)
+
+    # BFS outward from each root node
+    level_queue = [(root_node, i) for i, root_node in enumerate(roots)]
+
+    while level_queue:
+        nodes_visited_this_level = set()
+
+        for node, assign in level_queue:
+            node_to_allocated_subgraph[node].add(assign)
+            nodes_visited_this_level.add(node)
+            nodes_visited.add((node, assign))
+
+        for node, subgraph_allocated in node_to_allocated_subgraph.items(): # First allocate the unconflicted nodes
+            if len(subgraph_allocated) == 1:
+                previous_level_subgraph[next(iter(subgraph_allocated))].add(node)
+
+        # Resolve conflicts with our weighting scheme
+        for node, subgraph_allocated in node_to_allocated_subgraph.items():
+            if len(subgraph_allocated) > 1: # conflict case
+                previous_subgraph_root = None
+                for root in previous_level_subgraph:
+                    if node in previous_level_subgraph[root]:
+                        previous_subgraph_root = root
+
+                best_subgraph = node_label_resolve(node, subgraph_allocated, previous_level_subgraph, node_labels)
+                boarder_nodes.add((node, best_subgraph)) # record the border nodes and its assignment for refinement later
                 node_to_allocated_subgraph[node] &= {best_subgraph}
                 if node in previous_level_subgraph[previous_subgraph_root]:
                     previous_level_subgraph[previous_subgraph_root].remove(node)

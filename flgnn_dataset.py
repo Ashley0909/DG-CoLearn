@@ -8,6 +8,7 @@ import metis
 import networkx as nx
 from torch_geometric.data import Data
 import community as community_louvain
+from louvainSplitter import LouvainSplitter
 from torch_geometric import datasets as torchgeometric_datasets
 
 from torch_geometric.transforms import RandomLinkSplit
@@ -15,7 +16,7 @@ from torch_geometric.utils import to_undirected
 from torch.utils.data import DataLoader
 from fl_clients import EdgeDevice
 from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, label_dirichlet_partition, count_label_occur
-from graph_partition import our_gpa
+from graph_partition import our_gpa, CoLearnPartition
 
 class FLLPDataset():
     def __init__(self, node_feature, subnodes, edge_index, edge_label_index, edge_label, previous_edge_index, client=None):
@@ -207,11 +208,11 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     log_file.write(f"[SNAPSHOT {i}/{max_i}] Time taken for Subgraph Generation: {end_time_subgraphs - start_time_subgraphs}\n")
 
     start_time_partition = time.perf_counter()
-    train_subgraphs = graph_partition(i, max_i, log_file, server, train_data.edge_index, train_data.num_nodes, num_subgraphs, partition_type=split_method, node_label=train_data.node_label if task_cfg.task_type == 'NC' else None, tvt_type='train')
+    train_subgraphs = graph_partition(i, max_i, log_file, server, train_data, num_subgraphs, partition_type='Louvain', tvt_type='train')
     server.record_num_subgraphs(num_subgraphs)
     server.construct_client_adj_matrix(train_subgraphs)
-    val_subgraphs = graph_partition(i, max_i, log_file, server, val_data.edge_index, val_data.num_nodes, num_subgraphs, partition_type=split_method, node_label=val_data.node_label if task_cfg.task_type == 'NC' else None)
-    test_subgraphs = graph_partition(i, max_i, log_file, server, test_data.edge_index, test_data.num_nodes, num_subgraphs, partition_type=split_method, node_label=test_data.node_label if task_cfg.task_type == 'NC' else None)
+    val_subgraphs = graph_partition(i, max_i, log_file, server, val_data, num_subgraphs, task_cfg.task_type, partition_type='Louvain')
+    test_subgraphs = graph_partition(i, max_i, log_file, server, test_data, num_subgraphs, task_cfg.task_type, partition_type='Louvain')
     end_time_partition = time.perf_counter()
     log_file.write(f"[SNAPSHOT {i}/{max_i}] Time taken for Graph Partitioning: {end_time_partition - start_time_partition}\n")
 
@@ -299,7 +300,7 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
     
     return fed_data_loader
 
-def graph_partition(i, max_i, log_file, server, edge_index, num_nodes, num_parts, partition_type='Ours', node_label=None, tvt_type='test'):
+def graph_partition(i, max_i, log_file, server, data, num_parts, task_type, partition_type='Ours', node_label=None, tvt_type='test'):
     """ 
     Stay consistent partition for TVT, so prev_partition is to record the partition of testing data (the most recent snapshot)
     Input server instance to store current partition and adj_list if needed
@@ -317,6 +318,10 @@ def graph_partition(i, max_i, log_file, server, edge_index, num_nodes, num_parts
     1. partitioning_labels: Tensor array of subgraph assignment of each node
     2. num_nodes: Number of nodes in the data
     """
+    edge_index = data.edge_index
+    num_nodes = data.num_nodes
+    node_label = data.node_label if task_type == 'NC' else None
+
     # If previous partition exists, maintain consistency
     if partition_type == 'Ours' and server.node_assignment is not None and num_parts == server.num_subgraphs:
         log_file.write(f"[SNAPSHOT {i}/{max_i}, WARNING] Same structure across snapshots, don't repartition\n")
@@ -342,15 +347,13 @@ def graph_partition(i, max_i, log_file, server, edge_index, num_nodes, num_parts
         else:
             partitioning_labels = [0 for _ in range(len(adjacency_list))]
     elif partition_type == 'Louvain':
-        G = nx.Graph()
-        edges = edge_index.t().tolist()
-        G.add_edges_from(edges)
-        partition = community_louvain.best_partition(G)
-        partitioning_labels = [partition[i] for i in range(len(G.nodes))]
+        louvainSplitter = LouvainSplitter(num_parts)
+        partitioning_labels = louvainSplitter(data)
     elif partition_type == 'Dirichlet':
         partitioning_labels = label_dirichlet_partition(node_label, len(node_label), max(node_label), num_parts, beta=100)
     elif partition_type == 'Ours':
         partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
+        # partitioning_labels = CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
     else:
         print('E> Invalid partitioning algorithm specified. Options are {Metis, Louvain, Dirichlet, Ours}')
         exit(-1)

@@ -4,18 +4,16 @@ import copy
 from collections import defaultdict
 import numpy as np
 import torch
-import metis
-import networkx as nx
-from torch_geometric.data import Data
-import community as community_louvain
-from louvainSplitter import LouvainSplitter
 from torch_geometric import datasets as torchgeometric_datasets
+from torch_geometric.data import Data
+import metis
+from louvainSplitter import LouvainSplitter
 
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 from torch.utils.data import DataLoader
 from fl_clients import EdgeDevice
-from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, label_dirichlet_partition, count_label_occur
+from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, label_dirichlet_partition, label_split, count_label_occur
 from graph_partition import our_gpa, CoLearnPartition
 
 class FLLPDataset():
@@ -209,11 +207,11 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     # server.construct_global_adj_matrix(train_data.edge_index, data_size)
     server.record_num_nodes(data_size)
 
-    train_subgraphs = graph_partition(server, train_data, num_subgraphs, task_cfg.task_type, partition_type='Louvain', tvt_type='train')
+    train_subgraphs = graph_partition(server, train_data, num_subgraphs, task_cfg.task_type, partition_type='Label', tvt_type='train')
     server.record_num_subgraphs(num_subgraphs)
     server.construct_client_adj_matrix(train_subgraphs)
-    val_subgraphs = graph_partition(server, val_data, num_subgraphs, task_cfg.task_type, partition_type='Louvain')
-    test_subgraphs = graph_partition(server, test_data, num_subgraphs, task_cfg.task_type, partition_type='Louvain')
+    val_subgraphs = graph_partition(server, val_data, num_subgraphs, task_cfg.task_type, partition_type='Label')
+    test_subgraphs = graph_partition(server, test_data, num_subgraphs, task_cfg.task_type, partition_type='Label')
 
     if task_cfg.task_type == 'NC':
         count_label_occur(train_subgraphs, train_data.node_label)
@@ -287,23 +285,12 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
     
     return fed_data_loader
 
-def graph_partition(server, data, num_parts, task_type, partition_type='Ours', node_label=None, tvt_type='test'):
+def graph_partition(server, data, num_parts, task_type, partition_type='Ours', tvt_type='test'):
     """ 
     Stay consistent partition for TVT, so prev_partition is to record the partition of testing data (the most recent snapshot)
     Input server instance to store current partition and adj_list if needed
 
-    Inputs:
-    1. edge_index: COO format of edges
-    2. num_nodes: Number of nodes in the data
-    3. num_parts: Number of desired subgraphs
-    4. partition_type: Type of Partitioning Algorithm (Options={'Metis', 'Louvain, 'Ours'}) (Default='Ours')
-    5. node_label: Node Labels in NC problems to help our graph partitioning (Default=None)
-    6. edge_label: Edge Labels in LP problems (Default=None)
-    6. prev_partition: Partitioning Labels of training or validation for consistency if there exists (Default=None)
-
-    Outputs:
-    1. partitioning_labels: Tensor array of subgraph assignment of each node
-    2. num_nodes: Number of nodes in the data
+    Output: partitioning_labels: Tensor array of subgraph assignment of each node
     """
     edge_index = data.edge_index
     num_nodes = data.num_nodes
@@ -341,8 +328,10 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', n
     elif partition_type == 'Ours':
         partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
         # partitioning_labels = CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
+    elif partition_type == 'Label':
+        partitioning_labels = label_split(data, num_parts)
     else:
-        print('E> Invalid partitioning algorithm specified. Options are {Metis, Louvain, Dirichlet, Ours}')
+        print('E> Invalid partitioning algorithm specified. Options are {Metis, Louvain, Dirichlet, Label, Ours}')
         exit(-1)
 
     end_time = time.time()

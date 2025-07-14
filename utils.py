@@ -9,8 +9,7 @@ import sys
 import datetime
 import random
 from torch_geometric.data import Data
-import torch_geometric
-from collections import deque
+from collections import deque, defaultdict
 
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import f1_score, accuracy_score
@@ -358,3 +357,61 @@ def find_common_nodes(all_nodes, exclusive_edge_index):
 
     return common_nodes
 
+def label_split(graph_data, client_num, major_label=3, major_rate=0.8, sample_rate=1.0):
+    """
+    Args:
+        graph_data: A PyTorch Geometric Data object (or similar)
+        client_num: Number of clients (subgraphs)
+        major_label: Number of dominant labels each client holds
+        major_rate: Proportion of client's nodes from major labels
+        sample_rate: Portion of the entire graph to assign across all clients
+    Returns:
+        allocation: Tensor of shape [num_nodes], each value in [0, client_num-1]
+    """
+    x = graph_data.node_feature
+    y = graph_data.node_label.numpy()
+    num_nodes = x.shape[0]
+    num_classes = len(set(y))
+
+    node_indices = np.arange(num_nodes)
+    total_assignable = int(sample_rate * num_nodes)
+    available_nodes = set(node_indices)
+
+    # Allocation result (-1 means unassigned)
+    allocation = -1 * np.ones(num_nodes, dtype=int)
+
+    for cid in range(client_num):
+        if len(available_nodes) == 0:
+            break
+
+        client_nodes = list(available_nodes)
+        node_by_label = defaultdict(list)
+        for node in client_nodes:
+            node_by_label[y[node]].append(node)
+
+        # Pick major labels for this client
+        holding_labels = np.random.permutation(np.arange(num_classes))[:major_label]
+        major_indices = []
+        for label in holding_labels:
+            major_indices += node_by_label[label]
+
+        major_count = int(total_assignable * major_rate / client_num)
+        major_selected = np.random.permutation(major_indices)[:min(major_count, len(major_indices))]
+
+        # Fill the rest randomly
+        remaining_count = int(total_assignable / client_num) - len(major_selected)
+        remaining_pool = list(set(client_nodes) - set(major_selected))
+        rest_selected = np.random.permutation(remaining_pool)[:remaining_count]
+
+        assigned = list(major_selected) + list(rest_selected)
+
+        # Assign nodes
+        allocation[assigned] = cid
+        available_nodes -= set(assigned)
+
+    # If any nodes are still unassigned, assign them randomly
+    unassigned = np.where(allocation == -1)[0]
+    for node in unassigned:
+        allocation[node] = np.random.randint(0, client_num)
+
+    return torch.tensor(allocation)

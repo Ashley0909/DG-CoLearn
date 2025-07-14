@@ -340,7 +340,7 @@ def graph_partition(i, max_i, log_file, server, data, num_parts, task_type, part
         partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
         # partitioning_labels = CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
     elif partition_type == 'Label':
-        partitioning_labels = label_split(data, num_parts, task_type='LP')
+        partitioning_labels = label_split(data, num_parts, task_type=task_type)
     else:
         print('E> Invalid partitioning algorithm specified. Options are {Metis, Louvain, Dirichlet, Label, Ours}')
         exit(-1)

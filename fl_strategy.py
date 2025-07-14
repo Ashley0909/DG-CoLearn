@@ -96,6 +96,7 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_
       client = c.dataset.location 
       feature = client.upload_features(c.dataset.node_feature, tot_num_nodes, encoder)
       server.client_features.append(feature) # Server collects the clients' features
+   print("Clients finished uploading embeddings, server computing global embeddings...")
    start_time_global = time.perf_counter()
    global_states = server.get_global_node_states() # Server computes global features
    end_time_global = time.perf_counter()

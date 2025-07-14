@@ -72,12 +72,14 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_
       # schedulers.append(torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers[i],mode='max',factor=0.5,patience=5,verbose=True))
 
    ''' Pretraining Communication '''
+   print("Pretraining Communication Starts")
    in_dim = fed_data_train[0].dataset.node_feature.shape[1]
    encoder = MLPEncoder(in_dim=in_dim, out_dim=16)
    for c in fed_data_train:
       client = c.dataset.location 
       feature = client.upload_features(c.dataset.node_feature, tot_num_nodes, encoder)
       server.client_features.append(feature) # Server collects the clients' features
+   print("Clients finished uploading embeddings, server computing global embeddings...")
    start_time = time.time()
    global_states = server.get_global_node_states() # Server computes global features
    end_time = time.time()

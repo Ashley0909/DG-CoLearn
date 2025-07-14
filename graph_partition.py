@@ -261,7 +261,7 @@ def CoLearnPartition(adj_list, global_size, node_labels=None, K=2):
     previous_level_subgraph = defaultdict(set)
     node_to_allocated_subgraph = defaultdict(set)
     nodes_visited = set()
-    boarder_nodes = set()
+    border_nodes = set()
 
     # Identify all connected components
     connected_components, isolated_nodes = get_all_connected_components(adj_list)
@@ -297,7 +297,7 @@ def CoLearnPartition(adj_list, global_size, node_labels=None, K=2):
                         previous_subgraph_root = root
 
                 best_subgraph = node_label_resolve(node, subgraph_allocated, previous_level_subgraph, node_labels)
-                boarder_nodes.add((node, best_subgraph)) # record the border nodes and its assignment for refinement later
+                border_nodes.add((node, best_subgraph)) # record the border nodes and its assignment for refinement later
                 node_to_allocated_subgraph[node] &= {best_subgraph}
                 if node in previous_level_subgraph[previous_subgraph_root]:
                     previous_level_subgraph[previous_subgraph_root].remove(node)
@@ -312,6 +312,10 @@ def CoLearnPartition(adj_list, global_size, node_labels=None, K=2):
                     next_level.append([neighbour, node_subgraph])
 
         level_queue = copy.deepcopy(next_level)
+
+    # Refine partition by visiting border nodes
+    # for border, subgraph in border_nodes:
+        
 
     assignment = [node_to_allocated_subgraph[i].pop() for i in range(len(node_to_allocated_subgraph))]
     # colour_adj_list(adj_list, assignment) # Show coloured graph

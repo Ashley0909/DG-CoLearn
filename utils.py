@@ -357,8 +357,9 @@ def find_common_nodes(all_nodes, exclusive_edge_index):
 
     return common_nodes
 
-def label_split(graph_data, client_num, major_label=3, major_rate=0.8, sample_rate=1.0):
+def label_split(graph_data, client_num, major_label=3, major_rate=0.8, sample_rate=1.0, task_type='NC'):
     """
+    Adapt FedDGL's splitting method on Node Classification and Link Prediction (improved)
     Args:
         graph_data: A PyTorch Geometric Data object (or similar)
         client_num: Number of clients (subgraphs)
@@ -369,10 +370,16 @@ def label_split(graph_data, client_num, major_label=3, major_rate=0.8, sample_ra
         allocation: Tensor of shape [num_nodes], each value in [0, client_num-1]
     """
     x = graph_data.node_feature
-    y = graph_data.node_label.numpy()
     num_nodes = x.shape[0]
-    num_classes = len(set(y))
+    
+    if task_type == 'NC':
+        y = graph_data.node_label.numpy()
+    else:
+        edge_index = graph_data.edge_index
+        y = infer_edge_to_node(edge_index, num_nodes)
+        major_label = 1
 
+    num_classes = len(set(y))
     node_indices = np.arange(num_nodes)
     total_assignable = int(sample_rate * num_nodes)
     available_nodes = set(node_indices)
@@ -415,3 +422,17 @@ def label_split(graph_data, client_num, major_label=3, major_rate=0.8, sample_ra
         allocation[node] = np.random.randint(0, client_num)
 
     return torch.tensor(allocation)
+
+def infer_edge_to_node(edge_index, num_nodes):
+    if isinstance(edge_index, torch.Tensor):
+        edge_index = edge_index.numpy()
+
+    node_labels = np.zeros(num_nodes, dtype=int)
+
+    # Mark nodes involved in edges with label 1
+    for i in range(edge_index.shape[1]):
+        u, v = edge_index[0][i], edge_index[1][i]
+        node_labels[u] = 1
+        node_labels[v] = 1
+
+    return node_labels

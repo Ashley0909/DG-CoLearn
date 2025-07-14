@@ -11,8 +11,8 @@
             "program": "/home/u1912321/Documents/own_code/DG-CoLearn/main.py",
             // "program": "/home/u1912321/Documents/own_code/DG-CoLearn/main_ml_flow.py",
             "console": "integratedTerminal",
-            "args": ["Reddit"],
-            // "args": ["UCI"],
+            // "args": ["Reddit"],
+            "args": ["UCI"],
             // "args": ["SBM"],
             "justMyCode": false
         }

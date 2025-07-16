@@ -6,15 +6,15 @@ import numpy as np
 import torch
 from torch_geometric import datasets as torchgeometric_datasets
 from torch_geometric.data import Data
-import metis
 from louvainSplitter import LouvainSplitter
 
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 from torch.utils.data import DataLoader
 from fl_clients import EdgeDevice
-from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, label_dirichlet_partition, label_split, count_label_occur
+from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, count_label_occur
 from graph_partition import our_gpa, CoLearnPartition
+from other_partition import label_split, label_dirichlet_partition, custom_metis
 
 class FLLPDataset():
     def __init__(self, node_feature, subnodes, edge_index, edge_label_index, edge_label, previous_edge_index, client=None):
@@ -207,11 +207,11 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     # server.construct_global_adj_matrix(train_data.edge_index, data_size)
     server.record_num_nodes(data_size)
 
-    train_subgraphs = graph_partition(server, train_data, num_subgraphs, task_cfg.task_type, partition_type='Label', tvt_type='train')
+    train_subgraphs = graph_partition(server, train_data, num_subgraphs, task_cfg.task_type, partition_type='Ours', tvt_type='train')
     server.record_num_subgraphs(num_subgraphs)
     server.construct_client_adj_matrix(train_subgraphs)
-    val_subgraphs = graph_partition(server, val_data, num_subgraphs, task_cfg.task_type, partition_type='Label')
-    test_subgraphs = graph_partition(server, test_data, num_subgraphs, task_cfg.task_type, partition_type='Label')
+    val_subgraphs = graph_partition(server, val_data, num_subgraphs, task_cfg.task_type, partition_type='Ours')
+    test_subgraphs = graph_partition(server, test_data, num_subgraphs, task_cfg.task_type, partition_type='Ours')
 
     if task_cfg.task_type == 'NC':
         count_label_occur(train_subgraphs, train_data.node_label)
@@ -316,18 +316,15 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', t
 
     start_time = time.time()
     if partition_type == 'Metis':
-        if num_parts > 1:
-            _, partitioning_labels = metis.part_graph(adjacency_list, num_parts)
-        else:
-            partitioning_labels = [0 for _ in range(len(adjacency_list))]
+        partitioning_labels = custom_metis(adjacency_list, num_parts)
     elif partition_type == 'Louvain':
         louvainSplitter = LouvainSplitter(num_parts)
         partitioning_labels = louvainSplitter(data)
     elif partition_type == 'Dirichlet':
         partitioning_labels = label_dirichlet_partition(node_label, len(node_label), max(node_label), num_parts, beta=100)
     elif partition_type == 'Ours':
-        partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
-        # partitioning_labels = CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
+        # partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
+        partitioning_labels = CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
     elif partition_type == 'Label':
         partitioning_labels = label_split(data, num_parts, task_type=task_type)
     else:

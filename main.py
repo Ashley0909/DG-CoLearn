@@ -28,7 +28,7 @@ def main():
         num_snapshots, train_list, val_list, test_list, arg = load_gnndata(task_cfg)
     
     # Create a list of information per snapshots in FLDGNN
-    sys.stdout = Logger('fl_sbm')
+    sys.stdout = Logger('gpa')
     print(f"Running {task_cfg.task_type}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
     print("Only Learn New Graph")
 
@@ -53,6 +53,9 @@ def main():
         print("=============")
         for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
             c.update_embeddings(c.curr_ne)
+        # if i == 2:
+        #     print("End of Snapshot 2. Terminate.")
+        #     exit(-1)
 
 if __name__ == '__main__':  # If the file is run directly (python3 main.py), __name__ will be set to __main__ and will run the function main()
     main()

@@ -41,7 +41,7 @@ def resolve_by_label_balance(node, subgraph_allocated, previous_level_subgraph, 
     return max(label_scores, key=label_scores.get)
 
 """ Refinement Functions """
-def refine_by_balance_and_label(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, global_size, synthetic_edges, node_labels, isolated_nodes, threshold=0.5):
+def refine_by_balance_and_label(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, global_size, synthetic_edges, node_labels, isolated_nodes, threshold=0.4):
     best_subgraph = current_subgraph
     best_improvement = 0
 
@@ -60,7 +60,7 @@ def refine_by_balance_and_label(node, current_subgraph, neighbor_subgraphs, adj_
 
     return best_subgraph
 
-def refine_by_min_cut_and_label(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, node_labels, threshold=0.5):
+def refine_by_min_cut_and_label(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, node_labels, threshold=0.4):
     current_cut = len(set(adj_list[node]) & previous_level_subgraph[current_subgraph])
     current_label_score = sum(1 for n in previous_level_subgraph[current_subgraph] if node_labels[n] == node_labels[node]) if node_labels != None else 0
     current_score = 0.5 * current_cut + 0.5 * current_label_score
@@ -78,7 +78,7 @@ def refine_by_min_cut_and_label(node, current_subgraph, neighbor_subgraphs, adj_
 
     return best_subgraph
 
-def refine_by_min_cut_and_balance(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, global_size, synthetic_edges, isolated_nodes, threshold=0.5):
+def refine_by_min_cut_and_balance(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, global_size, synthetic_edges, isolated_nodes, threshold=0.4):
     def cut_score(subgraph):
         return len(set(adj_list[node]) & previous_level_subgraph[subgraph])
 

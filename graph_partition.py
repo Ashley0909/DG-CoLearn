@@ -237,7 +237,7 @@ def our_gpa(adj_list, global_size, node_labels=None, K=2):
         
     return torch.tensor(assignment)
 
-def CoLearnPartition(adj_list, global_size, node_labels=None, K=2, improvement_threshold=0.5):
+def CoLearnPartition(adj_list, global_size, node_labels=None, K=2):
     previous_level_subgraph = defaultdict(set)
     node_to_allocated_subgraph = defaultdict(set)
     nodes_visited = set()
@@ -262,8 +262,8 @@ def CoLearnPartition(adj_list, global_size, node_labels=None, K=2, improvement_t
         
         for node, subgraph_allocated in node_to_allocated_subgraph.items():
             if len(subgraph_allocated) > 1:
-                # best_subgraph = resolve_by_edge_balance(node, adj_list, subgraph_allocated, previous_level_subgraph, global_size, synthetic_edges, isolated_nodes)
                 best_subgraph = resolve_by_min_cut(node, adj_list, subgraph_allocated, previous_level_subgraph)
+                # best_subgraph = resolve_by_edge_balance(node, adj_list, subgraph_allocated, previous_level_subgraph, global_size, synthetic_edges, isolated_nodes)
                 # best_subgraph = resolve_by_label_balance(node, subgraph_allocated, previous_level_subgraph, node_labels)
                 node_to_allocated_subgraph[node] = {best_subgraph}
                 for subgraph in subgraph_allocated:
@@ -286,8 +286,8 @@ def CoLearnPartition(adj_list, global_size, node_labels=None, K=2, improvement_t
         current_subgraph = next(iter(node_to_allocated_subgraph[node]))
         neighbors = adj_list[node]
         neighbor_subgraphs = set(next(iter(node_to_allocated_subgraph[n])) for n in neighbors if n in node_to_allocated_subgraph)
-        # best_subgraph = refine_by_min_cut_and_label(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, node_labels)
         best_subgraph = refine_by_balance_and_label(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, global_size, synthetic_edges, node_labels, isolated_nodes)
+        # best_subgraph = refine_by_min_cut_and_label(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, node_labels)
         # best_subgraph = refine_by_min_cut_and_balance(node, current_subgraph, neighbor_subgraphs, adj_list, previous_level_subgraph, global_size, synthetic_edges, isolated_nodes)
         if best_subgraph != current_subgraph:
             previous_level_subgraph[current_subgraph].remove(node)

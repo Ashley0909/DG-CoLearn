@@ -336,17 +336,17 @@ def move_batch_to_device(batch: deepsnap.graph.Graph,
     """Moves and collects everything in the batch to the target device."""
     device = torch.device(device)
     # This handles node_feature, edge_feature, etc.
-    batch = batch.to(device)
+    batch = batch
 
     for layer in range(len(batch.node_states)):
         if torch.is_tensor(batch.node_states[layer]):
-            batch.node_states[layer] = batch.node_states[layer].to(device)
+            batch.node_states[layer] = batch.node_states[layer]
 
     # if hasattr(batch, 'node_cells'):
     #     # node_cells exist only for LSTM type RNNs.
     for layer in range(len(batch.node_cells)):
         if torch.is_tensor(batch.node_cells[layer]):
-            batch.node_cells[layer] = batch.node_cells[layer].to(device)
+            batch.node_cells[layer] = batch.node_cells[layer]
 
     return batch
 

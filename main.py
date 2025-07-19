@@ -1,6 +1,7 @@
 import sys
 import torch
 import warnings
+warnings.filterwarnings("ignore")
 
 from fl_strategy import run_dygl
 from fl_server import Server
@@ -11,7 +12,6 @@ from sbm_generate import generate_graph
 from plot_graphs import configure_plotly
 
 torch.autograd.set_detect_anomaly(True)
-warnings.filterwarnings("ignore")
 
 def main():
     # Set Configuration
@@ -28,7 +28,7 @@ def main():
         num_snapshots, train_list, val_list, test_list, arg = load_gnndata(task_cfg)
     
     # Create a list of information per snapshots in FLDGNN
-    sys.stdout = Logger('gpa')
+    sys.stdout = Logger('fast_gpa')
     print(f"Running {task_cfg.task_type}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
     print("Only Learn New Graph")
 

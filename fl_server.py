@@ -62,8 +62,8 @@ class Server:
         '''Convert scipy.sparse.csr_matrix to torch.sparse tensor on GPU.'''
         sparse_matrix = sparse_matrix.tocoo()
         indices = np.vstack((sparse_matrix.row, sparse_matrix.col))
-        indices = torch.tensor(indices, dtype=torch.long, device='cuda')
-        values = torch.tensor(sparse_matrix.data, dtype=torch.float32, device='cuda')
+        indices = torch.tensor(indices, dtype=torch.long)
+        values = torch.tensor(sparse_matrix.data, dtype=torch.float32)
         shape = sparse_matrix.shape
         return torch.sparse_coo_tensor(indices, values, shape)
 
@@ -194,11 +194,11 @@ class Server:
             hop_matrix = []
             for node in range(self.num_nodes):
                 if node in self.ccn.keys():
-                    node_feature = torch.zeros(self.client_features[0].shape[1]).to('cuda:0')
+                    node_feature = torch.zeros(self.client_features[0].shape[1])
                     neighbours = torch.sparse.mm(self.global_adj_mtx_gpu, self.global_adj_mtx_gpu).to_dense()[node] if hop == 2 else self.global_adj_mtx.todense()[node].tolist()[0]
                     for neigh, value in enumerate(neighbours):
                         if value > 0:
-                            node_feature += self.client_features[node_assign[neigh]][neigh].to('cuda:0') * value
+                            node_feature += self.client_features[node_assign[neigh]][neigh] * value
                     hop_matrix.append(node_feature.tolist())
                 else:
                     hop_matrix.append(torch.zeros(self.client_features[0].shape[1]).tolist())

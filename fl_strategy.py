@@ -10,7 +10,7 @@ from fl_clients import distribute_models, train, local_test, global_test
 from fl_aggregations import gnn_aggregate
 from plot_graphs import configure_plotly
 from fl_models import MLPEncoder
-from sim_fedgcn import compute_neighborhood_features, average_feat_aggre # For simulating FedGCN 
+# from sim_fedgcn import compute_neighborhood_features, average_feat_aggre # For simulating FedGCN 
 
 def update_cloud_cache(cache, local_models, ids):
    """ Update each clients' local models in the cache """
@@ -159,6 +159,6 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_
       'learning_rate': task_cfg.lr,
       'model_state_dict': global_model.state_dict()
    }
-   torch.save(checkpoint, f'model_state/{task_cfg.dataset}/model_checkpoint_ss{snapshot}_lr{task_cfg.lr}.pth')
+   # torch.save(checkpoint, f'model_state/{task_cfg.dataset}/model_checkpoint_ss{snapshot}_lr{task_cfg.lr}.pth')
 
    return best_model, best_metrics, val_ap_fig, test_ap_fig, test_ap

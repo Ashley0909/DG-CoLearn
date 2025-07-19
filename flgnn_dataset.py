@@ -14,7 +14,8 @@ from torch.utils.data import DataLoader
 from fl_clients import EdgeDevice
 from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, count_label_occur
 from graph_partition import our_gpa, CoLearnPartition
-from other_partition import label_split, label_dirichlet_partition, custom_metis
+# from other_partition import label_split, label_dirichlet_partition, custom_metis
+import partition
 
 class FLLPDataset():
     def __init__(self, node_feature, subnodes, edge_index, edge_label_index, edge_label, previous_edge_index, client=None):
@@ -296,9 +297,9 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', t
     num_nodes = data.num_nodes
     node_label = data.node_label if task_type == 'NC' else None
 
-    # If previous partition exists, maintain consistency
-    if partition_type == 'Ours' and server.node_assignment is not None and num_parts == server.num_subgraphs:
-        return server.node_assignment
+    # # If previous partition exists, maintain consistency
+    # if partition_type == 'Ours' and server.node_assignment is not None and num_parts == server.num_subgraphs:
+    #     return server.node_assignment
 
     # Convert graph to undirected for partitioning
     undirected_ei = to_undirected(edge_index)
@@ -315,18 +316,20 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', t
         server.construct_glob_adj_mtx(adjacency_list)
 
     start_time = time.time()
-    if partition_type == 'Metis':
-        partitioning_labels = custom_metis(adjacency_list, num_parts)
-    elif partition_type == 'Louvain':
-        louvainSplitter = LouvainSplitter(num_parts)
-        partitioning_labels = louvainSplitter(data)
-    elif partition_type == 'Dirichlet':
-        partitioning_labels = label_dirichlet_partition(node_label, len(node_label), max(node_label), num_parts, beta=100)
-    elif partition_type == 'Ours':
+    # if partition_type == 'Metis':
+    #     partitioning_labels = custom_metis(adjacency_list, num_parts)
+    # elif partition_type == 'Louvain':
+    #     louvainSplitter = LouvainSplitter(num_parts)
+    #     partitioning_labels = louvainSplitter(data)
+    # elif partition_type == 'Dirichlet':
+    #     partitioning_labels = label_dirichlet_partition(node_label, len(node_label), max(node_label), num_parts, beta=100)
+    if partition_type == 'Ours':
         # partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
-        partitioning_labels = CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
-    elif partition_type == 'Label':
-        partitioning_labels = label_split(data, num_parts, task_type=task_type)
+        # partitioning_labels = CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
+        labels = partition.CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label.tolist(), K=num_parts)
+        partitioning_labels = torch.tensor(labels)
+    # elif partition_type == 'Label':
+    #     partitioning_labels = label_split(data, num_parts, task_type=task_type)
     else:
         print('E> Invalid partitioning algorithm specified. Options are {Metis, Louvain, Dirichlet, Label, Ours}')
         exit(-1)

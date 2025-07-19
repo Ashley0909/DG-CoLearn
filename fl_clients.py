@@ -99,9 +99,9 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
         if model_id not in client_ids: # neglect non-participants
             continue
         
-        edge_index = data.dataset.edge_index.to(device)
+        edge_index = data.dataset.edge_index
         if task_cfg.task_type == 'LP':
-            edge_label = data.dataset.edge_label.to(device)
+            edge_label = data.dataset.edge_label
 
         model = models[model_id]
         optimizer = optimizers[model_id]
@@ -110,7 +110,7 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
 
         ''' Extract 2 hop subgraph of changed pairs of nodes '''
         if rd == 0 and epoch == 0 and data.dataset.previous_edge_index != []:
-            exclusive_edge_index = get_exclusive_subgraph(edge_index, data.dataset.previous_edge_index.to('cuda:0'))
+            exclusive_edge_index = get_exclusive_subgraph(edge_index, data.dataset.previous_edge_index)
             print(f"Only learn {exclusive_edge_index.shape[1]} edges. Shrink in graph: {edge_index.shape[1] - exclusive_edge_index.shape[1]}")
             # Record k and \overline{k}
             data.dataset.edge_index = exclusive_edge_index.to('cpu')
@@ -166,7 +166,7 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
         metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0}
         for data in fdl.fbd_list:
             if task_cfg.task_type == 'LP':
-                edge_label_index, edge_label, val_nodes = data.dataset.edge_label_index.to(device), data.dataset.edge_label.to(device), data.dataset.subnodes.to(device)
+                edge_label_index, edge_label, val_nodes = data.dataset.edge_label_index, data.dataset.edge_label, data.dataset.subnodes
                 if len(edge_label) == 0 or edge_label.numel() == 0: # neglect participants with no validation data
                     print("Ignore clients with no validation data")
                     continue
@@ -211,7 +211,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
 
     for data in fdl.fbd_list:
         if task_cfg.task_type == 'LP':
-            edge_label_index, edge_label = data.dataset.edge_label_index.to(device), data.dataset.edge_label.to(device)
+            edge_label_index, edge_label = data.dataset.edge_label_index, data.dataset.edge_label
             if len(edge_label) == 0 or edge_label.numel() == 0: # neglect participants with no testing data
                 print("Ignore participants with no testing data")
                 continue

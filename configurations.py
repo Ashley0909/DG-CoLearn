@@ -69,7 +69,7 @@ def init_global_model(env_cfg, task_cfg, arg):
     model = None
     device = env_cfg.device
 
-    if device.type == 'cuda':
+    if device == 'gpu' or device.type == 'cuda':
         torch.set_default_dtype(torch.float32)
 
     model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'], task_type=task_cfg.task_type)

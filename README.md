@@ -32,5 +32,15 @@ Example Experiments
 
 `python3 main.py bitcoinOTC`
 `python3 main.py DBLP3`
-`python3 main.py Reddit`  
+`python3 main.py Reddit`
 `python3 main.py SBM`
+
+---
+
+## Building Our Graph Partitioning Algorithm
+
+Our Graph Partitioning Algorithm `CoLearnPartition` is written in C++ for efficiency. To run this, you need to build the C++ file using:
+
+```
+source build_gpa.sh
+```

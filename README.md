@@ -1,4 +1,4 @@
-## Intructions and Guideline to Files
+# Intructions and Guideline to Files
 
 `main.py`:
 Launches the overall Federated Learning program
@@ -20,6 +20,22 @@ Runs the Federated Learning process, called by `main.py`
 
 ---
 
+## Downloading Dataset
+
+Due to the large sizes of the datasets, we include the link to download each dataset in a [Google Drive](https://drive.google.com/drive/folders/19BWid2En9IWdzbPeZ3Tj29c4iDdXhtRV?usp=drive_link). Simply download the fils and copy them into the directory `/data/`
+
+---
+
+## Building Our Graph Partitioning Algorithm
+
+Our Graph Partitioning Algorithm `CoLearnPartition` is written in C++ for efficiency. To run this, you need to build the C++ file using:
+
+```
+source build_gpa.sh
+```
+
+---
+
 ## Running Code
 
 We can run the program using:
@@ -36,11 +52,3 @@ Example Experiments
 `python3 main.py SBM`
 
 ---
-
-## Building Our Graph Partitioning Algorithm
-
-Our Graph Partitioning Algorithm `CoLearnPartition` is written in C++ for efficiency. To run this, you need to build the C++ file using:
-
-```
-source build_gpa.sh
-```

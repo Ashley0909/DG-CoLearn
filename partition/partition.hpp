@@ -49,7 +49,7 @@ int refine_by_balance_and_label(int node,
                                 const std::unordered_set<Edge, EdgeHash>& synthetic_edges,
                                 const std::vector<int>& node_labels,
                                 const std::vector<int>& isolated_nodes,
-                                double threshold = 0.0);
+                                double threshold = 0.5);
 
 // Connect disconnected components of a graph by adding synthetic edges
 std::pair<AdjList, std::unordered_set<Edge, EdgeHash>>

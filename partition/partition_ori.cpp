@@ -7,17 +7,7 @@
 #include <set>
 #include <utility>
 #include <algorithm>
-#include <queue> // moved up
-
-using AdjList = std::vector<std::vector<int>>;
-using AdjList = std::vector<std::vector<int>>;
-using SubgraphSet = std::unordered_set<int>;
-using NodeToSubgraphMap = std::unordered_map<int, SubgraphSet>;
-using SubgraphToNodesMap = std::unordered_map<int, SubgraphSet>;
-using Component = std::unordered_set<int>;
-using Edge = std::pair<int, int>;
-
-
+#include <queue>
 
 double count_edges(const std::unordered_set<int>& subgraph_nodes,
                    const AdjList& adj_list,
@@ -67,7 +57,7 @@ int refine_by_balance_and_label(
     const std::unordered_set<std::pair<int, int>, EdgeHash>& synthetic_edges,
     const std::vector<int>& node_labels,
     const std::vector<int>& isolated_nodes,  // changed here
-    double threshold) // removed default argument here
+    double threshold) 
 {
     int best_subgraph = current_subgraph;
     double best_improvement = 0.0;
@@ -82,8 +72,6 @@ int refine_by_balance_and_label(
         }
         return 1.0 - (label_count / (sub_nodes.size() + 1e-6));
     };
-
-    // Removed unused is_isolated lambda
 
     double current_score =
         0.5 * balance_score(node, current_subgraph, previous_level_subgraph, isolated_nodes, adj_list, synthetic_edges, global_size) +
@@ -208,7 +196,7 @@ std::vector<std::vector<int>> all_pairs_shortest_paths(
     const AdjList& adj_list, const std::vector<int>& isolated_nodes) 
 {
     std::vector<std::vector<int>> result;
-    for (int node = 0; node < static_cast<int>(adj_list.size()); ++node) {
+    for (size_t node = 0; node < adj_list.size(); ++node) {
         // Check if node is isolated using std::find
         if (std::find(isolated_nodes.begin(), isolated_nodes.end(), node) != isolated_nodes.end()) {
             result.emplace_back(adj_list.size(), -1);  // all unreachable
@@ -333,19 +321,12 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
     SubgraphToNodesMap previous_level_subgraph;
     NodeToSubgraphMap node_to_allocated_subgraph;
     std::unordered_set<int> border_nodes;
+
     std::set<std::pair<int, int>> nodes_visited_set;
 
     auto [connected_components, isolated_nodes] = get_all_connected_components(adj_list);
     auto [new_adj_list, synthetic_edges] = connect_graphs(connected_components, adj_list);
     adj_list = new_adj_list; // no move
-
-    // Assign isolated nodes to subgraphs in round-robin fashion before BFS
-    for (int i = 0; i < static_cast<int>(isolated_nodes.size()); ++i) {
-        int iso = isolated_nodes[i];
-        int subgraph = i % K;
-        node_to_allocated_subgraph[iso] = {subgraph};
-        previous_level_subgraph[subgraph].insert(iso);
-    }
 
     auto roots = find_k_furthest_nodes(adj_list, K, isolated_nodes);
     std::vector<std::pair<int, int>> level_queue;  // pair<node, assign>
@@ -373,6 +354,7 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
         for (auto& [node, subgraphs_allocated] : node_to_allocated_subgraph) {
             if (subgraphs_allocated.size() > 1) {
                 int best_subgraph = resolve_by_min_cut(node, adj_list, subgraphs_allocated, previous_level_subgraph);
+
                 node_to_allocated_subgraph[node] = {best_subgraph};
                 for (int subgraph : subgraphs_allocated) {
                     previous_level_subgraph[subgraph].erase(node);
@@ -416,7 +398,7 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
         }
 
         int best_subgraph = refine_by_balance_and_label(node, current_subgraph, neighbor_subgraphs,
-            adj_list, previous_level_subgraph, global_size, synthetic_edges, node_labels, isolated_nodes, 0.4);
+            adj_list, previous_level_subgraph, global_size, synthetic_edges, node_labels, isolated_nodes);
 
         if (best_subgraph != current_subgraph) {
             previous_level_subgraph[current_subgraph].erase(node);
@@ -425,15 +407,37 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
         }
     }
 
-    // Remove the isolated node assignment after BFS (no-op)
-    // (Block removed)
+    // Assign isolated nodes
+    for (int node : isolated_nodes) {
+        int best_subgraph = 0;
+        int best_diversity = -1;
 
-    // Convert assignment map to vector, ensure all nodes are filled
-    std::vector<int> assignment(adj_list.size(), -1);
-    for (int i = 0; i < static_cast<int>(adj_list.size()); ++i) {
-        if (node_to_allocated_subgraph.count(i)) {
-            assignment[i] = *node_to_allocated_subgraph[i].begin();
+        for (const auto& [subgraph, nodes] : previous_level_subgraph) {
+            if (!node_labels.empty()) {
+                std::vector<int> labels;
+                for (int n : nodes) {
+                    labels.push_back(node_labels[n]); // FIXED
+                }
+                std::unordered_set<int> unique_labels(labels.begin(), labels.end());
+                int diversity = (int)unique_labels.size();
+                if (diversity > best_diversity) {
+                    best_diversity = diversity;
+                    best_subgraph = subgraph;
+                }
+            }
         }
+        node_to_allocated_subgraph[node] = {best_subgraph};
+        previous_level_subgraph[best_subgraph].insert(node);
+    }
+
+    // Convert assignment map to vector
+    int max_node = 0;
+    for (const auto& [node, _] : node_to_allocated_subgraph) {
+        if (node > max_node) max_node = node;
+    }
+    std::vector<int> assignment(max_node + 1, -1);
+    for (const auto& [node, subgraph_set] : node_to_allocated_subgraph) {
+        assignment[node] = *subgraph_set.begin();
     }
 
     return assignment;

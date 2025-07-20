@@ -11,7 +11,7 @@
             // "program": "/home/u1912321/Documents/own_code/DG-CoLearn/main.py",
             "program": "/Users/ashleyau/Documents/PhD/Code/2nd_Paper/DG-CoLearn/main.py",
             "console": "integratedTerminal",
-            "args": ["DBLP5"],
+            "args": ["DBLP3"],
             // "args": ["UCI"],
             // "args": ["SBM"],
             "justMyCode": false

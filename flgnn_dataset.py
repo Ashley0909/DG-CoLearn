@@ -206,12 +206,15 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     log_file.write(f"[SNAPSHOT {i}/{max_i}] Time taken for Subgraph Generation: {end_time_subgraphs - start_time_subgraphs}\n")
 
     start_time_partition = time.perf_counter()
-    train_subgraphs = graph_partition(i, max_i, log_file, server, train_data, num_subgraphs, task_cfg.task_type, partition_type='Louvain', tvt_type='train')
+    train_subgraphs = graph_partition(i, max_i, log_file, server, train_data, num_subgraphs, task_cfg.task_type, partition_type=split_method, tvt_type='train')
     server.record_num_subgraphs(num_subgraphs)
     server.construct_client_adj_matrix(train_subgraphs)
-    val_subgraphs = graph_partition(i, max_i, log_file, server, val_data, num_subgraphs, task_cfg.task_type, partition_type='Louvain')
-    test_subgraphs = graph_partition(i, max_i, log_file, server, test_data, num_subgraphs, task_cfg.task_type, partition_type='Louvain')
+    val_subgraphs = graph_partition(i, max_i, log_file, server, val_data, num_subgraphs, task_cfg.task_type, partition_type=split_method)
+    test_subgraphs = graph_partition(i, max_i, log_file, server, test_data, num_subgraphs, task_cfg.task_type, partition_type=split_method)
+    end_time_partition = time.perf_counter()
+    log_file.write(f"[SNAPSHOT {i}/{max_i}] Time taken for Graph Partitioning: {end_time_partition - start_time_partition}\n")
 
+    start_time_label = time.perf_counter()
     if task_cfg.task_type == 'NC':
         start_time_label = time.perf_counter()
         count_label_occur(train_subgraphs, train_data.node_label)
@@ -296,7 +299,7 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
     
     return fed_data_loader
 
-def graph_partition(i, max_i, log_file, server, data, num_parts, task_type, partition_type='Ours', node_label=None, tvt_type='test'):
+def graph_partition(i, max_i, log_file, server, data, num_parts, task_type, partition_type='Ours', tvt_type='test'):
     """ 
     Stay consistent partition for TVT, so prev_partition is to record the partition of testing data (the most recent snapshot)
     Input server instance to store current partition and adj_list if needed

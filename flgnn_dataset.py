@@ -210,7 +210,7 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
 
     train_subgraphs = graph_partition(server, train_data, num_subgraphs, task_cfg.task_type, partition_type='Ours', tvt_type='train')
     server.record_num_subgraphs(num_subgraphs)
-    server.construct_client_adj_matrix(train_subgraphs)
+    # server.construct_client_adj_matrix(train_subgraphs) # Only for model answer simulation
     val_subgraphs = graph_partition(server, val_data, num_subgraphs, task_cfg.task_type, partition_type='Ours')
     test_subgraphs = graph_partition(server, test_data, num_subgraphs, task_cfg.task_type, partition_type='Ours')
 
@@ -218,7 +218,7 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
         count_label_occur(train_subgraphs, train_data.node_label)
     ''' Server gets cce and construct server-side test data '''
     cc_edges_train, _, _ = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
-    print(f"Total number of cut edges: {sum(len(v) for v in cc_edges_train.values())}")
+    print(f"Total number of cut edges: {int(sum(len(v) for v in cc_edges_train.values())//2)}")
     server.record_ccn(cc_edges_train)
 
     cce_test, server_ei, server_el = get_cut_edges(test_subgraphs.tolist(), test_data.edge_index.tolist())
@@ -282,7 +282,7 @@ def construct_single_client_data(task_cfg, data, subgraph_label, client_idx, cli
         fed_data_loader = DataLoader(fed_data, batch_size=1)
     if tvt_mode == "train":
         clients[client_idx].prev_edge_index = subgraph_ei # Clients get new edge index in training by comparing with prev_edge_index
-        clients[client_idx].subnodes = subnodes
+        clients[client_idx].subnodes = subnodes # Record list of nodes this client will have (for NE exchange)
     
     return fed_data_loader
 
@@ -297,7 +297,7 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', t
     num_nodes = data.num_nodes
     node_label = data.node_label if task_type == 'NC' else None
 
-    # # If previous partition exists, maintain consistency
+    # # If previous partition exists, maintain consistency (Deleted)
     # if partition_type == 'Ours' and server.node_assignment is not None and num_parts == server.num_subgraphs:
     #     return server.node_assignment
 
@@ -312,8 +312,8 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', t
 
     adjacency_list = [list(neigh) for neigh in adjacency_list]
 
-    if tvt_type == 'train':
-        server.construct_glob_adj_mtx(adjacency_list)
+    # if tvt_type == 'train': # Only for model answer simulation
+    #     server.construct_glob_adj_mtx(adjacency_list)
 
     start_time = time.time()
     # if partition_type == 'Metis':
@@ -326,7 +326,8 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', t
     if partition_type == 'Ours':
         # partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
         # partitioning_labels = CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
-        labels = partition.CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label.tolist(), K=num_parts)
+        node_labels = [] if node_label is None else node_label.tolist()
+        labels = partition.CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_labels, K=num_parts)
         partitioning_labels = torch.tensor(labels)
     # elif partition_type == 'Label':
     #     partitioning_labels = label_split(data, num_parts, task_type=task_type)

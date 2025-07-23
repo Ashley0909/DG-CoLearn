@@ -36,8 +36,8 @@ class GNNNodeHead(nn.Module):
         batch = self.layer_post_mp(batch)
         pred, label = self._apply_index(batch)
         # return pred, label
-        return pred, label, copy.deepcopy([tensor.detach().clone() for tensor in batch.node_states]) # Return the node embed from current snapshot as well
-
+        # return pred, label, copy.deepcopy([tensor.detach().clone() for tensor in batch.node_states]) # Return the node embed from current snapshot as well
+        return pred, label, copy.deepcopy([tensor.detach().clone() for tensor in batch.node_states]), batch.h_0
 
 class GNNEdgeHead(nn.Module):
     r"""The GNN head module for edge prediction tasks. This module takes a (batch of) graphs and
@@ -115,7 +115,7 @@ class GNNEdgeHead(nn.Module):
             cfg.model.edge_decoding != 'edgeconcat':
             batch = self.layer_post_mp(batch)
         pred, label = self.forward_pred(batch)
-        return pred, label, copy.deepcopy([tensor.detach().clone() for tensor in batch.node_states]) # Return the node embed from current snapshot as well
+        return pred, label, copy.deepcopy([tensor.detach().clone() for tensor in batch.node_states]), batch.h_0 # Return the node embed from current snapshot as well
 
 class GNNGraphHead(nn.Module):
     '''Head of GNN, graph prediction

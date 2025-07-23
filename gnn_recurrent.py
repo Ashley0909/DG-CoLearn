@@ -211,6 +211,9 @@ class GNN(nn.Module):
         batch.node_feature = self.reshape.reshape_to_fill(batch.node_feature, batch.subnodes)
         for module in self.children():
             batch = module(batch)
+            if isinstance(module, Preprocess):
+                h_0 = batch.node_feature.detach().clone() # collect h_0, which is node features after preprocessing
+                batch.h_0 = h_0
         return batch          
 
 register_network('gnn_recurrent', GNN)

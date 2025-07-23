@@ -15,22 +15,52 @@ class EdgeDevice:
     def __init__(self, id, prev_ne, subnodes):
         self.id = id
         self.prev_ne = prev_ne
-        self.curr_ne = prev_ne # same stucture as prev_ne store 0-hop , 1-hop and 2-hop
+        self.curr_ne = prev_ne # same stucture as prev_ne store 1-hop and 2-hop
         self.prev_edge_index = []
         self.subnodes = subnodes
+        self.h0 = None # Implementation to Paper (NE exchange)
+        self.proj_1hop = None # Implementation to Paper (Set it later because of dynamic tensor size)
 
-    def send_embeddings(self): # send the current trained NE for sharing
-        return self.curr_ne
+    # def send_embeddings(self): # send the current trained NE for sharing 
+    #     return self.curr_ne
 
     def update_embeddings(self, shared_ne): # update the previous NE for GRU integration after sharing, or for next snapshot learning 
         self.prev_ne = shared_ne
 
-    def upload_features(self, node_feature, total_num_nodes, encoder):
-        reshape = ReshapeH(total_num_nodes)
-        expanded_node_feature = reshape.reshape_to_fill(node_feature, self.subnodes)
-        encoded_features = encoder(expanded_node_feature)
-        return encoded_features
+    # def upload_features(self, node_feature, total_num_nodes, encoder):
+    #     reshape = ReshapeH(total_num_nodes)
+    #     expanded_node_feature = reshape.reshape_to_fill(node_feature, self.subnodes)
+    #     encoded_features = encoder(expanded_node_feature)
+    #     return encoded_features
+    
+    def send_ccn_embeddings(self, ccn): # Our Implementation of NE Exchange Scheme 
+        sent = {}
+        for node in self.subnodes:
+            if node.item() in ccn: # ccn records bidirectional edges, if node is a key in ccn, it means that it will also be a value in ccn 
+                sent[node] = {
+                    0: self.h0[node],
+                    1: self.curr_ne[0][node],
+                }
+        return sent
+    
+    def receive_from_server(self, messages):  # Our Implementation of NE Exchange Scheme  
+        ''' Client receives messages from server and update their node embeddings.
+        
+        messages[node] = {
+            '1hop': Tensor for additional NE to add to current 1hop NE,
+            '2hop': Tensor for additional NE to add to current 2hop NE,
+            'ccn_count': Int for number of cross client neighbours of node
+        } 
+        '''
+        for node, msg in messages.items():
+            h2_local_add = self.h0[node] * msg['ccn_count']
+            if self.proj_1hop is None:
+                self.proj_1hop = nn.Linear(h2_local_add.shape[0], 16)
+            local_0hop = self.proj_1hop(h2_local_add).detach().clone()
+            if msg['1hop'] is not None:
+                self.curr_ne[0][node] += msg['1hop']
 
+            self.curr_ne[1][node] = self.curr_ne[1][node] + (local_0hop + msg['2hop']) if isinstance(msg['2hop'], torch.Tensor) else self.curr_ne[1][node] + local_0hop
 
 def distribute_models(global_model, local_models, client_ids):
     for id in client_ids:
@@ -124,8 +154,10 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
                 for i in range(len(data.dataset.node_states)):
                     data.dataset.node_states[i] = client.prev_ne[i]
             start_time = time.time()
-            predicted_y, true, client.curr_ne = model(copy.deepcopy(data.dataset))
+            predicted_y, true, client.curr_ne, h_0 = model(copy.deepcopy(data.dataset))
             print(f"Time taken for Client {model_id} to train: {time.time() - start_time}")
+
+            client.h0 = h_0.detach().clone() # Append h_0 to client.h0 (for NE exchange)
 
             # Compute Loss
             if task_cfg.task_type == 'LP':
@@ -177,14 +209,14 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
 
             model = models[model_id]
             if task_cfg.task_type == 'LP':
-                predicted_y, true, _ = model(copy.copy(data.dataset))
+                predicted_y, true, _, _ = model(copy.copy(data.dataset))
                 loss, _ = compute_loss(task_cfg, predicted_y, edge_label.type_as(predicted_y))
                 acc, ap = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
                 mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y), edge_label_index) # need raw scores for mrr
                 metrics['mrr'] += mrr
                 metrics['ap'] += ap
             else:
-                predicted_y, true, _ = model(copy.copy(data.dataset))
+                predicted_y, true, _, _ = model(copy.copy(data.dataset))
                 loss, _ = compute_loss(task_cfg, predicted_y, true)
                 acc, macro_f1, micro_f1 = nc_prediction(predicted_y, true)
                 metrics['macro_f1'] += macro_f1
@@ -221,7 +253,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
             continue
 
         if task_cfg.task_type == 'LP':
-            predicted_y, _, _ = global_model(copy.copy(data.dataset))
+            predicted_y, _, _, _ = global_model(copy.copy(data.dataset))
             acc, ap = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
             print("Test Accuracy is", acc, "by client with", data.dataset.edge_index.shape[1], "edges")
             mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y), edge_label_index)
@@ -231,7 +263,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
             else:
                 count -= 1
         else:
-            predicted_y, true_label, _ = global_model(copy.copy(data.dataset))
+            predicted_y, true_label, _, _ = global_model(copy.copy(data.dataset))
             acc, macro_f1, micro_f1 = nc_prediction(predicted_y, true_label)
             accuracy, metrics['macro_f1'], metrics['micro_f1'] = accuracy + acc, metrics['macro_f1'] + macro_f1, metrics['micro_f1'] + micro_f1
 
@@ -241,7 +273,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
     if task_cfg.task_type == 'LP':
         server_data = server.test_loader.dataset
         if server_data.edge_index.shape[1] > 1: # Test if there are any cce
-            predicted_y, true_label, _ = global_model(copy.copy(server_data))
+            predicted_y, true_label, _, _ = global_model(copy.copy(server_data))
             ccn_acc, ccn_ap = lp_prediction(predicted_y, true_label)
             ccn_mrr = compute_mrr(predicted_y, true_label, server_data.edge_label_index)
             if not math.isnan(mrr):

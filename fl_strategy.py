@@ -22,11 +22,11 @@ def sample_clients(data_list, cm_map):
    client_list = []
    for data in data_list:
       client = data.dataset.location
-      if data.dataset.edge_index.shape[1] != 0:
+      if data.dataset.edge_index.shape[1] > 1:
          client_list.append(cm_map[client.id])
    return client_list
 
-def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, tot_num_nodes):
+def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, tot_num_nodes):
    # Initialise
    global_model = global_mod   
    local_models = [None for _ in range(env_cfg.n_clients)]
@@ -71,21 +71,21 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_
       schedulers[i] = torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[i], T_max=env_cfg.n_epochs, eta_min=1e-5)
       # schedulers.append(torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers[i],mode='max',factor=0.5,patience=5,verbose=True))
 
-   ''' Pretraining Communication '''
-   print("Pretraining Communication Starts")
-   in_dim = fed_data_train[0].dataset.node_feature.shape[1]
-   encoder = MLPEncoder(in_dim=in_dim, out_dim=16)
-   for c in fed_data_train:
-      client = c.dataset.location 
-      feature = client.upload_features(c.dataset.node_feature, tot_num_nodes, encoder)
-      server.client_features.append(feature) # Server collects the clients' features
-   print("Clients finished uploading embeddings, server computing global embeddings...")
-   start_time = time.time()
-   global_states = server.get_global_node_states() # Server computes global features
-   end_time = time.time()
-   print(f"Time taken for Global Node State Computation: {end_time - start_time}")
-   for c in fed_data_train:
-      c.dataset.node_states = copy.deepcopy([s.detach() for s in global_states]) # Clients collects the global features
+   ''' Pretraining Communication (Model Answer for Node Embeddings) '''
+   # print("Pretraining Communication Starts")
+   # in_dim = fed_data_train[0].dataset.node_feature.shape[1]
+   # encoder = MLPEncoder(in_dim=in_dim, out_dim=16)
+   # for c in fed_data_train:
+   #    client = c.dataset.location 
+   #    feature = client.upload_features(c.dataset.node_feature, tot_num_nodes, encoder)
+   #    server.client_features.append(feature) # Server collects the clients' features
+   # print("Clients finished uploading embeddings, server computing global embeddings...")
+   # start_time = time.time()
+   # global_states = server.get_global_node_states() # Server computes global features
+   # end_time = time.time()
+   # print(f"Time taken for Global Node State Computation: {end_time - start_time}")
+   # for c in fed_data_train:
+   #    c.dataset.node_states = copy.deepcopy([s.detach() for s in global_states]) # Clients collects the global features
 
    ''' Simulating FedGCN Pretain Communication '''
    # # clients compute feature aggregation
@@ -95,7 +95,6 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_
    #    one_hop_feat, two_hop_feat = compute_neighborhood_features(data.edge_index, data.node_feature, tot_num_nodes)
    #    features.append(two_hop_feat)
    #    subnodes.append(data.subnodes)
-   
    # # clients send them to server and server computes average
    # final_feat = average_feat_aggre(features)
    # # server redistribute to clients
@@ -121,6 +120,23 @@ def run_dygl(env_cfg, task_cfg, server, global_mod, cm_map, fed_data_train, fed_
             if val_acc[c] > best_val_acc[c]:
                best_local_models[c] = copy.deepcopy(local_models[c])
                best_val_acc[c] = val_acc[c]
+
+         # Node Embedding Exchange Scheme
+         if epoch == (env_cfg.n_epochs - 1) and rd == (env_cfg.n_rounds // 2):
+            node_embeds = []
+            ccn = server.ccn
+            ne_start_time = time.time()
+            for c in client_ids:
+               node_embeds.append(clients[c].send_ccn_embeddings(ccn))
+            compute_start = time.time()
+            messages = server.aggregate_and_send(node_embeds)
+            compute_end = time.time()
+            for c in client_ids:
+               clients[c].receive_from_server(messages)
+            ne_end_time = time.time()
+            print(f"Time taken for Full Node Embedding Exchange: {ne_end_time - ne_start_time}")   
+            print(f"Time taken for Server to compute NE: {compute_end - compute_start}")   
+            print(f"Time taken for Communication: {(ne_end_time - ne_start_time) - (compute_end - compute_start)}")   
 
       # print('>   @Local> Val Metrics = ', val_metrics) # Keep! for local client performance reference
       # Aggregate Local Models

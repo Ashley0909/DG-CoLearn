@@ -44,18 +44,14 @@ def main():
             x_labels.append(f"Snapshot {ss} Round {rd}")
     test_ap_fig = configure_plotly(x_labels, test_ap, 'Average Tested Precision (Area under PR Curve)', "")
 
+    past_test_data, best_metrics = None, None # For measuring catastrophic forgetting
     for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
         print("Snapshot", i)
         fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, data_size = get_gnn_clientdata(server, train_list[i], val_list[i], test_list[i], task_cfg, clients)       
-        glob_model, best_metrics, _, test_ap_fig, test_ap = run_dygl(env_cfg, task_cfg, server, clients, glob_model, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
-                                                                    i, client_shard_sizes, data_size, test_ap_fig, test_ap, arg['num_nodes'])
+        glob_model, best_metrics, _, test_ap_fig, test_ap, past_test_data = run_dygl(env_cfg, task_cfg, server, clients, glob_model, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
+                                                                    i, client_shard_sizes, data_size, test_ap_fig, test_ap, {'data': past_test_data, 'metric': best_metrics})
         print("Snapshot Ends. Best Round:", best_metrics['best_round'], "Best Metrics:", best_metrics)
         print("=============")
-        for c in clients: # Pass the curr_ne to prev_ne for training in the upcoming round
-            c.update_embeddings(c.curr_ne)
-        # if i == 2:
-        #     print("End of Snapshot 2. Terminate.")
-        #     exit(-1)
 
 if __name__ == '__main__':  # If the file is run directly (python3 main.py), __name__ will be set to __main__ and will run the function main()
     main()

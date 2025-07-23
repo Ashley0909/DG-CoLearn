@@ -289,3 +289,52 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
     
     # return test_sum_loss, accuracy/count, metrics
     return 0, accuracy/count, metrics
+
+def catastrophic_forgetting_test(global_model, client_ids, task_cfg, env_cfg, cm_map, data_dict):
+    device = env_cfg.device
+    fdl = data_dict['data']
+    original_metric = data_dict['metric']
+
+    # Initialize evaluation mode
+    global_model.eval()
+
+    # Local evaluation, batch-wise
+    full_f1, accuracy = 0.0, 0.0
+    count = 0
+    metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0}
+    retention_dict = {}
+
+    for data in fdl.fbd_list:
+        if task_cfg.task_type == 'LP':
+            edge_label = data.dataset.edge_label
+            if len(edge_label) == 0 or edge_label.numel() == 0: # neglect participants with no testing data
+                print("Ignore participants with no testing data")
+                continue
+
+        model_id = cm_map[data.dataset.location.id]
+        if model_id not in client_ids: # neglect non-participants
+            continue
+
+        if task_cfg.task_type == 'LP':
+            predicted_y, _, _, _ = global_model(copy.copy(data.dataset))
+            acc, ap = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
+            accuracy, metrics['ap'] = accuracy + acc, metrics['ap'] + ap
+        else:
+            predicted_y, true_label, _, _ = global_model(copy.copy(data.dataset))
+            _, _, micro_f1 = nc_prediction(predicted_y, true_label)
+            full_f1 += micro_f1
+        count += 1
+
+    if task_cfg.task_type == 'LP':
+        current_acc = accuracy/count
+        acc_retention = current_acc/original_metric['best_acc']
+        retention_dict['acc'] = acc_retention
+        current_ap = metrics['ap']/count
+        ap_retention = current_ap/original_metric['best_ap']
+        retention_dict['ap'] = ap_retention
+    else:
+        current_f1 = full_f1 / count
+        retention_rate = current_f1 / original_metric['best_f1']
+        retention_dict['f1'] = retention_rate 
+    
+    return retention_dict

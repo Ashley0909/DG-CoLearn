@@ -5,11 +5,11 @@ import time
 from collections import defaultdict
 import torch.optim as optim
 
-from utils import get_global_embedding
-from fl_clients import distribute_models, train, local_test, global_test
+from fl_clients import distribute_models, train, local_test, global_test, catastrophic_forgetting_test
 from fl_aggregations import gnn_aggregate
 from plot_graphs import configure_plotly
-from fl_models import MLPEncoder
+# from utils import get_global_embedding
+# from fl_models import MLPEncoder
 # from sim_fedgcn import compute_neighborhood_features, average_feat_aggre # For simulating FedGCN 
 
 def update_cloud_cache(cache, local_models, ids):
@@ -26,7 +26,7 @@ def sample_clients(data_list, cm_map):
          client_list.append(cm_map[client.id])
    return client_list
 
-def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, tot_num_nodes):
+def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, past_test_dict):
    # Initialise
    global_model = global_mod   
    local_models = [None for _ in range(env_cfg.n_clients)]
@@ -122,7 +122,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
                best_val_acc[c] = val_acc[c]
 
          # Node Embedding Exchange Scheme
-         if epoch == (env_cfg.n_epochs - 1) and rd == (env_cfg.n_rounds // 2):
+         if epoch == (env_cfg.n_epochs - 1) and rd == 0:
             node_embeds = []
             ccn = server.ccn
             ne_start_time = time.time()
@@ -138,12 +138,16 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
             print(f"Time taken for Server to compute NE: {compute_end - compute_start}")   
             print(f"Time taken for Communication: {(ne_end_time - ne_start_time) - (compute_end - compute_start)}")   
 
-      # print('>   @Local> Val Metrics = ', val_metrics) # Keep! for local client performance reference
+      print('>   @Local> Val Metrics = ', val_metrics) # Keep! for local client performance reference
       # Aggregate Local Models
       update_cloud_cache(cache, best_local_models, client_ids)
       global_model = gnn_aggregate(cache, client_shard_sizes, data_size, client_ids)
       print("Aggregated Model")
       global_loss, global_acc, global_metrics = global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fed_data_test)
+      # Measure catastrophic forgetting
+      if past_test_dict['data'] is not None:
+         catstro_dict = catastrophic_forgetting_test(global_model, client_ids, task_cfg, env_cfg, cm_map, past_test_dict)
+         print('>   @Cloud> Retention Rate = ', catstro_dict)
       overall_loss = np.array(global_loss)[np.array(global_loss) != 0.0].sum() / data_size
       global_f1 = global_metrics['micro_f1']
       global_ap = global_metrics['ap']
@@ -177,4 +181,4 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
    }
    # torch.save(checkpoint, f'model_state/{task_cfg.dataset}/model_checkpoint_ss{snapshot}_lr{task_cfg.lr}.pth')
 
-   return best_model, best_metrics, val_ap_fig, test_ap_fig, test_ap
+   return best_model, best_metrics, val_ap_fig, test_ap_fig, test_ap, fed_data_test

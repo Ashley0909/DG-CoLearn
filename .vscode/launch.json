@@ -11,8 +11,7 @@
             "program": "/Users/ashleyau/Documents/PhD/Code/2nd_Paper/DG-CoLearn/main.py",
             "console": "integratedTerminal",
             "args": ["Reddit"],
-            // "args": ["UCI"],
-            // "args": ["SBM"],
+            // "args": ["bitcoinOTC"],
             "justMyCode": false
         }
     ]

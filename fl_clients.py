@@ -302,7 +302,7 @@ def catastrophic_forgetting_test(global_model, client_ids, task_cfg, env_cfg, cm
     full_f1, accuracy = 0.0, 0.0
     count = 0
     metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0}
-    retention_dict = {}
+    forgetting_dict = {}
 
     for data in fdl.fbd_list:
         if task_cfg.task_type == 'LP':
@@ -327,14 +327,14 @@ def catastrophic_forgetting_test(global_model, client_ids, task_cfg, env_cfg, cm
 
     if task_cfg.task_type == 'LP':
         current_acc = accuracy/count
-        acc_retention = current_acc/original_metric['best_acc']
-        retention_dict['acc'] = acc_retention
+        acc_forgetting = original_metric['best_acc'] - current_acc
+        forgetting_dict['acc'] = acc_forgetting
         current_ap = metrics['ap']/count
-        ap_retention = current_ap/original_metric['best_ap']
-        retention_dict['ap'] = ap_retention
+        ap_forgetting = original_metric['best_ap'] - current_ap
+        forgetting_dict['ap'] = ap_forgetting
     else:
         current_f1 = full_f1 / count
-        retention_rate = current_f1 / original_metric['best_f1']
-        retention_dict['f1'] = retention_rate 
+        forgetting = original_metric['best_f1'] - current_f1
+        forgetting_dict['f1'] = forgetting 
     
-    return retention_dict
+    return forgetting_dict

@@ -321,8 +321,6 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', t
     # elif partition_type == 'Louvain':
     #     louvainSplitter = LouvainSplitter(num_parts)
     #     partitioning_labels = louvainSplitter(data)
-    # elif partition_type == 'Dirichlet':
-    #     partitioning_labels = label_dirichlet_partition(node_label, len(node_label), max(node_label), num_parts, beta=100)
     if partition_type == 'Ours':
         # partitioning_labels = our_gpa(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)
         # partitioning_labels = CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_label, K=num_parts)

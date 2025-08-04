@@ -10,7 +10,7 @@ from fl_aggregations import gnn_aggregate
 from plot_graphs import configure_plotly
 # from utils import get_global_embedding
 # from fl_models import MLPEncoder
-# from sim_fedgcn import compute_neighborhood_features, average_feat_aggre # For simulating FedGCN 
+from sim_fedgcn import compute_neighborhood_features, average_feat_aggre # For simulating FedGCN 
 
 def update_cloud_cache(cache, local_models, ids):
    """ Update each clients' local models in the cache """
@@ -26,7 +26,7 @@ def sample_clients(data_list, cm_map):
          client_list.append(cm_map[client.id])
    return client_list
 
-def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, past_test_dict):
+def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_train, fed_data_val, fed_data_test, snapshot, client_shard_sizes, data_size, test_ap_fig, test_ap, past_test_dict, tot_num_nodes):
    # Initialise
    global_model = global_mod   
    local_models = [None for _ in range(env_cfg.n_clients)]
@@ -88,18 +88,25 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
    #    c.dataset.node_states = copy.deepcopy([s.detach() for s in global_states]) # Clients collects the global features
 
    ''' Simulating FedGCN Pretain Communication '''
-   # # clients compute feature aggregation
+   # start_fedgcn = time.time()
    # features, subnodes = [], []
+   # # client compute features
    # for c in fed_data_train:
    #    data = c.dataset
    #    one_hop_feat, two_hop_feat = compute_neighborhood_features(data.edge_index, data.node_feature, tot_num_nodes)
    #    features.append(two_hop_feat)
    #    subnodes.append(data.subnodes)
    # # clients send them to server and server computes average
+   # start_comp = time.time()
    # final_feat = average_feat_aggre(features)
+   # end_comp = time.time()
    # # server redistribute to clients
    # for i, c in enumerate(fed_data_train):
    #    c.dataset.node_feature = final_feat
+   # end_fedgcn = time.time()
+   # print(f"Time taken for Full Node Embedding Exchange: {end_fedgcn - start_fedgcn}")
+   # print(f"Time taken for Server to compute NE: {end_comp - start_comp}")   
+   # print(f"Time taken for Communication: {(end_fedgcn - start_fedgcn) - (end_comp - start_comp)}")  
 
    best_metrics = defaultdict()
    """ Begin Training """
@@ -147,7 +154,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
       # Measure catastrophic forgetting
       if past_test_dict['data'] is not None:
          catstro_dict = catastrophic_forgetting_test(global_model, client_ids, task_cfg, env_cfg, cm_map, past_test_dict)
-         print('>   @Cloud> Retention Rate = ', catstro_dict)
+         print('>   @Cloud> Forgetting = ', catstro_dict)
       overall_loss = np.array(global_loss)[np.array(global_loss) != 0.0].sum() / data_size
       global_f1 = global_metrics['micro_f1']
       global_ap = global_metrics['ap']
@@ -173,12 +180,12 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
          global_ap = best_ap
          global_f1 = best_f1
 
-   # Save Model State and Optimizer State
-   checkpoint = {
-      'snapshot': snapshot,
-      'learning_rate': task_cfg.lr,
-      'model_state_dict': global_model.state_dict()
-   }
+   # Save Model State and Optimizer State (if needed)
+   # checkpoint = {
+   #    'snapshot': snapshot,
+   #    'learning_rate': task_cfg.lr,
+   #    'model_state_dict': global_model.state_dict()
+   # }
    # torch.save(checkpoint, f'model_state/{task_cfg.dataset}/model_checkpoint_ss{snapshot}_lr{task_cfg.lr}.pth')
 
    return best_model, best_metrics, val_ap_fig, test_ap_fig, test_ap, fed_data_test

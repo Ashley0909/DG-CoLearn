@@ -42,13 +42,18 @@ We can run the program using:
 `python3 main.py $dataset$`
 
 where
-`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, SBM}
+`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit}
 
 Example Experiments
 
 `python3 main.py bitcoinOTC`
 `python3 main.py DBLP3`
 `python3 main.py Reddit`
-`python3 main.py SBM`
 
 ---
+
+## Plotting and Analysis
+
+You can visualise the result using `analysis_gpa.ipynb` for comparing graph partitioning algorithms; and `analysis_ne.ipynb` for comparing node embedding exchange schemes.
+
+Simply change the path of the log result recorded using our logging system and rename it to your desire.

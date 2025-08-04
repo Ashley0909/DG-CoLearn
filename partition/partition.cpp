@@ -328,6 +328,168 @@ int resolve_by_min_cut(
     return best_subgraph;
 }
 
+int resolve_by_edge_balance(
+    int node,
+    const AdjList& adj_list,
+    const std::unordered_set<int>& subgraph_allocated,
+    const std::unordered_map<int, std::unordered_set<int>>& previous_level_subgraph,
+    int global_size,
+    const std::unordered_set<std::pair<int, int>, EdgeHash>& synthetic_edges,
+    const std::vector<int>& isolated_nodes)
+{
+    std::unordered_map<int, double> edge_scores;
+
+    for (int subgraph : subgraph_allocated) {
+        std::unordered_set<int> temp_nodes = previous_level_subgraph.at(subgraph);
+        temp_nodes.erase(node);
+        for (int iso : isolated_nodes) temp_nodes.erase(iso);
+
+        double edge_count = count_edges(temp_nodes, adj_list, synthetic_edges);
+        double score = 1.0 - (edge_count / global_size);
+        edge_scores[subgraph] = score;
+    }
+
+    int best_subgraph = -1;
+    double best_score = -1.0;
+    for (const auto& [subgraph, score] : edge_scores) {
+        if (score > best_score) {
+            best_score = score;
+            best_subgraph = subgraph;
+        }
+    }
+
+    return best_subgraph;
+}
+
+int refine_by_min_cut_and_label(
+    int node,
+    int current_subgraph,
+    const std::unordered_set<int>& neighbor_subgraphs,
+    const AdjList& adj_list,
+    const std::unordered_map<int, std::unordered_set<int>>& previous_level_subgraph,
+    const std::vector<int>& node_labels,
+    double threshold)
+{
+    int current_cut = 0, current_label_score = 0;
+    for (int n : adj_list[node]) {
+        if (previous_level_subgraph.at(current_subgraph).count(n)) current_cut++;
+    }
+    if (!node_labels.empty()) {
+        for (int n : previous_level_subgraph.at(current_subgraph)) {
+            if (node_labels[n] == node_labels[node]) current_label_score++;
+        }
+    }
+    double current_score = 0.5 * current_cut + 0.5 * current_label_score;
+
+    int best_subgraph = current_subgraph;
+    double best_improvement = 0.0;
+
+    for (int subgraph : neighbor_subgraphs) {
+        int cut = 0, label_score = 0;
+        for (int n : adj_list[node]) {
+            if (previous_level_subgraph.at(subgraph).count(n)) cut++;
+        }
+        if (!node_labels.empty()) {
+            for (int n : previous_level_subgraph.at(subgraph)) {
+                if (node_labels[n] == node_labels[node]) label_score++;
+            }
+        }
+
+        double new_score = 0.5 * cut + 0.5 * label_score;
+        if ((new_score - current_score) > std::max(threshold, best_improvement)) {
+            best_subgraph = subgraph;
+            best_improvement = new_score - current_score;
+        }
+    }
+
+    return best_subgraph;
+}
+
+int resolve_by_label_balance(
+    int node,
+    const std::unordered_set<int>& subgraph_allocated,
+    const std::unordered_map<int, std::unordered_set<int>>& previous_level_subgraph,
+    const std::vector<int>& node_labels) 
+{
+    if (node_labels.empty()) {
+        return 0;
+    }
+
+    std::unordered_map<int, double> label_scores;
+    int node_label = node_labels[node];
+
+    for (int subgraph : subgraph_allocated) {
+        const auto& sub_nodes = previous_level_subgraph.at(subgraph);
+        int label_match_count = 0;
+
+        for (int n : sub_nodes) {
+            if (n == node) continue;
+            if (node_labels[n] == node_label) {
+                ++label_match_count;
+            }
+        }
+
+        double denom = static_cast<double>(sub_nodes.size()) + 1e-6;
+        label_scores[subgraph] = 1.0 - (label_match_count / denom);
+    }
+
+    // Find subgraph with max label_scores[subgraph]
+    int best_subgraph = -1;
+    double max_score = -1e9;
+    for (const auto& [subgraph, score] : label_scores) {
+        if (score > max_score) {
+            max_score = score;
+            best_subgraph = subgraph;
+        }
+    }
+
+    return best_subgraph;
+}
+
+
+int refine_by_min_cut_and_balance(
+    int node,
+    int current_subgraph,
+    const std::unordered_set<int>& neighbor_subgraphs,
+    const AdjList& adj_list,
+    const std::unordered_map<int, std::unordered_set<int>>& previous_level_subgraph,
+    int global_size,
+    const std::unordered_set<std::pair<int, int>, EdgeHash>& synthetic_edges,
+    const std::vector<int>& isolated_nodes,
+    double threshold) 
+{
+    auto cut_score = [&](int subgraph) -> double {
+        int count = 0;
+        for (int neighbor : adj_list.at(node)) {
+            if (previous_level_subgraph.at(subgraph).count(neighbor)) {
+                ++count;
+            }
+        }
+        return static_cast<double>(count);
+    };
+
+    double current_cut = cut_score(current_subgraph);
+    double current_balance = balance_score(node, current_subgraph, previous_level_subgraph, isolated_nodes, adj_list, synthetic_edges, global_size);
+    double current_score = 0.5 * current_cut + 0.5 * current_balance;
+
+    int best_subgraph = current_subgraph;
+    double best_improvement = 0.0;
+
+    for (int subgraph : neighbor_subgraphs) {
+        double new_cut = cut_score(subgraph);
+        double new_balance = balance_score(node, subgraph, previous_level_subgraph, isolated_nodes, adj_list, synthetic_edges, global_size);
+        double new_score = 0.5 * new_cut + 0.5 * new_balance;
+
+        double improvement = new_score - current_score;
+        if (improvement > std::max(threshold, best_improvement)) {
+            best_improvement = improvement;
+            best_subgraph = subgraph;
+        }
+    }
+
+    return best_subgraph;
+}
+
 std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std::vector<int>& node_labels, int K)
 {
     SubgraphToNodesMap previous_level_subgraph;
@@ -373,6 +535,8 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
         for (auto& [node, subgraphs_allocated] : node_to_allocated_subgraph) {
             if (subgraphs_allocated.size() > 1) {
                 int best_subgraph = resolve_by_min_cut(node, adj_list, subgraphs_allocated, previous_level_subgraph);
+                // int best_subgraph = resolve_by_edge_balance(node, adj_list, subgraphs_allocated, previous_level_subgraph, global_size, synthetic_edges, isolated_nodes);
+                // int best_subgraph = resolve_by_label_balance(node, subgraphs_allocated, previous_level_subgraph, node_labels);
                 node_to_allocated_subgraph[node] = {best_subgraph};
                 for (int subgraph : subgraphs_allocated) {
                     previous_level_subgraph[subgraph].erase(node);
@@ -416,7 +580,11 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
         }
 
         int best_subgraph = refine_by_balance_and_label(node, current_subgraph, neighbor_subgraphs,
-            adj_list, previous_level_subgraph, global_size, synthetic_edges, node_labels, isolated_nodes, 0.4);
+            adj_list, previous_level_subgraph, global_size, synthetic_edges, node_labels, isolated_nodes, 0.5);
+        // int best_subgraph = refine_by_min_cut_and_label(node, current_subgraph, neighbor_subgraphs,
+        //     adj_list, previous_level_subgraph, node_labels, 0.4);
+        // int best_subgraph = refine_by_min_cut_and_balance(node, current_subgraph, neighbor_subgraphs, 
+        //     adj_list, previous_level_subgraph, global_size, synthetic_edges, isolated_nodes, 0.4);
 
         if (best_subgraph != current_subgraph) {
             previous_level_subgraph[current_subgraph].erase(node);

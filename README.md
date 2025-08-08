@@ -1,4 +1,6 @@
-# Intructions and Guideline to Files
+# To use the most updated implementation, switch to `fast_gpa` branch.
+
+# Instructions and Guideline to Files
 
 `main.py`:
 Launches the overall Federated Learning program
@@ -6,10 +8,10 @@ Launches the overall Federated Learning program
 `configurations.py`:
 Initialises background classes and settings
 
-`flgnn_dataset.py`
+`flgnn_dataset.py`:
 Includes all gnn data loading and splitting functions
 
-`graph_partition.py`
+`graph_partition.py`:
 Implements our graph partitioning algorithm
 
 `fl_clients.py`:
@@ -20,13 +22,13 @@ Runs the Federated Learning process, called by `main.py`
 
 ---
 
-## Downloading Dataset
+# Downloading Dataset
 
 Due to the large sizes of the node classification datasets, we include the link to download each dataset in a [Google Drive](https://drive.google.com/drive/folders/19BWid2En9IWdzbPeZ3Tj29c4iDdXhtRV?usp=drive_link). Simply download the files and copy them into the `data/` directory
 
 ---
 
-## Building Our Graph Partitioning Algorithm
+# Building Our Graph Partitioning Algorithm
 
 Our Graph Partitioning Algorithm `CoLearnPartition` is written in C++ for efficiency. To run this, you need to build the C++ file using:
 
@@ -36,7 +38,7 @@ source build_gpa.sh
 
 ---
 
-## Running Code
+# Running Code
 
 We can run the program using:
 `python3 main.py $dataset$`
@@ -52,8 +54,10 @@ Example Experiments
 
 ---
 
-## Plotting and Analysis
+# Plotting and Analysis
 
 You can visualise the result using `analysis_gpa.ipynb` for comparing graph partitioning algorithms; and `analysis_ne.ipynb` for comparing node embedding exchange schemes.
 
 Simply change the path of the log result recorded using our logging system and rename it to your desire.
+
+---

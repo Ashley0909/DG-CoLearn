@@ -13,7 +13,7 @@ from torch_geometric.utils import to_undirected
 from torch.utils.data import DataLoader
 from fl_clients import EdgeDevice
 from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, count_label_occur
-from graph_partition import our_gpa, CoLearnPartition
+# from graph_partition import our_gpa, CoLearnPartition
 # from other_partition import label_split, label_dirichlet_partition, custom_metis
 import partition
 

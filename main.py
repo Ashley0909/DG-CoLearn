@@ -10,12 +10,17 @@ from utils import Logger
 from flgnn_dataset import load_gnndata, get_gnn_clientdata
 from sbm_generate import generate_graph
 from plot_graphs import configure_plotly
+from graphgym.config import cfg
 
 torch.autograd.set_detect_anomaly(True)
 
 def main():
     # Set Configuration
     dataset = str(sys.argv[1])  # string: options={boston, mnist, cifar10, cifar100, bitcoinOTC, DBLP, Reddit}
+    
+    if len(sys.argv) > 2: # Case when dataset is as-733
+        cfg_file = str(sys.argv[2])  # string: path to the config file
+        cfg.merge_from_file(cfg_file) # Update the config on the graphgym side
 
     bw_set = (0.175, 1250) # (client throughput, bandwidth_server) in MB/s
 

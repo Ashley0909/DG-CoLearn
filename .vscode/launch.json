@@ -10,8 +10,9 @@
             "request": "launch",
             "program": "/Users/ashleyau/Documents/PhD/Code/2nd_Paper/DG-CoLearn/main.py",
             "console": "integratedTerminal",
-            "args": ["Reddit"],
+            // "args": ["Brain"],
             // "args": ["bitcoinOTC"],
+            "args": ["as733", "as733.yaml"],
             "justMyCode": false
         }
     ]

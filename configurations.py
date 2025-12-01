@@ -24,13 +24,14 @@ class EnvSettings:
 class TaskSettings:
     """ Task Settings for FL """
 
-    def __init__(self, task_type, dataset, path, in_dim, out_dim, batch_size=5, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0):
+    def __init__(self, task_type, dataset, path, in_dim, out_dim, edge_dim, batch_size=5, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0):
         self.task_type = task_type
         self.dataset = dataset
         self.num_classes = num_classes
         self.path = path
         self.in_dim = in_dim
         self.out_dim = out_dim
+        self.edge_dim = edge_dim
         self.batch_size = batch_size
         self.optimizer = optimizer
         self.loss = loss
@@ -38,19 +39,23 @@ class TaskSettings:
         self.lr_decay = lr_decay
         self.poisoning_rate = poisoning_rate
         self.model_size = 10.0  #10MB
+        self.mu = 0.05 # FedProx
 
 def init_config(dataset, bw_set):
-    if dataset == 'SBM': # Generate graphs
+    if dataset.lower() == 'sbm': # Generate graphs
         env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
-    elif dataset in ['bitcoinOTC', 'UCI']:
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
+    elif dataset.lower() in ['bitcoinotc', 'uci']:
         env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.03, lr_decay=0.1)
+        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.03, lr_decay=0.1)
+    elif dataset.lower() == 'as733':
+        env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=1, batch_size=5, optimizer='Adam', loss='ce', lr=0.01, lr_decay=0.1)
     elif dataset in ['DBLP3', 'DBLP5', 'Reddit']:
         env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
-        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
     else:
-        print('[Err] Invalid dataset provided. Options are {SBM, bitcoinOTC, UCI, DBLP3, DBLP5, Reddit}')
+        print('[Err] Invalid dataset provided. Options are {SBM, bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733}')
         exit(0)
 
     return env_cfg, task_cfg

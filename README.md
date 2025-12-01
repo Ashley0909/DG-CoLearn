@@ -44,7 +44,7 @@ We can run the program using:
 `python3 main.py $dataset$`
 
 where
-`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit}
+`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733}
 
 Example Experiments
 

@@ -2,6 +2,7 @@ import requests
 import gzip
 import shutil
 import os
+import tarfile
 
 import numpy as np
 import torch
@@ -48,6 +49,10 @@ def extract_gz(gz_path):
         with open(extracted_path, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
     return extracted_path
+
+def extract_tar_gz(path, extract_to):
+    with tarfile.open(path, "r:gz") as tar:
+        tar.extractall(path=extract_to)
 
 def process_txt_data(txt_path):
     with open(txt_path, 'r') as f:
@@ -206,7 +211,7 @@ def compute_mrr(pred_score, true_l, edge_label_index, do_softmax=True):
     else:
         probs = pred_score
 
-    probs = probs.cpu().detach().numpy()
+    probs = probs.cpu().detach().numpy().squeeze()
     true_l = true_l.cpu().detach().numpy()
 
     source_nodes = edge_label_index[0].cpu().detach().numpy()

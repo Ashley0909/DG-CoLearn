@@ -56,5 +56,8 @@
         "unordered_map": "cpp",
         "valarray": "cpp",
         "variant": "cpp"
-    }
+    },
+    "python-envs.defaultEnvManager": "ms-python.python:venv",
+    "python-envs.defaultPackageManager": "ms-python.python:pip",
+    "python-envs.pythonProjects": []
 }

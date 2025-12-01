@@ -105,8 +105,7 @@ def compute_loss(task_cfg, pred, true):
     else:
         raise ValueError('Loss func {} not supported'.
                          format(task_cfg.loss))
-
-def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map, fdl, last_loss_rep, rd, epoch, verbose=True):
+def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map, fdl, last_loss_rep, rd, epoch, global_params=None, verbose=True):
     device = env_cfg.device
     if len(client_ids) == 0:
         return last_loss_rep
@@ -121,6 +120,11 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
 
     for m in range(num_models):
         models[m].train()  # Pytorch makes sure it is in training mode
+
+    # FedProx: prepare a detached copy of global params for this round (once)
+    global_flat = None
+    if global_params is not None and task_cfg.mu and task_cfg.mu > 0.0:
+        global_flat = {k: v.detach() for k, v in global_params.items()}
 
     # Begin an epoch of training
     for data in fdl.fbd_list: # Traverse the data of each client
@@ -153,9 +157,9 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
             if client.prev_ne is not None:
                 for i in range(len(data.dataset.node_states)):
                     data.dataset.node_states[i] = client.prev_ne[i]
-            start_time = time.time()
+            # start_time = time.time()
             predicted_y, true, client.curr_ne, h_0 = model(copy.deepcopy(data.dataset))
-            print(f"Time taken for Client {model_id} to train: {time.time() - start_time}")
+            # print(f"Time taken for Client {model_id} to train: {time.time() - start_time}")
 
             client.h0 = h_0.detach().clone() # Append h_0 to client.h0 (for NE exchange)
 
@@ -164,13 +168,26 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
                 loss, _ = compute_loss(task_cfg, predicted_y, edge_label.type_as(predicted_y))
             else:
                 loss, _ = compute_loss(task_cfg, predicted_y, true)
+
+            # FedProx: proximal regularization (only when enabled)
+            if global_flat is not None:
+                prox = 0.0
+                for name, p in models[model_id].named_parameters():
+                    gp = global_flat.get(name, None)
+                    if gp is not None:
+                        prox = prox + torch.sum((p - gp) ** 2)
+                loss = loss + 0.5 * task_cfg.mu * prox
+                
             loss.backward(retain_graph=True)  # Need retain_graph=True for temporal updates
             nn.utils.clip_grad_norm_(model.parameters(), 1.0) # Stop exploding gradients
             optimizer.step() # Update weights based on computed gradients
-            scheduler.step()
+            # scheduler.step()
 
             optimizers[model_id] = optimizer
             client_train_loss[model_id] += loss
+
+    for id in client_ids:
+        schedulers[id].step()
 
     # Restore printing
     if not verbose:

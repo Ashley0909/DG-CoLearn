@@ -7,12 +7,13 @@ import torch
 from torch_geometric import datasets as torchgeometric_datasets
 from torch_geometric.data import Data
 from louvainSplitter import LouvainSplitter
+from data.as733_processing.load_as import load_generic_dataset
 
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 from torch.utils.data import DataLoader
 from fl_clients import EdgeDevice
-from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, count_label_occur
+from utils import process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights, count_label_occur, extract_tar_gz
 # from graph_partition import our_gpa, CoLearnPartition
 # from other_partition import label_split, label_dirichlet_partition, custom_metis
 import partition
@@ -74,16 +75,24 @@ def load_gnndata(task_cfg):
         os.makedirs(task_cfg.path)
 
     if task_cfg.task_type == 'LP':
-        if task_cfg.dataset == 'bitcoinOTC':
+        if task_cfg.dataset.lower() == 'bitcoinotc':
             data = torchgeometric_datasets.BitcoinOTC(task_cfg.path)
-        elif task_cfg.dataset == 'UCI':
-            path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
-            extract_gz(path)
-            os.unlink(path)
+        elif task_cfg.dataset.lower() == 'uci':
+            if not os.path.exists(task_cfg.path):
+                path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
+                extract_gz(path)
+                os.unlink(path)
             txt_path = os.path.join(task_cfg.path, "CollegeMsg.txt")
             data = process_txt_data(txt_path)
+        elif task_cfg.dataset == 'as733':
+            if not os.path.exists(task_cfg.path):
+                tar_path = download_url('https://snap.stanford.edu/data/as-733.tar.gz', task_cfg.path) # Download data if needed
+                extract_tar_gz(tar_path, task_cfg.path)
+                os.unlink(tar_path)
+                
+            data = load_generic_dataset(task_cfg.path)
         else:
-            print('E> Invalid link prediction dataset specified. Options are {bitcoinOTC, UCI}')
+            print('E> Invalid link prediction dataset specified. Options are {bitcoinOTC, UCI, as733}')
             exit(-1)
 
         num_snapshots = len(data)
@@ -140,13 +149,13 @@ def partition_data(task_cfg, num_snapshots, data):
         g_t2 = copy.deepcopy(data[i+2])
 
         if task_cfg.task_type == 'LP':
-            g_t0.node_feature = torch.Tensor([[1 for _ in range(task_cfg.in_dim)] for _ in range(g_t0.num_nodes)])
-            g_t1.node_feature = torch.Tensor([[1 for _ in range(task_cfg.in_dim)] for _ in range(g_t1.num_nodes)])
-            g_t2.node_feature = torch.Tensor([[1 for _ in range(task_cfg.in_dim)] for _ in range(g_t2.num_nodes)])
+            hasattr(g_t0, 'node_feature') or setattr(g_t0, 'node_feature', torch.Tensor([[1 for _ in range(task_cfg.in_dim)] for _ in range(g_t0.num_nodes)]))
+            hasattr(g_t1, 'node_feature') or setattr(g_t1, 'node_feature', torch.Tensor([[1 for _ in range(task_cfg.in_dim)] for _ in range(g_t1.num_nodes)]))
+            hasattr(g_t2, 'node_feature') or setattr(g_t2, 'node_feature', torch.Tensor([[1 for _ in range(task_cfg.in_dim)] for _ in range(g_t2.num_nodes)]))
 
-            g_t0.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t0.edge_index.shape[1])])
-            g_t1.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t1.edge_index.shape[1])])
-            g_t2.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t2.edge_index.shape[1])])
+            hasattr(g_t0, 'edge_feature') or setattr(g_t0, 'edge_feature', torch.Tensor([[1 for _ in range(128)] for _ in range(g_t0.edge_index.shape[1])]))
+            hasattr(g_t1, 'edge_feature') or setattr(g_t1, 'edge_feature', torch.Tensor([[1 for _ in range(128)] for _ in range(g_t1.edge_index.shape[1])]))
+            hasattr(g_t2, 'edge_feature') or setattr(g_t2, 'edge_feature', torch.Tensor([[1 for _ in range(128)] for _ in range(g_t2.edge_index.shape[1])]))
 
             transform = RandomLinkSplit(num_val=0.0, num_test=0.0, add_negative_train_samples=False)  # All for training in time t
             train_data, _, _ = transform(g_t0)
@@ -160,9 +169,9 @@ def partition_data(task_cfg, num_snapshots, data):
             test_list.append(test_data)
 
         elif task_cfg.task_type == 'NC':
-            g_t0.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t0.edge_index.shape[1])])
-            g_t1.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t1.edge_index.shape[1])])
-            g_t2.edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(g_t2.edge_index.shape[1])])
+            hasattr(g_t0, 'edge_feature') or setattr(g_t0, 'edge_feature', torch.Tensor([[1 for _ in range(128)] for _ in range(g_t0.edge_index.shape[1])]))
+            hasattr(g_t1, 'edge_feature') or setattr(g_t1, 'edge_feature', torch.Tensor([[1 for _ in range(128)] for _ in range(g_t1.edge_index.shape[1])]))
+            hasattr(g_t2, 'edge_feature') or setattr(g_t2, 'edge_feature', torch.Tensor([[1 for _ in range(128)] for _ in range(g_t2.edge_index.shape[1])]))
 
             train_list.append(g_t0)
             val_list.append(g_t1)
@@ -222,7 +231,7 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     server.record_ccn(cc_edges_train)
 
     cce_test, server_ei, server_el = get_cut_edges(test_subgraphs.tolist(), test_data.edge_index.tolist())
-    server.construct_ccn_test_data(task_cfg.in_dim, server_ei, server_el, cce_test.keys())
+    server.construct_ccn_test_data(task_cfg.in_dim, task_cfg.edge_dim, server_ei, server_el, cce_test.keys())
 
     client_sizes = [] # the training data size of each client (used for weighted aggregation)
     client_train, client_val, client_test = [], [], []

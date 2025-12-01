@@ -128,9 +128,9 @@ class Server:
         ''' Save cross client neighbours. '''
         self.ccn = ccn
 
-    def construct_ccn_test_data(self, indim, edge_index, edge_label, subnodes):
+    def construct_ccn_test_data(self, indim, edge_dim, edge_index, edge_label, subnodes):
         node_feature = torch.Tensor([[1 for _ in range(indim)] for _ in range(self.num_nodes)])
-        edge_feature = torch.Tensor([[1 for _ in range(128)] for _ in range(edge_index.shape[1])])
+        edge_feature = torch.Tensor([[1 for _ in range(edge_dim)] for _ in range(edge_index.shape[1])])
 
         server_data = Data(node_feature=node_feature, edge_label_index=edge_index, edge_label=edge_label,
                         edge_feature=edge_feature, edge_index=edge_index, subnodes=subnodes,

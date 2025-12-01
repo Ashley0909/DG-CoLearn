@@ -6,7 +6,7 @@ from collections import defaultdict
 import torch.optim as optim
 
 from fl_clients import distribute_models, train, local_test, global_test, catastrophic_forgetting_test
-from fl_aggregations import gnn_aggregate
+from fl_aggregations import gnn_aggregate, gnn_weighted_aggregate
 from plot_graphs import configure_plotly
 # from utils import get_global_embedding
 # from fl_models import MLPEncoder
@@ -68,7 +68,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
    schedulers = {}
    for i in client_ids:
       # schedulers.append(torch.optim.lr_scheduler.MultiStepLR(optimizers[i], milestones=[30,60,90]))
-      schedulers[i] = torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[i], T_max=env_cfg.n_epochs, eta_min=1e-5)
+      schedulers[i] = torch.optim.lr_scheduler.CosineAnnealingLR(optimizers[i], T_max=env_cfg.n_epochs * 3, eta_min=1e-5)
       # schedulers.append(torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers[i],mode='max',factor=0.5,patience=5,verbose=True))
 
    ''' Pretraining Communication (Model Answer for Node Embeddings) '''
@@ -115,8 +115,11 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
       best_local_models = copy.deepcopy(local_models)
       best_val_acc = [float('-inf') for _ in range(env_cfg.n_clients)]
 
+      # FedProx
+      global_params_this_round = global_model.state_dict()
+
       for epoch in range(env_cfg.n_epochs):
-         train_loss = train(env_cfg, task_cfg, local_models, optimizers, schedulers, client_ids, cm_map, fed_data_train, train_loss, rd, epoch, verbose=True)
+         train_loss = train(env_cfg, task_cfg, local_models, optimizers, schedulers, client_ids, cm_map, fed_data_train, train_loss, rd, epoch, global_params=global_params_this_round, verbose=True)
          val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
          # Update metrics data
          val_ap.append(val_metrics['ap'])
@@ -146,9 +149,11 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
             print(f"Time taken for Communication: {(ne_end_time - ne_start_time) - (compute_end - compute_start)}")   
 
       print('>   @Local> Val Metrics = ', val_metrics) # Keep! for local client performance reference
+      prev_glob_for_blend = global_model # Get before aggre
       # Aggregate Local Models
       update_cloud_cache(cache, best_local_models, client_ids)
-      global_model = gnn_aggregate(cache, client_shard_sizes, data_size, client_ids)
+      # global_model = gnn_aggregate(cache, client_shard_sizes, data_size, client_ids)
+      global_model = gnn_weighted_aggregate(cache, client_shard_sizes, client_ids, prev_global_model=prev_glob_for_blend, agg_mode='fedavg')
       print("Aggregated Model")
       global_loss, global_acc, global_metrics = global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fed_data_test)
       # Measure catastrophic forgetting

@@ -45,6 +45,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
    train_loss = [0.0 for _ in range(env_cfg.n_clients)]
    val_loss = [0.0 for _ in range(env_cfg.n_clients)]
    val_acc = [0.0 for _ in range(env_cfg.n_clients)]
+   val_metrics = {}
 
    # Configure Plotly
    x_labels = []
@@ -120,7 +121,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
 
       for epoch in range(env_cfg.n_epochs):
          train_loss = train(env_cfg, task_cfg, local_models, optimizers, schedulers, client_ids, cm_map, fed_data_train, train_loss, rd, epoch, global_params=global_params_this_round, verbose=True)
-         val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc)
+         val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc, val_metrics)
          # Update metrics data
          val_ap.append(val_metrics['ap'])
          val_ap_fig.data[0].y = val_ap  # Update node_label for Val AP Fig

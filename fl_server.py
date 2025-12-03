@@ -12,12 +12,16 @@ class Server:
     ''' A server class to record global_adj_list, number of subgraphs, node_assignment and ccn.'''
     def __init__(self):
         # self.global_adj_mtx = None
+        self.server_round = 0
         self.adj_list = None
         self.num_nodes = 0
-        self.num_subgraphs = 0
+        self.num_prev_subgraphs = 0
+        self.previous_edge_index = {}
+        self.global_changed_edges = None
+        self.reuse_partition = False
         # self.clients_adj_matrices = None
         self.ccn = None
-        # self.node_assignment = None
+        self.node_assignment = {}
         self.test_loader = None
         # self.client_features = []
         self.fuser = HopFusion(dim_out=16) # Implementation to Paper (NE exchange)
@@ -26,12 +30,24 @@ class Server:
         # self.global_adj_mtx_gpu = None
         # self.clients_adj_matrices_gpu = None
 
-    def record_num_subgraphs(self, num_subgraphs):
+    def record_prev_num_subgraphs(self, num_subgraphs):
         ''' Save number of subgraphs. '''
-        self.num_subgraphs = num_subgraphs
+        self.num_prev_subgraphs = num_subgraphs
 
     def record_num_nodes(self, num_nodes):
         self.num_nodes = num_nodes
+
+    def record_reuse_bool(self, reuse: bool):
+        self.reuse_partition = reuse
+
+    def record_node_assignment(self, node_assignment, tvt_type):
+        self.node_assignment[tvt_type] = node_assignment
+
+    def record_prev_edges(self, edge_index, tvt_type):
+        self.previous_edge_index[tvt_type] = edge_index
+
+    def record_global_changed_edges(self, changed_edges):
+        self.global_changed_edges = changed_edges
 
     def aggregate_and_send(self, client_embeddings): # Our Implementation of NE Exchange Scheme 
         ''' Server aggregate the clients' embeddings according to the paper's theorem and send the additional node embeddings needed.
@@ -83,46 +99,6 @@ class Server:
             messages[i]['ccn_count'] = ccn_count
 
         return messages
-    
-    # def construct_glob_adj_mtx(self, adj_list):
-    #     '''Create global adjacency matrix as a sparse matrix.'''
-    #     self.adj_list = adj_list
-
-    #     global_adj_matrix = sp.lil_matrix((self.num_nodes, self.num_nodes), dtype=int)
-    #     for src in range(self.num_nodes):
-    #         for dst in adj_list[src]:
-    #             global_adj_matrix[src, dst] = 1
-    #     global_adj_matrix = global_adj_matrix.tocsr()  # Convert to CSR format for efficient operations
-    
-    #     self.global_adj_mtx = global_adj_matrix
-    #     self.global_adj_mtx_gpu = self._sparse_to_torch_gpu(global_adj_matrix)
-
-    # def construct_client_adj_matrix(self, node_assignment):
-    #     ''' Save node assignment. '''
-    #     self.node_assignment = node_assignment
-
-    #     # Create client adjacency matrices as sparse matrices
-    #     clients_adj_matrix = []
-    #     for client in range(self.num_subgraphs):
-    #         client_adj_matrix = sp.lil_matrix((self.num_nodes, self.num_nodes), dtype=int)
-    #         for src in range(self.num_nodes):
-    #             if node_assignment[src] == client:
-    #                 for dst in self.adj_list[src]:
-    #                     if node_assignment[dst] == client:
-    #                         client_adj_matrix[src, dst] = 1
-    #         clients_adj_matrix.append(client_adj_matrix.tocsr())  # Convert to CSR format
-
-    #     self.clients_adj_matrices = clients_adj_matrix
-    #     self.clients_adj_matrices_gpu = [self._sparse_to_torch_gpu(mtx) for mtx in clients_adj_matrix]
-
-    # def _sparse_to_torch_gpu(self, sparse_matrix):
-    #     '''Convert scipy.sparse.csr_matrix to torch.sparse tensor on GPU.'''
-    #     sparse_matrix = sparse_matrix.tocoo()
-    #     indices = np.vstack((sparse_matrix.row, sparse_matrix.col))
-    #     indices = torch.tensor(indices, dtype=torch.long)
-    #     values = torch.tensor(sparse_matrix.data, dtype=torch.float32)
-    #     shape = sparse_matrix.shape
-    #     return torch.sparse_coo_tensor(indices, values, shape)
 
     def record_ccn(self, ccn):
         ''' Save cross client neighbours. '''
@@ -262,4 +238,44 @@ class Server:
     #                 hop_matrix.append(torch.zeros(self.client_features[0].shape[1]).tolist())
     #         hop_embeddings.append(torch.tensor(hop_matrix))
     #     return hop_embeddings
+
+        # def construct_glob_adj_mtx(self, adj_list):
+    #     '''Create global adjacency matrix as a sparse matrix.'''
+    #     self.adj_list = adj_list
+
+    #     global_adj_matrix = sp.lil_matrix((self.num_nodes, self.num_nodes), dtype=int)
+    #     for src in range(self.num_nodes):
+    #         for dst in adj_list[src]:
+    #             global_adj_matrix[src, dst] = 1
+    #     global_adj_matrix = global_adj_matrix.tocsr()  # Convert to CSR format for efficient operations
+    
+    #     self.global_adj_mtx = global_adj_matrix
+    #     self.global_adj_mtx_gpu = self._sparse_to_torch_gpu(global_adj_matrix)
+
+    # def construct_client_adj_matrix(self, node_assignment):
+    #     ''' Save node assignment. '''
+    #     self.node_assignment = node_assignment
+
+    #     # Create client adjacency matrices as sparse matrices
+    #     clients_adj_matrix = []
+    #     for client in range(self.num_subgraphs):
+    #         client_adj_matrix = sp.lil_matrix((self.num_nodes, self.num_nodes), dtype=int)
+    #         for src in range(self.num_nodes):
+    #             if node_assignment[src] == client:
+    #                 for dst in self.adj_list[src]:
+    #                     if node_assignment[dst] == client:
+    #                         client_adj_matrix[src, dst] = 1
+    #         clients_adj_matrix.append(client_adj_matrix.tocsr())  # Convert to CSR format
+
+    #     self.clients_adj_matrices = clients_adj_matrix
+    #     self.clients_adj_matrices_gpu = [self._sparse_to_torch_gpu(mtx) for mtx in clients_adj_matrix]
+
+    # def _sparse_to_torch_gpu(self, sparse_matrix):
+    #     '''Convert scipy.sparse.csr_matrix to torch.sparse tensor on GPU.'''
+    #     sparse_matrix = sparse_matrix.tocoo()
+    #     indices = np.vstack((sparse_matrix.row, sparse_matrix.col))
+    #     indices = torch.tensor(indices, dtype=torch.long)
+    #     values = torch.tensor(sparse_matrix.data, dtype=torch.float32)
+    #     shape = sparse_matrix.shape
+    #     return torch.sparse_coo_tensor(indices, values, shape)
             

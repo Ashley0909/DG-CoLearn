@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import math
 
-from utils import get_exclusive_subgraph, lp_prediction, compute_mrr, nc_prediction, find_common_nodes
+from utils import lp_prediction, compute_mrr, nc_prediction
 from plot_graphs import draw_graph, plot_h
 from fl_models import ReshapeH
 
@@ -16,7 +16,7 @@ class EdgeDevice:
         self.id = id
         self.prev_ne = prev_ne
         self.curr_ne = prev_ne # same stucture as prev_ne store 1-hop and 2-hop
-        self.prev_edge_index = []
+        self.changed_edge_index = []
         self.subnodes = subnodes
         self.h0 = None # Implementation to Paper (NE exchange)
         self.proj_1hop = None # Implementation to Paper (Set it later because of dynamic tensor size)
@@ -68,7 +68,6 @@ def distribute_models(global_model, local_models, client_ids):
 
 def compute_loss(task_cfg, pred, true):
     '''
-
     :param pred: unnormalized prediction
     :param true: label
     :return: loss, normalized prediction score
@@ -106,7 +105,6 @@ def compute_loss(task_cfg, pred, true):
         raise ValueError('Loss func {} not supported'.
                          format(task_cfg.loss))
 def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map, fdl, last_loss_rep, rd, epoch, global_params=None, verbose=True):
-    device = env_cfg.device
     if len(client_ids) == 0:
         return last_loss_rep
 
@@ -142,16 +140,7 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
         scheduler = schedulers[model_id]
         optimizer.zero_grad() # Reset the gradients of all model parameters before performing a new optimization step
 
-        ''' Extract 2 hop subgraph of changed pairs of nodes '''
-        if rd == 0 and epoch == 0 and data.dataset.previous_edge_index != []:
-            exclusive_edge_index = get_exclusive_subgraph(edge_index, data.dataset.previous_edge_index)
-            print(f"Only learn {exclusive_edge_index.shape[1]} edges. Shrink in graph: {edge_index.shape[1] - exclusive_edge_index.shape[1]}")
-            # Record k and \overline{k}
-            data.dataset.edge_index = exclusive_edge_index.to('cpu')
-            all_nodes = copy.deepcopy(data.dataset.subnodes)
-            data.dataset.common = find_common_nodes(all_nodes, exclusive_edge_index)
-
-        if len(data.dataset.edge_index[0]) != 0:
+        if len(edge_index[0]) != 0:
             ''' There might be a case where client does not have new graph to learn, if so, we do nothing. '''
             # Import previous state as node_states
             if client.prev_ne is not None:
@@ -185,6 +174,8 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
 
             optimizers[model_id] = optimizer
             client_train_loss[model_id] += loss
+        else:
+            print(f"Client {model_id} has no new edges to learn this round. Rest.")
 
     for id in client_ids:
         schedulers[id].step()
@@ -195,11 +186,10 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
 
     return client_train_loss
 
-def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep, last_acc_rep):
+def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep, last_acc_rep, last_metrics):
     if not client_ids:
-        return last_loss_rep, last_acc_rep, None
+        return last_loss_rep, last_acc_rep, last_metrics
     
-    device = env_cfg.device
     client_test_loss = last_loss_rep
     client_test_acc = last_acc_rep
 
@@ -243,13 +233,14 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
             client_test_acc[model_id] += acc
             count += 1
 
-        metrics = {key: value / count for key, value in metrics.items()}
-        return client_test_loss, client_test_acc, metrics
+        if count > 0:
+            metrics = {key: value / count for key, value in metrics.items()}
+            return client_test_loss, client_test_acc, metrics
+        else:
+            return client_test_loss, client_test_acc, last_metrics
         
 def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl):
     """ Testing the aggregated global model by averaging its error on each local data """
-    device = env_cfg.device
-
     # Initialize evaluation mode
     global_model.eval()
 
@@ -308,7 +299,6 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
     return 0, accuracy/count, metrics
 
 def catastrophic_forgetting_test(global_model, client_ids, task_cfg, env_cfg, cm_map, data_dict):
-    device = env_cfg.device
     fdl = data_dict['data']
     original_metric = data_dict['metric']
 

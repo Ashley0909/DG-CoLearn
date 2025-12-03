@@ -10,7 +10,7 @@ import sys
 import datetime
 import random
 from torch_geometric.data import Data
-from collections import deque, defaultdict
+from collections import deque
 
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import f1_score, accuracy_score
@@ -96,24 +96,22 @@ def get_exclusive_subgraph(current, prev):
     prev_T = prev.cpu().numpy().T
 
     # Find exclusive edges in current (not in prev)
-    add_mask = np.all(current_T[:, None] == prev_T[None, :], axis=-1)
-    exclusive_add_mask = ~np.any(add_mask, axis=1)
+    exclusive_add_mask = ~np.any(np.all(current_T[:, None] == prev_T[None, :], axis=-1), axis=1)
     exclusive_current = current[:, exclusive_add_mask]
 
     # Find exclusive edges in prev (not in current)
-    remove_mask = np.all(prev_T[:, None] == current_T[None, :], axis=-1)
-    exclusive_remove_mask = ~np.any(remove_mask, axis=1)
+    exclusive_remove_mask = ~np.any(np.all(prev_T[:, None] == current_T[None, :], axis=-1), axis=1)
     exclusive_prev = prev[:, exclusive_remove_mask]
 
     # Combine both sets of exclusive edges
     exclusive_edges = torch.cat([exclusive_current, exclusive_prev], dim=1)
 
-    # Get 1-hop neighbors
-    new_nodes = torch.unique(exclusive_edges)
-    mask_1hop = torch.isin(current[0], new_nodes) | torch.isin(current[1], new_nodes)
+    # Get 1-hop neighbors of all updated nodes
+    updated_nodes = torch.unique(exclusive_edges)
+    mask_1hop = torch.isin(current[0], updated_nodes) | torch.isin(current[1], updated_nodes)
     one_hop_edges = current[:, mask_1hop]
 
-    # Get 2-hop neighbors
+    # Get 2-hop neighbors of all updated nodes
     one_hop_nodes = torch.unique(one_hop_edges)
     mask_2hop = torch.isin(current[0], one_hop_nodes) | torch.isin(current[1], one_hop_nodes)
     two_hop_edges = current[:, mask_2hop]
@@ -121,7 +119,24 @@ def get_exclusive_subgraph(current, prev):
     if two_hop_edges.nelement() == 0:
         print('>E No edges left to train')
 
-    return two_hop_edges
+    # Get nodes that exclusively appear in current and prev (Note: Exclusive edges does not mean exclusive nodes)
+    prev_nodes = torch.unique(prev)
+    current_nodes = torch.unique(current)
+    new_nodes = current_nodes[~torch.isin(current_nodes, prev_nodes)].tolist()
+    
+    # Build an adjacency list for the new nodes
+    adj_new_nodes = {}
+    for n in new_nodes:
+        mask = (current[0] == n) | (current[1] == n)
+        connected_edges = current[:, mask]
+
+        if connected_edges.nelement() != 0:
+            connected_nodes = torch.unique(torch.where(connected_edges[0] == n, connected_edges[1], connected_edges[0])) # if index 0 is n, return index 1, else index 0
+            adj_new_nodes[n] = connected_nodes.tolist()
+        else:
+            adj_new_nodes[n] = []
+
+    return two_hop_edges, adj_new_nodes
 
 def node_embedding_update_sum(start_node, ccn, k):
     '''

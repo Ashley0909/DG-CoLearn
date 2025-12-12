@@ -6,7 +6,7 @@ from torch_geometric.data import Data
 from torch.utils.data import DataLoader
 from collections import defaultdict
 
-from fl_models import HopFusion
+from src.fl_models import HopFusion
 
 class Server:
     ''' A server class to record global_adj_list, number of subgraphs, node_assignment and ccn.'''
@@ -48,6 +48,10 @@ class Server:
 
     def record_global_changed_edges(self, changed_edges):
         self.global_changed_edges = changed_edges
+
+    def record_ccn(self, ccn):
+        # Record cross client neighbours
+        self.ccn = ccn
 
     def aggregate_and_send(self, client_embeddings): # Our Implementation of NE Exchange Scheme 
         ''' Server aggregate the clients' embeddings according to the paper's theorem and send the additional node embeddings needed.
@@ -99,10 +103,6 @@ class Server:
             messages[i]['ccn_count'] = ccn_count
 
         return messages
-
-    def record_ccn(self, ccn):
-        ''' Save cross client neighbours. '''
-        self.ccn = ccn
 
     def construct_ccn_test_data(self, indim, edge_dim, edge_index, edge_label, subnodes):
         node_feature = torch.Tensor([[1 for _ in range(indim)] for _ in range(self.num_nodes)])

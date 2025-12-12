@@ -6,13 +6,13 @@ import numpy as np
 import torch
 from torch_geometric import datasets as torchgeometric_datasets
 from torch_geometric.data import Data
-from louvainSplitter import LouvainSplitter
+from src.other_splitters.louvainSplitter import LouvainSplitter
 from data.as733_processing.load_as import load_generic_dataset
 
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected
 from torch.utils.data import DataLoader
-from utils import (
+from src.utils.utils import (
     process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights,
     count_label_occur, extract_tar_gz, get_exclusive_subgraph
 )
@@ -137,7 +137,7 @@ def generate_tvt(task_cfg, num_snapshots, data):
 
             train_list.append(g_t0)
             val_list.append(g_t1)
-            test_list.append(g_t1)
+            test_list.append(g_t2)
         else:
             print('E> Invalid task type specified. Options are {LP, NC}')
             exit(-1)
@@ -154,7 +154,8 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     # server.construct_global_adj_matrix(train_data.edge_index, data_size)
     server.record_num_nodes(data_size)
 
-    ''' Check if the previous number of subgraphs is equal to current estimated number of subgraphs'''
+    ''' Check if the previous number of subgraphs is equal to current estimated number of subgraphs '''
+    # [Ablation Study] Comment out this part to run ablation study on partitioning algorithm
     if hasattr(server, 'num_prev_subgraphs'):
         if server.num_prev_subgraphs >= num_subgraphs:
             print(f"Reusing previous partitioning with {num_subgraphs} clients...")
@@ -175,11 +176,11 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
         count_label_occur(train_subgraphs, train_data.node_label)
     
     ''' Server gets cce and construct server-side test data '''
-    cc_edges_train, _, _ = get_cut_edges(train_subgraphs.tolist(), train_data.edge_index.tolist())
+    cc_edges_train, _, _ = get_cut_edges(server, train_subgraphs.tolist(), train_data.edge_index.tolist())
     print(f"Total number of cut edges: {int(sum(len(v) for v in cc_edges_train.values())//2)}")
     server.record_ccn(cc_edges_train)
 
-    cce_test, server_ei, server_el = get_cut_edges(test_subgraphs.tolist(), test_data.edge_index.tolist())
+    cce_test, server_ei, server_el = get_cut_edges(server, test_subgraphs.tolist(), test_data.edge_index.tolist(), tvt_type='test')
     server.construct_ccn_test_data(task_cfg.in_dim, task_cfg.edge_dim, server_ei, server_el, cce_test.keys())
 
     client_sizes = [] # the training data size of each client (used for weighted aggregation)
@@ -261,23 +262,30 @@ def gen_train_clients(total_num_edges, max_num_clients, num_edge_per_clients=510
     
     return min(max(1,num_clients), max_num_clients)
 
-def get_cut_edges(node_assignment, coo_format):
+def get_cut_edges(server, node_assignment, coo_format, tvt_type='train'):
     '''
     Takes as input:
     1) node_assignment where i th index refers to node i and node_assignment[i] is client it's assigned to
-    2) coo_format = 2d list where first list is start edges and
+    2) coo_format = 2d list where first list are the source nodes and second list are the target nodes
     
     Output: Dictionary of lists, ith key is the start node and ith value is the list of cutting nodes connecting it
     '''
     coo_ccn = [[], []]
     ccn_label = []
     ccn_dict = defaultdict(list)
+
+    if (server.global_changed_edges is not None) and (tvt_type == 'train'):
+        g = server.global_changed_edges
+        g_src = g[0].tolist()
+        g_dst = g[1].tolist()
+        changed_set = set(zip(g_src, g_dst))
     for start_node, end_node in zip(coo_format[0], coo_format[1]):
         if (node_assignment[start_node] != node_assignment[end_node]):
-            ccn_dict[start_node].append(end_node)
-            coo_ccn[0].append(start_node)
-            coo_ccn[1].append(end_node)
-            ccn_label.append(1)
+            if (server.global_changed_edges is not None and tvt_type == 'train' and (start_node, end_node) in changed_set) or (server.global_changed_edges is None):
+                ccn_dict[start_node].append(end_node)
+                coo_ccn[0].append(start_node)
+                coo_ccn[1].append(end_node)
+                ccn_label.append(1)
 
     return ccn_dict, torch.tensor(coo_ccn), torch.tensor(ccn_label)
 
@@ -292,6 +300,7 @@ def construct_single_client_data(server, data, subgraph_label, client_idx, clien
     indim = 16
 
     # If there are global changed edges recorded, filter out edges that are not changed
+    # [Ablation Study] Comment out this part to run ablation study on node embedding exchange
     if server.global_changed_edges is not None and tvt_mode == "train":
         subgraph_edge_t = subgraph_ei.t()
         changed_edges_t = server.global_changed_edges.t()
@@ -331,6 +340,7 @@ def reuse_partition(num_parts, server, data, tvt_type):
         # Partition is the same, since there is only 1 client
         return server.node_assignment[tvt_type]
     if tvt_type in server.previous_edge_index:
+        start_time = time.time()
         global_changed_edges, new_nodes = get_exclusive_subgraph(data.edge_index, server.previous_edge_index[tvt_type])
         server.record_global_changed_edges(global_changed_edges)
         print(f"Number of changed edges in global graph: {global_changed_edges.shape[1]}, number of new nodes: {len(new_nodes)}")
@@ -360,6 +370,8 @@ def reuse_partition(num_parts, server, data, tvt_type):
             node2client[node] = int(assigned_client)
             
         server.record_node_assignment(node2client, tvt_type)
+        end_time = time.time()
+        print(f"Time taken to partition graph by reusing: {end_time - start_time}")
         return server.node_assignment[tvt_type]
 
 def get_2hop_neigh(edge_index, onehop_node):

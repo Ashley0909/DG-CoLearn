@@ -3,13 +3,13 @@ import torch
 import warnings
 warnings.filterwarnings("ignore")
 
-from fl_strategy import run_dygl
-from fl_server import Server
-from configurations import init_config, init_global_model, init_GNN_clients
-from utils import Logger
-from flgnn_dataset import load_gnndata, get_gnn_clientdata
-from sbm_generate import generate_graph
-from plot_graphs import configure_plotly
+from src.fl_strategy import run_dygl
+from src.fl_server import Server
+from src.configurations import init_config, init_global_model, init_GNN_clients
+from src.utils.utils import Logger
+from src.flgnn_dataset import load_gnndata, get_gnn_clientdata
+from src.sbm_generate import generate_graph
+from src.plotting.plot_graphs import configure_plotly
 from graphgym.config import cfg
 
 torch.autograd.set_detect_anomaly(True)

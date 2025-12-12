@@ -3,7 +3,7 @@ import torch
 from collections import defaultdict
 import metis
 
-from graph_partition import get_all_connected_components, connect_graphs
+from src.other_splitters.graph_partition import get_all_connected_components, connect_graphs
 
 def label_split(graph_data, client_num, major_label=3, major_rate=0.8, sample_rate=1.0, task_type='NC'):
     """

@@ -14,7 +14,7 @@ import graphgym.register as register
 import deepsnap
 import pdb
 
-from fl_models import ReshapeH
+from src.fl_models import ReshapeH
 
 # General classes
 

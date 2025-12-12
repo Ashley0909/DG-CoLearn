@@ -19,7 +19,7 @@ from graphgym.models.feature_encoder import node_encoder_dict, \
 import graphgym.register as register
 from graphgym.register import register_network
 
-from fl_models import ReshapeH
+from src.fl_models import ReshapeH
 
 ########### Layer ############
 # Methods to construct layers.

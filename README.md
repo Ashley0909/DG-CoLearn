@@ -52,6 +52,18 @@ Example Experiments
 `python3 main.py DBLP3`
 `python3 main.py Reddit`
 
+The configuration of AS-733 is different, we have provided a configuration file `as733.yaml` as another argument.
+
+`python3 main.py as733 as733.yaml`
+
+##### Running Repeated Experiments
+
+With the following command, we can run multiple experiments.
+
+```
+bash ./run_repreated_job.sh
+```
+
 ---
 
 # Plotting and Analysis

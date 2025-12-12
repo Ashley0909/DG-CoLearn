@@ -2,14 +2,14 @@ import copy
 import sys
 import os
 import time
-import register
+import src.utils.register as register
 import torch
 import torch.nn as nn
 import math
 
-from utils import lp_prediction, compute_mrr, nc_prediction
-from plot_graphs import draw_graph, plot_h
-from fl_models import ReshapeH
+from src.utils.utils import lp_prediction, compute_mrr, nc_prediction
+from src.plotting.plot_graphs import draw_graph, plot_h
+from src.fl_models import ReshapeH
 
 class EdgeDevice:
     def __init__(self, id, prev_ne, subnodes):
@@ -263,7 +263,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
         if task_cfg.task_type == 'LP':
             predicted_y, _, _, _ = global_model(copy.copy(data.dataset))
             acc, ap = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
-            print("Test Accuracy is", acc, "by client with", data.dataset.edge_index.shape[1], "edges")
+            print(f"Test Accuracy with {acc} by {data.dataset.location.id} with {data.dataset.edge_index.shape[1]} edges")
             mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y), edge_label_index)
             if not math.isnan(mrr):
                 metrics['mrr'] += mrr
@@ -289,7 +289,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
                 accuracy, metrics['ap'] = accuracy + ccn_acc, metrics['ap'] + ccn_ap
             else:
                 count -= 1
-            print("Test Accuracy is", ccn_acc, "with MRR", ccn_mrr, "and AP", ccn_ap, "by server with", server_data.edge_index.shape[1], "edges")
+            print("CCE Test Accuracy is", ccn_acc, "with MRR", ccn_mrr, "and AP", ccn_ap, "by server with", server_data.edge_index.shape[1], "edges")
 
             count += 1
 

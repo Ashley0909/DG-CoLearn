@@ -1,6 +1,6 @@
 import torch
-from fl_clients import EdgeDevice
-from gnn_recurrent import GNN
+from src.fl_clients import EdgeDevice
+from src.gnn_recurrent import GNN
 
 class EnvSettings:
     """ Environment Settings for FL """
@@ -46,10 +46,10 @@ def init_config(dataset, bw_set):
         env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
     elif dataset.lower() in ['bitcoinotc', 'uci']:
-        env_cfg = EnvSettings(n_clients=10, n_rounds=1, n_epochs=1, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=2, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.03, lr_decay=0.1)
     elif dataset.lower() == 'as733':
-        env_cfg = EnvSettings(n_clients=10, n_rounds=1, n_epochs=1, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=2, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=1, batch_size=5, optimizer='Adam', loss='ce', lr=0.01, lr_decay=0.1)
     elif dataset in ['DBLP3', 'DBLP5', 'Reddit']:
         env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)

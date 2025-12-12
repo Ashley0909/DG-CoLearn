@@ -4,8 +4,8 @@ import numpy as np
 import itertools
 import torch
 
-from plot_graphs import draw_adj_list, colour_adj_list
-from resolve_helper import resolve_by_min_cut, refine_by_balance_and_label, resolve_by_edge_balance, refine_by_min_cut_and_label, resolve_by_label_balance, refine_by_min_cut_and_balance
+from src.plotting.plot_graphs import draw_adj_list, colour_adj_list
+from src.other_splitters.resolve_helper import resolve_by_min_cut, refine_by_balance_and_label, resolve_by_edge_balance, refine_by_min_cut_and_label, resolve_by_label_balance, refine_by_min_cut_and_balance
 
 ''' Functions for Connected Components '''
 def component_nodes(node, adj_list):

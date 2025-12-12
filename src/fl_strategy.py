@@ -5,12 +5,12 @@ import time
 from collections import defaultdict
 import torch.optim as optim
 
-from fl_clients import distribute_models, train, local_test, global_test, catastrophic_forgetting_test
-from fl_aggregations import gnn_aggregate, gnn_weighted_aggregate
-from plot_graphs import configure_plotly
+from src.fl_clients import distribute_models, train, local_test, global_test, catastrophic_forgetting_test
+from src.fl_aggregations import gnn_aggregate, gnn_weighted_aggregate
+from src.plotting.plot_graphs import configure_plotly
 # from utils import get_global_embedding
 # from fl_models import MLPEncoder
-from sim_fedgcn import compute_neighborhood_features, average_feat_aggre # For simulating FedGCN 
+from src.utils.sim_fedgcn import compute_neighborhood_features, average_feat_aggre # For simulating FedGCN 
 
 def update_cloud_cache(cache, local_models, ids):
    """ Update each clients' local models in the cache """
@@ -35,7 +35,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
 
    distribute_models(global_model, local_models, client_ids)
 
-   # Assign all clients who has edges involved participate in all training rounds
+   # Sample all clients who has training edges in this snapshot
    client_ids = sample_clients(fed_data_train, cm_map)
    print("Participating Clients:", client_ids)
 
@@ -53,7 +53,6 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
       for ep in range(env_cfg.n_epochs):
          x_labels.append(f"Round {rd} Epoch {ep}")
    val_ap = []
-
    val_ap_fig = configure_plotly(x_labels, val_ap, 'Average Validation Precision (Area under PR Curve)', snapshot)
 
    # One optimizer for each model (re-instantiate optimizers to clear any possible momentum)
@@ -136,6 +135,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
          if epoch == (env_cfg.n_epochs - 1) and rd == 0:
             node_embeds = []
             ccn = server.ccn
+            print("Number of NE exchanges:", len(ccn))
             ne_start_time = time.time()
             for c in client_ids:
                node_embeds.append(clients[c].send_ccn_embeddings(ccn))

@@ -36,6 +36,9 @@ class Logger(object):
     def flush(self):
         pass
 
+def is_dir_empty(path):
+    return os.path.isdir(path) and not os.listdir(path)
+
 def download_url(url, save_path):
     response = requests.get(url, stream=True)
     file_path = os.path.join(save_path, url.split("/")[-1])

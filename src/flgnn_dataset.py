@@ -13,7 +13,7 @@ from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected, coalesce
 from torch.utils.data import DataLoader
 from src.utils.utils import (
-    process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights,
+    is_dir_empty, process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights,
     count_label_occur, extract_tar_gz, get_exclusive_subgraph
 )
 # from other_partition import label_split, custom_metis
@@ -40,14 +40,14 @@ def load_gnndata(task_cfg):
         if task_cfg.dataset.lower() == 'bitcoinotc':
             data = torchgeometric_datasets.BitcoinOTC(task_cfg.path)
         elif task_cfg.dataset.lower() == 'uci':
-            if not os.path.exists(task_cfg.path):
+            if is_dir_empty(task_cfg.path):
                 path = download_url('http://snap.stanford.edu/data/CollegeMsg.txt.gz', task_cfg.path) # Download data if needed
                 extract_gz(path)
                 os.unlink(path)
             txt_path = os.path.join(task_cfg.path, "CollegeMsg.txt")
             data = process_txt_data(txt_path)
         elif task_cfg.dataset == 'as733':
-            if not os.path.exists(task_cfg.path):
+            if is_dir_empty(task_cfg.path):
                 tar_path = download_url('https://snap.stanford.edu/data/as-733.tar.gz', task_cfg.path) # Download data if needed
                 extract_tar_gz(tar_path, task_cfg.path)
                 os.unlink(tar_path)

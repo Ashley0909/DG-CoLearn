@@ -28,6 +28,21 @@ Due to the large sizes of the node classification datasets, we include the link 
 
 ---
 
+# Constructing Virtual Environment
+
+To run DG-CoLearn, first set up a virtual environment by:
+```
+python3 -m venv venv
+```
+Then activate the environment and install essential packages by:
+```
+source venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+---
+
 # Building Our Graph Partitioning Algorithm
 
 Our Graph Partitioning Algorithm `CoLearnPartition` is written in C++ for efficiency. To run this, you need to build the C++ file using:

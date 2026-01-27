@@ -1,7 +1,10 @@
 __pycache__/
 archive/
 baseline_results/
-data/
+data/*
+!data/as733_processing/
+data/as733_processing/*
+!data/as733_processing/load_as.py
 fedassets_output/
 graph_output/
 stats/

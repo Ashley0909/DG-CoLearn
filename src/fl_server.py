@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from collections import defaultdict
 
 from src.fl_models import HopFusion
+from src.utils.utils import generated_neg_cce_edges
 
 class Server:
     ''' A server class to record global_adj_list, number of subgraphs, node_assignment and ccn.'''
@@ -108,6 +109,10 @@ class Server:
         node_feature = torch.Tensor([[1 for _ in range(indim)] for _ in range(self.num_nodes)])
         edge_feature = torch.Tensor([[1 for _ in range(edge_dim)] for _ in range(edge_index.shape[1])])
 
+        negative_cce = generated_neg_cce_edges(edge_index, self.node_assignment['train'], self.num_nodes, num_neg_samples=edge_index.shape[1])
+        edge_index = torch.cat([edge_index, negative_cce], dim=1)
+        edge_label = torch.cat([edge_label, torch.zeros(negative_cce.shape[1])], dim=0)
+        
         server_data = Data(node_feature=node_feature, edge_label_index=edge_index, edge_label=edge_label,
                         edge_feature=edge_feature, edge_index=edge_index, subnodes=subnodes,
                         node_states=[torch.zeros((self.num_nodes, indim // 2)) for _ in range(2)], keep_ratio=0.4) # after dimension reduction to 16

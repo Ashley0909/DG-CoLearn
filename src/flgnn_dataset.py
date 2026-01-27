@@ -10,7 +10,7 @@ from src.other_splitters.louvainSplitter import LouvainSplitter
 from data.as733_processing.load_as import load_generic_dataset
 
 from torch_geometric.transforms import RandomLinkSplit
-from torch_geometric.utils import to_undirected
+from torch_geometric.utils import to_undirected, coalesce
 from torch.utils.data import DataLoader
 from src.utils.utils import (
     process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights,
@@ -176,12 +176,12 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
         count_label_occur(train_subgraphs, train_data.node_label)
     
     ''' Server gets cce and construct server-side test data '''
-    cc_edges_train, _, _ = get_cut_edges(server, train_subgraphs.tolist(), train_data.edge_index.tolist())
+    cc_edges_train, server_ei, server_el = get_cut_edges(server, train_subgraphs.tolist(), train_data.edge_index.tolist())
     print(f"Total number of cut edges: {int(sum(len(v) for v in cc_edges_train.values())//2)}")
     server.record_ccn(cc_edges_train)
 
-    cce_test, server_ei, server_el = get_cut_edges(server, test_subgraphs.tolist(), test_data.edge_index.tolist(), tvt_type='test')
-    server.construct_ccn_test_data(task_cfg.in_dim, task_cfg.edge_dim, server_ei, server_el, cce_test.keys())
+    # cce_test, server_ei, server_el, _ = get_cut_edges(server, test_subgraphs.tolist(), test_data.edge_index.tolist(), tvt_type='test')
+    server.construct_ccn_test_data(task_cfg.in_dim, task_cfg.edge_dim, server_ei, server_el, cc_edges_train.keys())
 
     client_sizes = [] # the training data size of each client (used for weighted aggregation)
     client_train, client_val, client_test = [], [], []
@@ -300,7 +300,7 @@ def construct_single_client_data(server, data, subgraph_label, client_idx, clien
     indim = 16
 
     # If there are global changed edges recorded, filter out edges that are not changed
-    # [Ablation Study] Comment out this part to run ablation study on node embedding exchange
+    # [Ablation Study] Comment out this part to run ablation study on incremental snapshot processing
     if server.global_changed_edges is not None and tvt_mode == "train":
         subgraph_edge_t = subgraph_ei.t()
         changed_edges_t = server.global_changed_edges.t()
@@ -309,14 +309,19 @@ def construct_single_client_data(server, data, subgraph_label, client_idx, clien
 
         subgraph_ei = subgraph_ei[:, changed_mask]
         subgraph_edge_feat = subgraph_edge_feat[changed_mask]
+        subgraph_ei, subgraph_edge_feat = coalesce(subgraph_ei, subgraph_edge_feat, num_nodes=data.num_nodes, reduce='mean') # deduplicate potential edges
+
         if task_type == "LP":
-            edge_label_mask = changed_mask # Also restrict edge_label_index and edge_label
+            edge_label_mask = None # reset edge label mask
 
     if task_type == "LP":
         # Generate Negative Edges
         negative_edges = generate_neg_edges(subgraph_ei, subnodes, subgraph_ei.size(1))
         edge_label_index = torch.cat([subgraph_ei, negative_edges], dim=1)
-        edge_label = torch.concat([data.edge_label[ei_mask][edge_label_mask], torch.zeros(subgraph_ei.size(1))])
+        if edge_label_mask is None: # if we use incremental approach
+            edge_label = torch.cat([torch.ones(subgraph_ei.size(1)), torch.zeros(negative_edges.size(1))])
+        else:
+            edge_label = torch.concat([data.edge_label[ei_mask][edge_label_mask], torch.zeros(negative_edges.size(1))])
         fed_data = Data(node_feature=data.node_feature[node_mask], edge_label_index=edge_label_index, edge_label=edge_label, subnodes=subnodes, 
                         edge_feature=subgraph_edge_feat, edge_index=subgraph_ei, node_states=[torch.zeros((data.num_nodes, indim)) for _ in range(2)], 
                         location=clients[client_idx], keep_ratio=0.4)
@@ -342,6 +347,7 @@ def reuse_partition(num_parts, server, data, tvt_type):
     if tvt_type in server.previous_edge_index:
         start_time = time.time()
         global_changed_edges, new_nodes = get_exclusive_subgraph(data.edge_index, server.previous_edge_index[tvt_type])
+        global_changed_edges = coalesce(global_changed_edges, num_nodes=data.num_nodes) # deduplicate potential edges
         server.record_global_changed_edges(global_changed_edges)
         print(f"Number of changed edges in global graph: {global_changed_edges.shape[1]}, number of new nodes: {len(new_nodes)}")
         prev_snapshot_nodes = torch.unique(server.previous_edge_index[tvt_type])

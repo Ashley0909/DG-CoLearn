@@ -1,3 +1,4 @@
+from pathlib import Path
 import numpy as np
 import copy
 import torch
@@ -93,7 +94,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
    # # client compute features
    # for c in fed_data_train:
    #    data = c.dataset
-   #    one_hop_feat, two_hop_feat = compute_neighborhood_features(data.edge_index, data.node_feature, tot_num_nodes)
+   #    one_hop_feat, two_hop_feat = compute_neighborhood_features(data.edge_index, data.node_feature, data.subnodes, tot_num_nodes)
    #    features.append(two_hop_feat)
    #    subnodes.append(data.subnodes)
    # # clients send them to server and server computes average
@@ -131,7 +132,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
                best_local_models[c] = copy.deepcopy(local_models[c])
                best_val_acc[c] = val_acc[c]
 
-         # Node Embedding Exchange Scheme
+         # [Ablation Study] Comment out this part to run ablation study on our node embedding exchange
          if epoch == (env_cfg.n_epochs - 1) and rd == 0:
             node_embeds = []
             ccn = server.ccn
@@ -187,11 +188,15 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
          global_f1 = best_f1
 
    # Save Model State and Optimizer State (if needed)
-   # checkpoint = {
-   #    'snapshot': snapshot,
-   #    'learning_rate': task_cfg.lr,
-   #    'model_state_dict': global_model.state_dict()
-   # }
-   # torch.save(checkpoint, f'model_state/{task_cfg.dataset}/model_checkpoint_ss{snapshot}_lr{task_cfg.lr}.pth')
+   checkpoint = {
+      'snapshot': snapshot,
+      'learning_rate': task_cfg.lr,
+      'model_state_dict': global_model.state_dict()
+   }
+
+   save_path = Path(f'model_state/{task_cfg.dataset}')
+   save_path.mkdir(parents=True, exist_ok=True)
+
+   torch.save(checkpoint, f"{save_path}/model_checkpoint_ss{snapshot}_lr{task_cfg.lr}.pth")
 
    return best_model, best_metrics, val_ap_fig, test_ap_fig, test_ap, fed_data_test

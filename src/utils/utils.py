@@ -281,6 +281,34 @@ def generate_neg_edges(edge_index, node_range:torch.Tensor, num_neg_samples:int=
             neg_edges.add((src, dst))
         run += 1
 
+    if len(neg_edges) == 0:
+        return torch.empty((2, 0), dtype=torch.long)
+
+    neg_edge_index = torch.tensor(list(neg_edges)).t()  # Convert back to tensor shape (2, num_neg_samples)
+    
+    return neg_edge_index
+
+def generated_neg_cce_edges(edge_index, node_assignment, total_num, num_neg_samples:int=None):
+    ''' Generate negative edges for cross-client evaluation (CCE) within a specific subgraph '''
+    allowed_nodes = torch.arange(total_num)
+    existing_edges = set(map(tuple, edge_index.t().tolist()))  # Convert to set for fast lookup
+
+    if num_neg_samples is None:
+        num_neg_samples = edge_index.size(1)  # Default: same number as positive edges
+
+    neg_edges = set()
+    timeout = num_neg_samples * 5
+    run = 0
+
+    while (len(neg_edges) < num_neg_samples) and (run < timeout):
+        src, dst = random.choice(allowed_nodes), random.choice(allowed_nodes)
+        if src != dst and node_assignment[src] != node_assignment[dst] and (src, dst) not in existing_edges: # Check if this cross client edge is not already existing
+            neg_edges.add((src, dst))
+        run += 1
+
+    if len(neg_edges) == 0:
+        return torch.empty((2, 0), dtype=torch.long)
+
     neg_edge_index = torch.tensor(list(neg_edges)).t()  # Convert back to tensor shape (2, num_neg_samples)
     
     return neg_edge_index

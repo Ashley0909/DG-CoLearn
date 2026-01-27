@@ -1,5 +1,6 @@
 __pycache__/
 archive/
+baseline_results/
 data/
 fedassets_output/
 graph_output/

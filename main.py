@@ -33,7 +33,7 @@ def main():
         num_snapshots, train_list, val_list, test_list, arg = load_gnndata(task_cfg)
     
     # Create a list of information per snapshots in FLDGNN
-    sys.stdout = Logger('fast_gpa')
+    sys.stdout = Logger('fast_gpa') # Log the print statements to a text file
     print(f"Running {task_cfg.task_type}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
     print("Only Learn New Graph")
 

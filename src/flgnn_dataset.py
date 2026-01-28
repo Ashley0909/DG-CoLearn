@@ -345,6 +345,7 @@ def reuse_partition(num_parts, server, data, tvt_type):
         # Partition is the same, since there is only 1 client
         return server.node_assignment[tvt_type]
     if tvt_type in server.previous_edge_index:
+        print("Number of nodes in current graph:", data.num_nodes)
         start_time = time.time()
         global_changed_edges, new_nodes = get_exclusive_subgraph(data.edge_index, server.previous_edge_index[tvt_type])
         global_changed_edges = coalesce(global_changed_edges, num_nodes=data.num_nodes) # deduplicate potential edges

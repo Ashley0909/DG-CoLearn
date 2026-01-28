@@ -106,6 +106,8 @@ def get_exclusive_subgraph(current, prev):
     exclusive_remove_mask = ~np.any(np.all(prev_T[:, None] == current_T[None, :], axis=-1), axis=1)
     exclusive_prev = prev[:, exclusive_remove_mask]
 
+    print(f'> Info: Exclusive edges - Newly Added: {torch.unique(exclusive_current, dim=1).size(1)}, Deleted: {torch.unique(exclusive_prev, dim=1).size(1)}')
+
     # Combine both sets of exclusive edges
     exclusive_edges = torch.cat([exclusive_current, exclusive_prev], dim=1)
 

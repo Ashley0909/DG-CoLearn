@@ -187,11 +187,11 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     client_train, client_val, client_test = [], [], []
     
     for i in range(num_subgraphs): # for each client, allocate subgraph
-        single_train = construct_single_client_data(server, train_data, train_subgraphs, i, clients, "train", task_cfg.task_type)
+        single_train = construct_single_client_data(server, train_data, train_subgraphs, i, clients, "train", task_cfg.task_type, incremental_learning=task_cfg.incremental_learning)
         client_train.append(single_train)
-        single_val = construct_single_client_data(server, val_data, val_subgraphs, i, clients, "val", task_cfg.task_type)
+        single_val = construct_single_client_data(server, val_data, val_subgraphs, i, clients, "val", task_cfg.task_type, incremental_learning=task_cfg.incremental_learning)
         client_val.append(single_val)
-        single_test = construct_single_client_data(server, test_data, test_subgraphs, i, clients, "test", task_cfg.task_type)
+        single_test = construct_single_client_data(server, test_data, test_subgraphs, i, clients, "test", task_cfg.task_type, incremental_learning=task_cfg.incremental_learning)
         client_test.append(single_test)
 
         print(f"Client {i} has {single_train.dataset.edge_index.shape[1]} positive training edges, {single_val.dataset.edge_index.shape[1]} positive val edges and {single_test.dataset.edge_index.shape[1]} positive test edges")
@@ -289,7 +289,7 @@ def get_cut_edges(server, node_assignment, coo_format, tvt_type='train'):
 
     return ccn_dict, torch.tensor(coo_ccn), torch.tensor(ccn_label)
 
-def construct_single_client_data(server, data, subgraph_label, client_idx, clients, tvt_mode, task_type):
+def construct_single_client_data(server, data, subgraph_label, client_idx, clients, tvt_mode, task_type, incremental_learning=True):
     node_mask = (subgraph_label == client_idx)
     subnodes = torch.arange(data.num_nodes)[node_mask]
 
@@ -300,8 +300,8 @@ def construct_single_client_data(server, data, subgraph_label, client_idx, clien
     indim = 16
 
     # If there are global changed edges recorded, filter out edges that are not changed
-    # [Ablation Study] Comment out this part to run ablation study on incremental snapshot processing
-    if server.global_changed_edges is not None and tvt_mode == "train":
+    # [Ablation Study] Only apply if incremental_learning is True
+    if incremental_learning and server.global_changed_edges is not None and tvt_mode == "train":
         subgraph_edge_t = subgraph_ei.t()
         changed_edges_t = server.global_changed_edges.t()
 

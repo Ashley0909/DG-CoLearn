@@ -31,10 +31,13 @@ Due to the large sizes of the node classification datasets, we include the link 
 # Constructing Virtual Environment
 
 To run DG-CoLearn, first set up a virtual environment by:
+
 ```
 python3 -m venv venv
 ```
+
 Then activate the environment and install essential packages by:
+
 ```
 source venv/bin/activate
 pip install --upgrade pip
@@ -56,7 +59,10 @@ source build_gpa.sh
 # Running Code
 
 We can run the program using:
-`python3 main.py $dataset$`
+
+```
+python3 main.py $dataset$
+```
 
 where
 `dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733}
@@ -75,9 +81,21 @@ The configuration of AS-733 is different, we have provided a configuration file 
 
 With the following command, we can run multiple experiments.
 
+(Do we need `chmod+xrun_repeated_job.sh`?)
+
 ```
 bash ./run_repreated_job.sh
 ```
+
+##### Ablation Study
+
+You can also run the traditional full-graph training (instead of incremental learning) by setting the argument `-- incremental_learning` to False:
+
+```
+python3 main.py $dataset$ --incremental_learning False
+```
+
+(The default value of this argument is `True`)
 
 ---
 

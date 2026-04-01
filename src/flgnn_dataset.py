@@ -12,12 +12,52 @@ from data.as733_processing.load_as import load_generic_dataset
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected, coalesce
 from torch.utils.data import DataLoader
+from graphgym.config import cfg
 from src.utils.utils import (
     is_dir_empty, process_txt_data, download_url, extract_gz, generate_neg_edges, compute_label_weights,
     count_label_occur, extract_tar_gz, get_exclusive_subgraph
 )
 # from other_partition import label_split, custom_metis
 import partition
+
+try:
+    from tgb.linkproppred.dataset_pyg import PyGLinkPropPredDataset
+except ImportError:
+    PyGLinkPropPredDataset = None
+
+
+def load_tgbl_comment(dataset_root):
+    if PyGLinkPropPredDataset is None:
+        raise ImportError(
+            "tgb is required for tgbl-comment. Install it with `pip install tgb`."
+        )
+
+    dataset = PyGLinkPropPredDataset(name="tgbl-comment", root=dataset_root)
+    temporal_data = dataset.get_TemporalData()
+
+    src = temporal_data.src.long()
+    dst = temporal_data.dst.long()
+    ts = temporal_data.t.long()
+    num_nodes = int(temporal_data.num_nodes)
+    edge_msg = getattr(temporal_data, "msg", None)
+
+    unique_ts = torch.unique(ts, sorted=True)
+    snapshots = []
+    for one_ts in unique_ts:
+        mask = (ts == one_ts)
+        edge_index = torch.stack([src[mask], dst[mask]], dim=0)
+        edge_feature = None if edge_msg is None else edge_msg[mask]
+        if edge_feature is not None and edge_feature.dim() == 1:
+            edge_feature = edge_feature.unsqueeze(-1)
+        snapshots.append(
+            Data(
+                edge_index=edge_index,
+                edge_feature=edge_feature,
+                num_nodes=num_nodes,
+            )
+        )
+
+    return snapshots
 
 class FLFedDataset:
     def __init__(self, fbd_list):
@@ -53,8 +93,10 @@ def load_gnndata(task_cfg):
                 os.unlink(tar_path)
                 
             data = load_generic_dataset(task_cfg.path)
+        elif task_cfg.dataset.lower() == 'tgbl-comment':
+            data = load_tgbl_comment(task_cfg.path)
         else:
-            print('E> Invalid link prediction dataset specified. Options are {bitcoinOTC, UCI, as733}')
+            print('E> Invalid link prediction dataset specified. Options are {bitcoinOTC, UCI, as733, tgbl-comment}')
             exit(-1)
 
         num_snapshots = len(data)
@@ -65,6 +107,10 @@ def load_gnndata(task_cfg):
         task_cfg.in_dim = 32 # Set it to be the size of the input node feature
         task_cfg.out_dim = 1
         num_nodes = data[0].num_nodes
+        first_edge_feature = getattr(data[0], 'edge_feature', None)
+        if first_edge_feature is not None:
+            task_cfg.edge_dim = first_edge_feature.shape[1]
+            cfg.dataset.edge_dim = task_cfg.edge_dim
 
     elif task_cfg.task_type == 'NC':
         data = np.load('./data/{}.npz'.format(task_cfg.dataset))

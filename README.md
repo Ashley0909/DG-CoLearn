@@ -65,13 +65,14 @@ python3 main.py $dataset$
 ```
 
 where
-`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733}
+`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733, tgbl-comment}
 
 Example Experiments
 
 `python3 main.py bitcoinOTC`
 `python3 main.py DBLP3`
 `python3 main.py Reddit`
+`python3 main.py tgbl-comment`
 
 The configuration of AS-733 is different, we have provided a configuration file `as733.yaml` as another argument.
 

@@ -1,4 +1,5 @@
 import sys
+import os
 import torch
 import warnings
 import time
@@ -15,9 +16,20 @@ from graphgym.config import cfg
 
 torch.autograd.set_detect_anomaly(True)
 
+
+def _configure_torch_threads_from_env():
+    """Thread tuning for reproducible CPU performance."""
+    torch_threads = int(os.getenv("TORCH_NUM_THREADS", "4"))
+    torch_interop_threads = int(os.getenv("TORCH_INTEROP_THREADS", "1"))
+
+    torch.set_num_threads(torch_threads)
+    torch.set_num_interop_threads(torch_interop_threads)
+
+
 def main():
     """ Wall-to-wall total training time """
     pipeline_start_time = time.time()
+    _configure_torch_threads_from_env()
     # Set Configuration
     dataset = str(sys.argv[1])  # string: options={boston, mnist, cifar10, cifar100, bitcoinOTC, DBLP, Reddit}
     
@@ -55,6 +67,7 @@ def main():
     
     # Create a list of information per snapshots in FLDGNN
     sys.stdout = Logger('fast_gpa') # Log the print statements to a text file
+    print(f"Torch CPU threads: intra_op={torch.get_num_threads()}, inter_op={torch.get_num_interop_threads()}")
     print(f"Data Loading Time: {data_loading_time:.2f} seconds")
     print(f"Running {task_cfg.task_type}: n_client={env_cfg.n_clients}, n_epochs={env_cfg.n_epochs}, dataset={task_cfg.dataset}")
     incremental_mode_str = "Incremental Learning (Only Learn New Edges)" if incremental_learning else "Full Graph Learning"

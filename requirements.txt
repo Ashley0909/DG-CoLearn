@@ -1,3 +1,5 @@
+--find-links https://data.pyg.org/whl/torch-2.3.0+cpu.html
+
 git+https://github.com/snap-stanford/deepsnap.git
 community==1.0.0b1
 graphviz==0.20.3
@@ -22,4 +24,5 @@ torchaudio==2.3.1
 torchdata==0.7.1
 torchmetrics==1.4.0.post0
 torchvision==0.18.1
+typing-extensions
 yacs==0.1.8

@@ -33,7 +33,7 @@ Due to the large sizes of the node classification datasets, we include the link 
 To run DG-CoLearn, first set up a virtual environment by:
 
 ```
-python3 -m venv venv
+python3.11 -m venv venv
 ```
 
 Then activate the environment and install essential packages by:
@@ -82,15 +82,13 @@ The configuration of AS-733 is different, we have provided a configuration file 
 
 With the following command, we can run multiple experiments.
 
-(Do we need `chmod+xrun_repeated_job.sh`?)
-
 ```
-bash ./run_repreated_job.sh
+bash ./run_repeated_job.sh
 ```
 
 ##### Ablation Study
 
-You can also run the traditional full-graph training (instead of incremental learning) by setting the argument `-- incremental_learning` to False:
+You can also run the traditional full-graph training (instead of incremental learning) by setting the argument `--incremental_learning` to False:
 
 ```
 python3 main.py $dataset$ --incremental_learning False

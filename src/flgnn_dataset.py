@@ -20,44 +20,32 @@ from src.utils.utils import (
 # from other_partition import label_split, custom_metis
 import partition
 
+import logging
+logging.basicConfig(level=logging.INFO)
 try:
     from tgb.linkproppred.dataset_pyg import PyGLinkPropPredDataset
 except ImportError:
     PyGLinkPropPredDataset = None
 
 
-def load_tgbl_comment(dataset_root):
+def load_tgbl(dataset_root, dataset_name):
+    logging.info(f"Loading tgbl dataset from {dataset_root}")
     if PyGLinkPropPredDataset is None:
         raise ImportError(
             "tgb is required for tgbl-comment. Install it with `pip install tgb`."
         )
 
-    dataset = PyGLinkPropPredDataset(name="tgbl-comment", root=dataset_root)
-    temporal_data = dataset.get_TemporalData()
+    dataset = PyGLinkPropPredDataset(dataset_name, root=dataset_root)
+    train_mask = dataset.train_mask
+    val_mask = dataset.val_mask
+    test_mask = dataset.test_mask
+    data = dataset.get_TemporalData()
+    train_data = data[train_mask]
+    val_data = data[val_mask]
+    test_data = data[test_mask]
 
-    src = temporal_data.src.long()
-    dst = temporal_data.dst.long()
-    ts = temporal_data.t.long()
-    num_nodes = int(temporal_data.num_nodes)
-    edge_msg = getattr(temporal_data, "msg", None)
-
-    unique_ts = torch.unique(ts, sorted=True)
-    snapshots = []
-    for one_ts in unique_ts:
-        mask = (ts == one_ts)
-        edge_index = torch.stack([src[mask], dst[mask]], dim=0)
-        edge_feature = None if edge_msg is None else edge_msg[mask]
-        if edge_feature is not None and edge_feature.dim() == 1:
-            edge_feature = edge_feature.unsqueeze(-1)
-        snapshots.append(
-            Data(
-                edge_index=edge_index,
-                edge_feature=edge_feature,
-                num_nodes=num_nodes,
-            )
-        )
-
-    return snapshots
+    logging.info("Data loaded!")
+    return data, train_data, val_data, test_data
 
 class FLFedDataset:
     def __init__(self, fbd_list):
@@ -76,6 +64,9 @@ def load_gnndata(task_cfg):
     if not os.path.isdir(task_cfg.path):
         os.makedirs(task_cfg.path)
 
+    logging.info(f"Loading Dataset data for {task_cfg.task_type}")
+    is_tgbl = task_cfg.dataset.lower() in {'tgbl-comment', 'tgbl-coin'}
+
     if task_cfg.task_type == 'LP':
         if task_cfg.dataset.lower() == 'bitcoinotc':
             data = torchgeometric_datasets.BitcoinOTC(task_cfg.path)
@@ -93,20 +84,21 @@ def load_gnndata(task_cfg):
                 os.unlink(tar_path)
                 
             data = load_generic_dataset(task_cfg.path)
-        elif task_cfg.dataset.lower() == 'tgbl-comment':
-            data = load_tgbl_comment(task_cfg.path)
+        elif is_tgbl:
+            data, train_list, val_list, test_list = load_tgbl(task_cfg.path, task_cfg.dataset.lower())
         else:
-            print('E> Invalid link prediction dataset specified. Options are {bitcoinOTC, UCI, as733, tgbl-comment}')
+            logging.info('E> Invalid link prediction dataset specified. Options are {bitcoinOTC, UCI, as733, tgbl-comment}')
             exit(-1)
 
-        num_snapshots = len(data)
+        logging.info(f"Loaded snapshots")
+        num_snapshots = len(data) if not is_tgbl else len(torch.unique(data.t))
         label = 2 # positive or negative edges
         task_cfg.num_classes = label
         hidden_conv1, hidden_conv2 = 128, 128 #64, 32
         last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(data[0].num_nodes)]),torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(data[0].num_nodes)])]
         task_cfg.in_dim = 32 # Set it to be the size of the input node feature
         task_cfg.out_dim = 1
-        num_nodes = data[0].num_nodes
+        num_nodes = data[0].num_nodes if not is_tgbl else data.num_nodes
         first_edge_feature = getattr(data[0], 'edge_feature', None)
         if first_edge_feature is not None:
             task_cfg.edge_dim = first_edge_feature.shape[1]
@@ -121,7 +113,7 @@ def load_gnndata(task_cfg):
         assert adjs.shape[0] == feature.shape[1]
         num_snapshots = adjs.shape[0]
         num_nodes = feature.shape[0]
-        print("total number of nodes", num_nodes)
+        logging.info("total number of nodes", num_nodes)
         hidden_conv1, hidden_conv2 = 128, 128 #64, 32
         last_embeddings = [torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv1)] for _ in range(num_nodes)]), torch.Tensor([[0 for _ in range(hidden_conv2)] for _ in range(num_nodes)])]
         task_cfg.in_dim = feature.shape[2]
@@ -143,7 +135,8 @@ def load_gnndata(task_cfg):
             graph.node_label = label
 
     """ Split each snapshot into train, val and test """
-    train_list, val_list, test_list = generate_tvt(task_cfg, num_snapshots, data)
+    if not is_tgbl:
+        train_list, val_list, test_list = generate_tvt(task_cfg, num_snapshots, data)
 
     return num_snapshots, train_list, val_list, test_list, {'last_embeddings': last_embeddings, 'num_nodes': num_nodes}
 
@@ -185,7 +178,7 @@ def generate_tvt(task_cfg, num_snapshots, data):
             val_list.append(g_t1)
             test_list.append(g_t2)
         else:
-            print('E> Invalid task type specified. Options are {LP, NC}')
+            logging.info('E> Invalid task type specified. Options are {LP, NC}')
             exit(-1)
     
     return train_list, val_list, test_list
@@ -194,8 +187,8 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     ''' A function that first partition the graph to clients, then allocate edges to each clients accordingly. '''
     num_subgraphs = gen_train_clients(train_data.edge_index.shape[1], len(clients))
     global_size = train_data.edge_index.shape[1]
-    print(f"A total of {global_size} training edges")
-    print(num_subgraphs, "clients are chosen to train")
+    logging.info(f"A total of {global_size} training edges")
+    logging.info("%d clients are chosen to train", num_subgraphs)
     data_size = train_data.num_nodes # The total number of nodes in the global training graph
     # server.construct_global_adj_matrix(train_data.edge_index, data_size)
     server.record_num_nodes(data_size)
@@ -204,7 +197,7 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     # [Ablation Study] Comment out this part to run ablation study on partitioning algorithm
     if hasattr(server, 'num_prev_subgraphs'):
         if server.num_prev_subgraphs >= num_subgraphs:
-            print(f"Reusing previous partitioning with {num_subgraphs} clients...")
+            logging.info(f"Reusing previous partitioning with {num_subgraphs} clients...")
             server.record_reuse_bool(True)
             num_subgraphs = server.num_prev_subgraphs
         else:
@@ -223,7 +216,7 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
     
     ''' Server gets cce and construct server-side test data '''
     cc_edges_train, server_ei, server_el = get_cut_edges(server, train_subgraphs.tolist(), train_data.edge_index.tolist())
-    print(f"Total number of cut edges: {int(sum(len(v) for v in cc_edges_train.values())//2)}")
+    logging.info(f"Total number of cut edges: {int(sum(len(v) for v in cc_edges_train.values())//2)}")
     server.record_ccn(cc_edges_train)
 
     # cce_test, server_ei, server_el, _ = get_cut_edges(server, test_subgraphs.tolist(), test_data.edge_index.tolist(), tvt_type='test')
@@ -240,7 +233,7 @@ def get_gnn_clientdata(server, train_data, val_data, test_data, task_cfg, client
         single_test = construct_single_client_data(server, test_data, test_subgraphs, i, clients, "test", task_cfg.task_type, incremental_learning=task_cfg.incremental_learning)
         client_test.append(single_test)
 
-        print(f"Client {i} has {single_train.dataset.edge_index.shape[1]} positive training edges, {single_val.dataset.edge_index.shape[1]} positive val edges and {single_test.dataset.edge_index.shape[1]} positive test edges")
+        logging.info(f"Client {i} has {single_train.dataset.edge_index.shape[1]} positive training edges, {single_val.dataset.edge_index.shape[1]} positive val edges and {single_test.dataset.edge_index.shape[1]} positive test edges")
         client_sizes.append(single_train.dataset.edge_index.shape[1]) # Client data size is the number of training edges a client has
 
     fed_train = FLFedDataset(client_train)
@@ -291,11 +284,11 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', t
     # elif partition_type == 'Label':
     #     partitioning_labels = label_split(data, num_parts, task_type=task_type)
     else:
-        print('E> Invalid partitioning algorithm specified. Options are {Metis, Louvain, Dirichlet, Label, Ours}')
+        logging.info('E> Invalid partitioning algorithm specified. Options are {Metis, Louvain, Dirichlet, Label, Ours}')
         exit(-1)
 
     end_time = time.time()
-    print(f"Time taken to partition graph using {partition_type}: {end_time - start_time}")
+    logging.info(f"Time taken to partition graph using {partition_type}: {end_time - start_time}")
 
     server.record_node_assignment(partitioning_labels, tvt_type) # For if reuse partition
     server.record_prev_edges(data.edge_index, tvt_type) # For if reuse partition
@@ -391,12 +384,12 @@ def reuse_partition(num_parts, server, data, tvt_type):
         # Partition is the same, since there is only 1 client
         return server.node_assignment[tvt_type]
     if tvt_type in server.previous_edge_index:
-        print("Number of nodes in current graph:", data.num_nodes)
+        logging.info("Number of nodes in current graph: %d", data.num_nodes)
         start_time = time.time()
         global_changed_edges, new_nodes = get_exclusive_subgraph(data.edge_index, server.previous_edge_index[tvt_type])
         global_changed_edges = coalesce(global_changed_edges, num_nodes=data.num_nodes) # deduplicate potential edges
         server.record_global_changed_edges(global_changed_edges)
-        print(f"Number of changed edges in global graph: {global_changed_edges.shape[1]}, number of new nodes: {len(new_nodes)}")
+        logging.info(f"Number of changed edges in global graph: {global_changed_edges.shape[1]}, number of new nodes: {len(new_nodes)}")
         prev_snapshot_nodes = torch.unique(server.previous_edge_index[tvt_type])
         prev_node_set = set(prev_snapshot_nodes.tolist())
         node2client = server.node_assignment[tvt_type] # Shortcut to previous assignment
@@ -424,7 +417,7 @@ def reuse_partition(num_parts, server, data, tvt_type):
             
         server.record_node_assignment(node2client, tvt_type)
         end_time = time.time()
-        print(f"Time taken to partition graph by reusing: {end_time - start_time}")
+        logging.info(f"Time taken to partition graph by reusing: {end_time - start_time}")
         return server.node_assignment[tvt_type]
 
 def get_2hop_neigh(edge_index, onehop_node):

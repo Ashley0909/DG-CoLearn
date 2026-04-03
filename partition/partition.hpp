@@ -34,7 +34,7 @@ double count_edges(const SubgraphSet& subgraph_nodes,
 double balance_score(int node,
                      int subgraph,
                      const std::unordered_map<int, std::unordered_set<int>>& previous_level_subgraph,
-                     const std::vector<int>& isolated_nodes,
+                     const std::unordered_set<int>& isolated_set,
                      const AdjList& adj_list,
                      const std::unordered_set<Edge, EdgeHash>& synthetic_edges,
                      int global_size);
@@ -48,7 +48,7 @@ int refine_by_balance_and_label(int node,
                                 int global_size,
                                 const std::unordered_set<Edge, EdgeHash>& synthetic_edges,
                                 const std::vector<int>& node_labels,
-                                const std::vector<int>& isolated_nodes,
+                                const std::unordered_set<int>& isolated_set,
                                 double threshold = 0.5);
 
 // Connect disconnected components of a graph by adding synthetic edges
@@ -65,13 +65,8 @@ get_all_connected_components(const AdjList& adj_list);
 // Compute shortest distances from start node to all others using BFS
 std::vector<int> bfs_shortest_paths(const AdjList& adj_list, int start);
 
-// Compute all pairs shortest paths, respecting isolated nodes
-std::vector<std::vector<int>> all_pairs_shortest_paths(
-    const AdjList& adj_list,
-    const std::vector<int>& isolated_nodes = {}
-);
-
-// Find k nodes that are furthest apart (heuristic)
+// Find k nodes that are furthest apart using farthest-first traversal
+// O(k * (V + E)) instead of O(V * (V + E))
 std::vector<int> find_k_furthest_nodes(
     const AdjList& adj_list,
     int k,

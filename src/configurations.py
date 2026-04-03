@@ -1,7 +1,8 @@
 import torch
 from src.fl_clients import EdgeDevice
 from src.gnn_recurrent import GNN
-
+import logging
+logging.basicConfig(level=logging.INFO)
 class EnvSettings:
     """ Environment Settings for FL """
 
@@ -24,7 +25,7 @@ class EnvSettings:
 class TaskSettings:
     """ Task Settings for FL """
 
-    def __init__(self, task_type, dataset, path, in_dim, out_dim, edge_dim, batch_size=5, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0):
+    def __init__(self, task_type, dataset, path, in_dim, out_dim, edge_dim, batch_size=5, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0, mode='snapshot', patch_size=100000):
         self.task_type = task_type
         self.dataset = dataset
         self.num_classes = num_classes
@@ -40,6 +41,8 @@ class TaskSettings:
         self.poisoning_rate = poisoning_rate
         self.model_size = 10.0  #10MB
         self.mu = 0.05 # FedProx
+        self.mode = mode  # 'snapshot' or 'ctdg'
+        self.patch_size = patch_size  # edges per patch in CTDG mode
 
 def init_config(dataset, bw_set):
     if dataset.lower() == 'sbm': # Generate graphs
@@ -51,14 +54,14 @@ def init_config(dataset, bw_set):
     elif dataset.lower() == 'as733':
         env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=2, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=1, batch_size=5, optimizer='Adam', loss='ce', lr=0.01, lr_decay=0.1)
-    elif dataset.lower() == 'tgbl-comment':
+    elif dataset.lower() in {'tgbl-comment', 'tgbl-coin'}:
         env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=2, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.01, lr_decay=0.1)
     elif dataset in ['DBLP3', 'DBLP5', 'Reddit']:
         env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
     else:
-        print('[Err] Invalid dataset provided. Options are {SBM, bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733, tgbl-comment}')
+        logging.info('[Err] Invalid dataset provided. Options are {SBM, bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733, tgbl-comment}')
         exit(0)
 
     return env_cfg, task_cfg

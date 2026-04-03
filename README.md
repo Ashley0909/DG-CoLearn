@@ -22,31 +22,44 @@ Runs the Federated Learning process, called by `main.py`
 
 ---
 
-# Downloading Dataset
+# Step 1: Downloading Dataset
 
 Due to the large sizes of the node classification datasets, we include the link to download each dataset in a [Google Drive](https://drive.google.com/drive/folders/19BWid2En9IWdzbPeZ3Tj29c4iDdXhtRV?usp=drive_link). Simply download the files and copy them into the `data/` directory
 
 ---
 
-# Constructing Virtual Environment
+# Step 2: Constructing Environment
 
-To run DG-CoLearn, first set up a virtual environment by:
+## Recommended: Conda environment (works without sudo)
+
+Some packages in `requirements.txt` are pinned to older versions (for example `pandas==1.3.5`) and may fail with newer default Python installations. We recommend using a dedicated Conda environment:
+
+```
+conda create -y -n dgcolearn311 python=3.11
+conda activate dgcolearn311
+
+conda install -y numpy=1.25.2 scipy=1.9.3 scikit-learn=1.5.0
+python -m pip install --upgrade "pip<25" "setuptools<81" "wheel<0.45" "Cython<3"
+python -m pip install --no-build-isolation pandas==1.3.5
+python -m pip install --no-build-isolation -r requirements.txt
+```
+
+If `conda` is unavailable on your machine, install [Miniforge](https://github.com/conda-forge/miniforge) in your home directory, then run the same commands.
+
+## Alternative: Python venv
+
+If you already have a compatible `python3.11` available:
 
 ```
 python3.11 -m venv venv
-```
-
-Then activate the environment and install essential packages by:
-
-```
 source venv/bin/activate
-pip install --upgrade pip
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
 ```
 
 ---
 
-# Building Our Graph Partitioning Algorithm
+# Step 3: Building Our Graph Partitioning Algorithm
 
 Our Graph Partitioning Algorithm `CoLearnPartition` is written in C++ for efficiency. To run this, you need to build the C++ file using:
 
@@ -56,7 +69,7 @@ source build_gpa.sh
 
 ---
 
-# Running Code
+# Step 4: Running Code
 
 We can run the program using:
 

@@ -15,7 +15,8 @@ from collections import deque
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import f1_score, accuracy_score
 from scipy.sparse import coo_matrix
-
+import logging
+logging.basicConfig(level=logging.INFO)
 class Logger(object):
     def __init__(self, path):
         now = datetime.datetime.now()
@@ -106,7 +107,7 @@ def get_exclusive_subgraph(current, prev):
     exclusive_remove_mask = ~np.any(np.all(prev_T[:, None] == current_T[None, :], axis=-1), axis=1)
     exclusive_prev = prev[:, exclusive_remove_mask]
 
-    print(f'> Info: Exclusive edges - Newly Added: {torch.unique(exclusive_current, dim=1).size(1)}, Deleted: {torch.unique(exclusive_prev, dim=1).size(1)}')
+    logging.info(f'> Info: Exclusive edges - Newly Added: {torch.unique(exclusive_current, dim=1).size(1)}, Deleted: {torch.unique(exclusive_prev, dim=1).size(1)}')
 
     # Combine both sets of exclusive edges
     exclusive_edges = torch.cat([exclusive_current, exclusive_prev], dim=1)
@@ -122,7 +123,7 @@ def get_exclusive_subgraph(current, prev):
     two_hop_edges = current[:, mask_2hop]
 
     if two_hop_edges.nelement() == 0:
-        print('>E No edges left to train')
+        logging.info('>E No edges left to train')
 
     # Get nodes that exclusively appear in current and prev (Note: Exclusive edges does not mean exclusive nodes)
     prev_nodes = torch.unique(prev)
@@ -225,7 +226,9 @@ def nc_prediction(pred_score, true_l):
     return acc, macro_f1, micro_f1
 
 def compute_mrr(pred_score, true_l, edge_label_index, do_softmax=True):
-    ''' Using the same way how EvolveGCN evaluates mrr '''
+    ''' Compute MRR by grouping edges per source node (memory-efficient).
+        Equivalent to the original dense-matrix approach but avoids
+        allocating a (num_nodes x num_nodes) array. '''
     if do_softmax:
         probs = torch.softmax(pred_score, dim=0)
     else:
@@ -237,17 +240,24 @@ def compute_mrr(pred_score, true_l, edge_label_index, do_softmax=True):
     source_nodes = edge_label_index[0].cpu().detach().numpy()
     target_nodes = edge_label_index[1].cpu().detach().numpy()
 
-    pred_matrix = coo_matrix((probs, (source_nodes, target_nodes))).toarray()
-    true_matrix = coo_matrix((true_l, (source_nodes, target_nodes))).toarray()
+    # Group by source node
+    from collections import defaultdict
+    src_groups = defaultdict(lambda: ([], []))
+    for idx in range(len(source_nodes)):
+        src = source_nodes[idx]
+        src_groups[src][0].append(probs[idx])
+        src_groups[src][1].append(true_l[idx])
 
-    # Calculate mrr for each row where there are true edges
     row_mrrs = []
-    for i, pred_row in enumerate(pred_matrix):
-        # Check if there are any existing edges in the true_matrix for this row
-        if np.isin(1, true_matrix[i]):  # 1 indicates an existing edge
-            row_mrrs.append(get_row_mrr(pred_row, true_matrix[i]))
+    for src, (pred_list, label_list) in src_groups.items():
+        pred_arr = np.array(pred_list)
+        label_arr = np.array(label_list)
+        if np.any(label_arr == 1):
+            row_mrrs.append(get_row_mrr(pred_arr, label_arr))
 
-    avg_mrr = torch.tensor(row_mrrs).mean()  # Return the average mrr across all rows
+    if not row_mrrs:
+        return 0.0
+    avg_mrr = torch.tensor(row_mrrs).mean()
     return avg_mrr.float().item()
 
 def get_row_mrr(prob_score, true_l):
@@ -259,7 +269,7 @@ def get_row_mrr(prob_score, true_l):
 
     # Apply the ordered indices to the existing mask to find the rank of true edges
     ordered_existing_mask = existing_mask[ordered_indices]
-    existing_ranks = np.arange(1, true_l.shape[0] + 1, dtype=np.cfloat)[ordered_existing_mask]
+    existing_ranks = np.arange(1, true_l.shape[0] + 1, dtype=np.float64)[ordered_existing_mask]
 
     if existing_ranks.shape[0] == 0: # No valid ranks, return 0 instead of NaN
         return 0.0
@@ -334,9 +344,9 @@ def count_label_occur(node_assignment, node_labels):
             subgraph_label_counts[subgraph] = {}
         subgraph_label_counts[subgraph][label] = count
 
-    # Print results
+    # logging.info results
     for subgraph, label_counts in subgraph_label_counts.items():
-        print(f"Subgraph {subgraph}: {label_counts}")
+        logging.info(f"Subgraph {subgraph}: {label_counts}")
 
 def compute_label_weights(node_label):
     num_classes = torch.max(node_label)

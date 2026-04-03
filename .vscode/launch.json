@@ -8,10 +8,12 @@
             "name": "Run Model",
             "type": "debugpy",
             "request": "launch",
-            "program": "/Users/ashleyau/Documents/PhD/Code/2nd_Paper/DG-CoLearn/main.py",
+            "program": "/nfs-share/ahta3/workspace/DG-CoLearn/main.py",
             "console": "integratedTerminal",
             // "args": ["Reddit"],
-            "args": ["UCI"],
+            "args": ["tgbl-coin",
+            "--incremental_learning", "True"
+            ],
             // "args": ["as733", "as733.yaml"],
             "justMyCode": false
         }

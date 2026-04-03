@@ -7,16 +7,15 @@
 #include <set>
 #include <utility>
 #include <algorithm>
-#include <queue> // moved up
+#include <queue>
+#include <climits>
 
-using AdjList = std::vector<std::vector<int>>;
 using AdjList = std::vector<std::vector<int>>;
 using SubgraphSet = std::unordered_set<int>;
 using NodeToSubgraphMap = std::unordered_map<int, SubgraphSet>;
 using SubgraphToNodesMap = std::unordered_map<int, SubgraphSet>;
 using Component = std::unordered_set<int>;
 using Edge = std::pair<int, int>;
-
 
 
 double count_edges(const std::unordered_set<int>& subgraph_nodes,
@@ -36,7 +35,7 @@ double count_edges(const std::unordered_set<int>& subgraph_nodes,
 double balance_score(int node,
     int subgraph,
     const std::unordered_map<int, std::unordered_set<int>>& previous_level_subgraph,
-    const std::vector<int>& isolated_nodes,  // changed to vector
+    const std::unordered_set<int>& isolated_set,
     const AdjList& adj_list,
     const std::unordered_set<std::pair<int, int>, EdgeHash>& synthetic_edges,
     int global_size) {
@@ -46,8 +45,7 @@ double balance_score(int node,
 
     std::unordered_set<int> filtered_nodes;
     for (int n : nodes) {
-        // Replace isolated_nodes.count(n) with std::find for vector
-        if (std::find(isolated_nodes.begin(), isolated_nodes.end(), n) == isolated_nodes.end()) {
+        if (!isolated_set.count(n)) {
             filtered_nodes.insert(n);
         }
     }
@@ -66,8 +64,8 @@ int refine_by_balance_and_label(
     int global_size,
     const std::unordered_set<std::pair<int, int>, EdgeHash>& synthetic_edges,
     const std::vector<int>& node_labels,
-    const std::vector<int>& isolated_nodes,  // changed here
-    double threshold) // removed default argument here
+    const std::unordered_set<int>& isolated_set,
+    double threshold)
 {
     int best_subgraph = current_subgraph;
     double best_improvement = 0.0;
@@ -83,15 +81,13 @@ int refine_by_balance_and_label(
         return 1.0 - (label_count / (sub_nodes.size() + 1e-6));
     };
 
-    // Removed unused is_isolated lambda
-
     double current_score =
-        0.5 * balance_score(node, current_subgraph, previous_level_subgraph, isolated_nodes, adj_list, synthetic_edges, global_size) +
+        0.5 * balance_score(node, current_subgraph, previous_level_subgraph, isolated_set, adj_list, synthetic_edges, global_size) +
         0.5 * label_score(current_subgraph);
 
     for (int subgraph : neighbor_subgraphs) {
         double new_score =
-            0.5 * balance_score(node, subgraph, previous_level_subgraph, isolated_nodes, adj_list, synthetic_edges, global_size) +
+            0.5 * balance_score(node, subgraph, previous_level_subgraph, isolated_set, adj_list, synthetic_edges, global_size) +
             0.5 * label_score(subgraph);
 
         if ((new_score - current_score) > std::max(threshold, best_improvement)) {
@@ -162,26 +158,20 @@ std::pair<std::vector<Component>, std::vector<int>> get_all_connected_components
 
     for (int node = 0; node < static_cast<int>(adj_list.size()); ++node) {
         if (visited.find(node) == visited.end()) {
-            Component cc = component_nodes(node, adj_list);
-            if (cc.size() == 1 && adj_list[node].empty()) {
+            if (adj_list[node].empty()) {
+                // Isolated node: skip BFS entirely
                 isolated_nodes.push_back(node);
+                visited.insert(node);
             } else {
+                Component cc = component_nodes(node, adj_list);
                 connected_components.push_back(cc);
+                visited.insert(cc.begin(), cc.end());
             }
-
-            visited.insert(cc.begin(), cc.end());
         }
     }
 
     return {connected_components, isolated_nodes};
 }
-
-#include <vector>
-#include <queue>
-#include <algorithm>
-#include <climits>
-
-using AdjList = std::vector<std::vector<int>>;
 
 std::vector<int> bfs_shortest_paths(const AdjList& adj_list, int start) {
     int n = adj_list.size();
@@ -204,88 +194,63 @@ std::vector<int> bfs_shortest_paths(const AdjList& adj_list, int start) {
     return dist;
 }
 
-std::vector<std::vector<int>> all_pairs_shortest_paths(
-    const AdjList& adj_list, const std::vector<int>& isolated_nodes) 
-{
-    std::vector<std::vector<int>> result;
-    for (int node = 0; node < static_cast<int>(adj_list.size()); ++node) {
-        // Check if node is isolated using std::find
-        if (std::find(isolated_nodes.begin(), isolated_nodes.end(), node) != isolated_nodes.end()) {
-            result.emplace_back(adj_list.size(), -1);  // all unreachable
-        } else {
-            result.push_back(bfs_shortest_paths(adj_list, node));
-        }
-    }
-    return result;
-}
-
+// Farthest-first traversal: O(k * (V + E)) instead of O(V * (V + E))
+// Produces the same "maximally distant" seed selection as the original
+// all_pairs approach, using the standard greedy k-center heuristic.
 std::vector<int> find_k_furthest_nodes(
-    const AdjList& adj_list, int k, const std::vector<int>& isolated_nodes) 
+    const AdjList& adj_list, int k, const std::vector<int>& isolated_nodes)
 {
     int n = adj_list.size();
-    auto dist = all_pairs_shortest_paths(adj_list, isolated_nodes);
+    std::unordered_set<int> iso_set(isolated_nodes.begin(), isolated_nodes.end());
 
-    // Helper lambda for checking isolated nodes
-    auto is_isolated = [&](int node) {
-        return std::find(isolated_nodes.begin(), isolated_nodes.end(), node) != isolated_nodes.end();
-    };
-
-    int max_dist = -1;
-    std::pair<int, int> best_pair = {-1, -1};
-    std::vector<int> valid_nodes;
-
+    // Find any valid (non-isolated) starting node
+    int start = -1;
     for (int i = 0; i < n; ++i) {
-        if (!is_isolated(i)) {
-            valid_nodes.push_back(i);
-        }
-    }
-
-    for (int u : valid_nodes) {
-        for (int v : valid_nodes) {
-            if (u == v) continue;
-            int d = dist[u][v];
-            if (d > max_dist) {
-                max_dist = d;
-                best_pair = {u, v};
-            }
-        }
-    }
-
-    std::vector<int> selected;
-    if (best_pair.first != -1) {
-        selected.push_back(best_pair.first);
-        if (best_pair.second != best_pair.first)
-            selected.push_back(best_pair.second);
-    }
-
-    while (selected.size() < static_cast<size_t>(k) && selected.size() < valid_nodes.size()) {
-        int best_node = -1;
-        int max_min_dist = -1;
-
-        for (int node : valid_nodes) {
-            if (std::find(selected.begin(), selected.end(), node) != selected.end()) continue;
-
-            int min_dist = INT_MAX;
-            for (int s : selected) {
-                if (dist[node][s] != -1) {
-                    min_dist = std::min(min_dist, dist[node][s]);
-                }
-            }
-
-            if (min_dist > max_min_dist) {
-                max_min_dist = min_dist;
-                best_node = node;
-            }
-        }
-
-        if (best_node != -1)
-            selected.push_back(best_node);
-        else
+        if (!iso_set.count(i) && !adj_list[i].empty()) {
+            start = i;
             break;
+        }
+    }
+    if (start == -1) return {};
+
+    // BFS from arbitrary start to find a peripheral node
+    auto dist = bfs_shortest_paths(adj_list, start);
+    int farthest = start;
+    int max_d = 0;
+    for (int i = 0; i < n; ++i) {
+        if (!iso_set.count(i) && dist[i] > max_d) {
+            max_d = dist[i];
+            farthest = i;
+        }
     }
 
-    if (selected.size() > static_cast<size_t>(k))
-        selected.resize(k);
+    // Start greedy selection from this peripheral node
+    std::vector<int> selected = {farthest};
+
+    // min_dist_to_selected[i] = min distance from node i to any selected seed
+    std::vector<int> min_dist = bfs_shortest_paths(adj_list, farthest);
+
+    while (static_cast<int>(selected.size()) < k) {
+        // Pick the non-isolated node with maximum min-distance to selected seeds
+        int best = -1;
+        int best_d = -1;
+        for (int i = 0; i < n; ++i) {
+            if (!iso_set.count(i) && min_dist[i] > best_d) {
+                best_d = min_dist[i];
+                best = i;
+            }
+        }
+        if (best == -1 || best_d <= 0) break;
+        selected.push_back(best);
+
+        // Update min distances with BFS from new seed
+        auto new_dist = bfs_shortest_paths(adj_list, best);
+        for (int i = 0; i < n; ++i) {
+            if (new_dist[i] != -1 && (min_dist[i] == -1 || new_dist[i] < min_dist[i])) {
+                min_dist[i] = new_dist[i];
+            }
+        }
+    }
 
     return selected;
 }
@@ -298,15 +263,12 @@ int resolve_by_min_cut(
 {
     std::unordered_map<int, int> cut_counts;
 
-    // Get the neighbors of the node as a set for intersection
     const auto& neighbors = adj_list[node];
     std::unordered_set<int> neighbor_set(neighbors.begin(), neighbors.end());
 
     for (int subgraph : subgraph_allocated) {
         const auto& sub_nodes = previous_level_subgraph.at(subgraph);
         int count = 0;
-
-        // Count intersection size between neighbors and subgraph nodes
         for (int n : sub_nodes) {
             if (neighbor_set.count(n)) {
                 count++;
@@ -315,7 +277,6 @@ int resolve_by_min_cut(
         cut_counts[subgraph] = count;
     }
 
-    // Find the subgraph with the maximum count
     int best_subgraph = -1;
     int max_count = -1;
     for (const auto& [subgraph, count] : cut_counts) {
@@ -335,14 +296,14 @@ int resolve_by_edge_balance(
     const std::unordered_map<int, std::unordered_set<int>>& previous_level_subgraph,
     int global_size,
     const std::unordered_set<std::pair<int, int>, EdgeHash>& synthetic_edges,
-    const std::vector<int>& isolated_nodes)
+    const std::unordered_set<int>& isolated_set)
 {
     std::unordered_map<int, double> edge_scores;
 
     for (int subgraph : subgraph_allocated) {
         std::unordered_set<int> temp_nodes = previous_level_subgraph.at(subgraph);
         temp_nodes.erase(node);
-        for (int iso : isolated_nodes) temp_nodes.erase(iso);
+        for (int iso : isolated_set) temp_nodes.erase(iso);
 
         double edge_count = count_edges(temp_nodes, adj_list, synthetic_edges);
         double score = 1.0 - (edge_count / global_size);
@@ -409,7 +370,7 @@ int resolve_by_label_balance(
     int node,
     const std::unordered_set<int>& subgraph_allocated,
     const std::unordered_map<int, std::unordered_set<int>>& previous_level_subgraph,
-    const std::vector<int>& node_labels) 
+    const std::vector<int>& node_labels)
 {
     if (node_labels.empty()) {
         return 0;
@@ -433,7 +394,6 @@ int resolve_by_label_balance(
         label_scores[subgraph] = 1.0 - (label_match_count / denom);
     }
 
-    // Find subgraph with max label_scores[subgraph]
     int best_subgraph = -1;
     double max_score = -1e9;
     for (const auto& [subgraph, score] : label_scores) {
@@ -455,8 +415,8 @@ int refine_by_min_cut_and_balance(
     const std::unordered_map<int, std::unordered_set<int>>& previous_level_subgraph,
     int global_size,
     const std::unordered_set<std::pair<int, int>, EdgeHash>& synthetic_edges,
-    const std::vector<int>& isolated_nodes,
-    double threshold) 
+    const std::unordered_set<int>& isolated_set,
+    double threshold)
 {
     auto cut_score = [&](int subgraph) -> double {
         int count = 0;
@@ -469,7 +429,7 @@ int refine_by_min_cut_and_balance(
     };
 
     double current_cut = cut_score(current_subgraph);
-    double current_balance = balance_score(node, current_subgraph, previous_level_subgraph, isolated_nodes, adj_list, synthetic_edges, global_size);
+    double current_balance = balance_score(node, current_subgraph, previous_level_subgraph, isolated_set, adj_list, synthetic_edges, global_size);
     double current_score = 0.5 * current_cut + 0.5 * current_balance;
 
     int best_subgraph = current_subgraph;
@@ -477,7 +437,7 @@ int refine_by_min_cut_and_balance(
 
     for (int subgraph : neighbor_subgraphs) {
         double new_cut = cut_score(subgraph);
-        double new_balance = balance_score(node, subgraph, previous_level_subgraph, isolated_nodes, adj_list, synthetic_edges, global_size);
+        double new_balance = balance_score(node, subgraph, previous_level_subgraph, isolated_set, adj_list, synthetic_edges, global_size);
         double new_score = 0.5 * new_cut + 0.5 * new_balance;
 
         double improvement = new_score - current_score;
@@ -497,20 +457,24 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
     std::unordered_set<int> border_nodes;
     std::set<std::pair<int, int>> nodes_visited_set;
 
-    auto [connected_components, isolated_nodes] = get_all_connected_components(adj_list);
+    auto [connected_components, isolated_nodes_vec] = get_all_connected_components(adj_list);
+
+    // Convert isolated_nodes to set for O(1) lookup (was O(n) linear scan)
+    std::unordered_set<int> isolated_set(isolated_nodes_vec.begin(), isolated_nodes_vec.end());
+
     auto [new_adj_list, synthetic_edges] = connect_graphs(connected_components, adj_list);
-    adj_list = new_adj_list; // no move
+    adj_list = new_adj_list;
 
     // Assign isolated nodes to subgraphs in round-robin fashion before BFS
-    for (int i = 0; i < static_cast<int>(isolated_nodes.size()); ++i) {
-        int iso = isolated_nodes[i];
+    for (int i = 0; i < static_cast<int>(isolated_nodes_vec.size()); ++i) {
+        int iso = isolated_nodes_vec[i];
         int subgraph = i % K;
         node_to_allocated_subgraph[iso] = {subgraph};
         previous_level_subgraph[subgraph].insert(iso);
     }
 
-    auto roots = find_k_furthest_nodes(adj_list, K, isolated_nodes);
-    std::vector<std::pair<int, int>> level_queue;  // pair<node, assign>
+    auto roots = find_k_furthest_nodes(adj_list, K, isolated_nodes_vec);
+    std::vector<std::pair<int, int>> level_queue;
     for (int i = 0; i < (int)roots.size(); ++i) {
         level_queue.emplace_back(roots[i], i);
     }
@@ -535,8 +499,6 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
         for (auto& [node, subgraphs_allocated] : node_to_allocated_subgraph) {
             if (subgraphs_allocated.size() > 1) {
                 int best_subgraph = resolve_by_min_cut(node, adj_list, subgraphs_allocated, previous_level_subgraph);
-                // int best_subgraph = resolve_by_edge_balance(node, adj_list, subgraphs_allocated, previous_level_subgraph, global_size, synthetic_edges, isolated_nodes);
-                // int best_subgraph = resolve_by_label_balance(node, subgraphs_allocated, previous_level_subgraph, node_labels);
                 node_to_allocated_subgraph[node] = {best_subgraph};
                 for (int subgraph : subgraphs_allocated) {
                     previous_level_subgraph[subgraph].erase(node);
@@ -580,11 +542,7 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
         }
 
         int best_subgraph = refine_by_balance_and_label(node, current_subgraph, neighbor_subgraphs,
-            adj_list, previous_level_subgraph, global_size, synthetic_edges, node_labels, isolated_nodes, 0.5);
-        // int best_subgraph = refine_by_min_cut_and_label(node, current_subgraph, neighbor_subgraphs,
-        //     adj_list, previous_level_subgraph, node_labels, 0.4);
-        // int best_subgraph = refine_by_min_cut_and_balance(node, current_subgraph, neighbor_subgraphs, 
-        //     adj_list, previous_level_subgraph, global_size, synthetic_edges, isolated_nodes, 0.4);
+            adj_list, previous_level_subgraph, global_size, synthetic_edges, node_labels, isolated_set, 0.5);
 
         if (best_subgraph != current_subgraph) {
             previous_level_subgraph[current_subgraph].erase(node);
@@ -593,10 +551,7 @@ std::vector<int> CoLearnPartition(AdjList& adj_list, int global_size, const std:
         }
     }
 
-    // Remove the isolated node assignment after BFS (no-op)
-    // (Block removed)
-
-    // Convert assignment map to vector, ensure all nodes are filled
+    // Convert assignment map to vector
     std::vector<int> assignment(adj_list.size(), -1);
     for (int i = 0; i < static_cast<int>(adj_list.size()); ++i) {
         if (node_to_allocated_subgraph.count(i)) {

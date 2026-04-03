@@ -5,7 +5,8 @@ import torch
 import time
 from collections import defaultdict
 import torch.optim as optim
-
+import logging
+logging.basicConfig(level=logging.INFO)
 from src.fl_clients import distribute_models, train, local_test, global_test, catastrophic_forgetting_test
 from src.fl_aggregations import gnn_aggregate, gnn_weighted_aggregate
 from src.plotting.plot_graphs import configure_plotly
@@ -38,7 +39,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
 
    # Sample all clients who has training edges in this snapshot
    client_ids = sample_clients(fed_data_train, cm_map)
-   print("Participating Clients:", client_ids)
+   logging.info(f"Participating Clients: {client_ids}")
 
    best_loss = float('inf')
    best_acc, best_ap, best_f1 = -1.0, -1.0, -1.0
@@ -64,7 +65,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
       elif task_cfg.optimizer == 'Adam':
          optimizers[i] = optim.Adam(local_models[i].parameters(), lr=task_cfg.lr, weight_decay=5e-4, betas=(0.9, 0.999))
       else:
-         print('Err> Invalid optimizer %s specified' % task_cfg.optimizer)
+         logging.info('Err> Invalid optimizer %s specified' % task_cfg.optimizer)
 
    schedulers = {}
    for i in client_ids:
@@ -73,18 +74,18 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
       # schedulers.append(torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers[i],mode='max',factor=0.5,patience=5,verbose=True))
 
    ''' Pretraining Communication (Model Answer for Node Embeddings) '''
-   # print("Pretraining Communication Starts")
+   # logging.info("Pretraining Communication Starts")
    # in_dim = fed_data_train[0].dataset.node_feature.shape[1]
    # encoder = MLPEncoder(in_dim=in_dim, out_dim=16)
    # for c in fed_data_train:
    #    client = c.dataset.location 
    #    feature = client.upload_features(c.dataset.node_feature, tot_num_nodes, encoder)
    #    server.client_features.append(feature) # Server collects the clients' features
-   # print("Clients finished uploading embeddings, server computing global embeddings...")
+   # logging.info("Clients finished uploading embeddings, server computing global embeddings...")
    # start_time = time.time()
    # global_states = server.get_global_node_states() # Server computes global features
    # end_time = time.time()
-   # print(f"Time taken for Global Node State Computation: {end_time - start_time}")
+   # logging.info(f"Time taken for Global Node State Computation: {end_time - start_time}")
    # for c in fed_data_train:
    #    c.dataset.node_states = copy.deepcopy([s.detach() for s in global_states]) # Clients collects the global features
 
@@ -105,14 +106,21 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
    # for i, c in enumerate(fed_data_train):
    #    c.dataset.node_feature = final_feat
    # end_fedgcn = time.time()
-   # print(f"Time taken for Full Node Embedding Exchange: {end_fedgcn - start_fedgcn}")
-   # print(f"Time taken for Server to compute NE: {end_comp - start_comp}")   
-   # print(f"Time taken for Communication: {(end_fedgcn - start_fedgcn) - (end_comp - start_comp)}")  
+   # logging.info(f"Time taken for Full Node Embedding Exchange: {end_fedgcn - start_fedgcn}")
+   # logging.info(f"Time taken for Server to compute NE: {end_comp - start_comp}")   
+   # logging.info(f"Time taken for Communication: {(end_fedgcn - start_fedgcn) - (end_comp - start_comp)}")  
 
    best_metrics = defaultdict()
    """ Begin Training """
    for rd in range(env_cfg.n_rounds):
-      print("Round", rd)
+      logging.info("Round %d", rd)
+
+      # Skip round if no clients have training data (e.g. sparse CTDG patches)
+      if not client_ids:
+         logging.info("No participating clients in this snapshot, skipping round")
+         val_ap.append(0.0)
+         continue
+
       best_local_models = copy.deepcopy(local_models)
       best_val_acc = [float('-inf') for _ in range(env_cfg.n_clients)]
 
@@ -123,9 +131,9 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
          train_loss = train(env_cfg, task_cfg, local_models, optimizers, schedulers, client_ids, cm_map, fed_data_train, train_loss, rd, epoch, global_params=global_params_this_round, verbose=True)
          val_loss, val_acc, val_metrics = local_test(local_models, client_ids, task_cfg, env_cfg, cm_map, fed_data_val, val_loss, val_acc, val_metrics)
          # Update metrics data
-         val_ap.append(val_metrics['ap'])
+         val_ap.append(val_metrics.get('ap', 0.0))
          val_ap_fig.data[0].y = val_ap  # Update node_label for Val AP Fig
-         print('>   @Local> accuracy = ', val_acc) # Keep! for local client performance reference
+         logging.info(f'>   @Local> accuracy = {val_acc}') # Keep! for local client performance reference
 
          for c in client_ids:
             if val_acc[c] > best_val_acc[c]:
@@ -136,7 +144,7 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
          if epoch == (env_cfg.n_epochs - 1) and rd == 0:
             node_embeds = []
             ccn = server.ccn
-            print("Number of NE exchanges:", len(ccn))
+            logging.info("Number of NE exchanges: %d", len(ccn))
             ne_start_time = time.time()
             for c in client_ids:
                node_embeds.append(clients[c].send_ccn_embeddings(ccn))
@@ -146,29 +154,30 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
             for c in client_ids:
                clients[c].receive_from_server(messages)
             ne_end_time = time.time()
-            print(f"Time taken for Full Node Embedding Exchange: {ne_end_time - ne_start_time}")   
-            print(f"Time taken for Server to compute NE: {compute_end - compute_start}")   
-            print(f"Time taken for Communication: {(ne_end_time - ne_start_time) - (compute_end - compute_start)}")   
+            logging.info(f"Time taken for Full Node Embedding Exchange: {ne_end_time - ne_start_time}")   
+            logging.info(f"Time taken for Server to compute NE: {compute_end - compute_start}")   
+            logging.info(f"Time taken for Communication: {(ne_end_time - ne_start_time) - (compute_end - compute_start)}")   
 
-      print('>   @Local> Val Metrics = ', val_metrics) # Keep! for local client performance reference
+      logging.info(f'>   @Local> Val Metrics = {val_metrics}') # Keep! for local client performance reference
       prev_glob_for_blend = global_model # Get before aggre
       # Aggregate Local Models
       update_cloud_cache(cache, best_local_models, client_ids)
       # global_model = gnn_aggregate(cache, client_shard_sizes, data_size, client_ids)
       global_model = gnn_weighted_aggregate(cache, client_shard_sizes, client_ids, prev_global_model=prev_glob_for_blend, agg_mode='fedavg')
-      print("Aggregated Model")
+      logging.info("Aggregated Model")
       global_loss, global_acc, global_metrics = global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fed_data_test)
       # Measure catastrophic forgetting
       if past_test_dict['data'] is not None:
          catstro_dict = catastrophic_forgetting_test(global_model, client_ids, task_cfg, env_cfg, cm_map, past_test_dict)
-         print('>   @Cloud> Forgetting = ', catstro_dict)
-      overall_loss = np.array(global_loss)[np.array(global_loss) != 0.0].sum() / data_size
-      global_f1 = global_metrics['micro_f1']
-      global_ap = global_metrics['ap']
-      print('>   @Cloud> post-aggregation loss avg = ', overall_loss)
-      print('>   @Cloud> accuracy = ', global_acc)
-      print('>   @Cloud> Other Metrics = ', global_metrics)
-      test_ap.append(global_metrics['ap']) # Update metrics data
+         logging.info(f'>   @Cloud> Forgetting = {catstro_dict}')
+      nonzero_loss = np.array(global_loss)[np.array(global_loss) != 0.0]
+      overall_loss = nonzero_loss.sum() / data_size if nonzero_loss.size > 0 else 0.0
+      global_f1 = global_metrics.get('micro_f1', 0.0)
+      global_ap = global_metrics.get('ap', 0.0)
+      logging.info(f'>   @Cloud> post-aggregation loss avg = {overall_loss}')
+      logging.info(f'>   @Cloud> accuracy = {global_acc}')
+      logging.info(f'>   @Cloud> Other Metrics = {global_metrics}')
+      test_ap.append(global_ap) # Update metrics data
       test_ap_fig.data[0].y = test_ap  # Update node_label for Test AP Fig
 
       # Record Best Readings      

@@ -10,7 +10,8 @@ import math
 from src.utils.utils import lp_prediction, compute_mrr, nc_prediction
 from src.plotting.plot_graphs import draw_graph, plot_h
 from src.fl_models import ReshapeH
-
+import logging
+logging.basicConfig(level=logging.INFO)
 class EdgeDevice:
     def __init__(self, id, prev_ne, subnodes):
         self.id = id
@@ -114,7 +115,7 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
         client_train_loss[id] = 0.0
     
     if not verbose:
-        sys.stdout = open(os.devnull, 'w')  # sys.stdout is all the python output statement (e.g. print statements). We write these to the null device => not printing them
+        sys.stdout = open(os.devnull, 'w')  # sys.stdout is all the python output statement (e.g. logging.info statements). We write these to the null device => not logging.infoing them
 
     for m in range(num_models):
         models[m].train()  # Pytorch makes sure it is in training mode
@@ -148,7 +149,7 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
                     data.dataset.node_states[i] = client.prev_ne[i]
             # start_time = time.time()
             predicted_y, true, client.curr_ne, h_0 = model(copy.deepcopy(data.dataset))
-            # print(f"Time taken for Client {model_id} to train: {time.time() - start_time}")
+            # logging.info(f"Time taken for Client {model_id} to train: {time.time() - start_time}")
 
             client.h0 = h_0.detach().clone() # Append h_0 to client.h0 (for NE exchange)
 
@@ -175,12 +176,12 @@ def train(env_cfg, task_cfg, models, optimizers, schedulers, client_ids, cm_map,
             optimizers[model_id] = optimizer
             client_train_loss[model_id] += loss
         else:
-            print(f"Client {model_id} has no new edges to learn this round. Rest.")
+            logging.info(f"Client {model_id} has no new edges to learn this round. Rest.")
 
     for id in client_ids:
         schedulers[id].step()
 
-    # Restore printing
+    # Restore logging.infoing
     if not verbose:
         sys.stdout = sys.__stdout__
 
@@ -207,7 +208,7 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
             if task_cfg.task_type == 'LP':
                 edge_label_index, edge_label, val_nodes = data.dataset.edge_label_index, data.dataset.edge_label, data.dataset.subnodes
                 if len(edge_label) == 0 or edge_label.numel() == 0: # neglect participants with no validation data
-                    print("Ignore clients with no validation data")
+                    logging.info("Ignore clients with no validation data")
                     continue
 
             model_id = cm_map[data.dataset.location.id]
@@ -253,7 +254,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
         if task_cfg.task_type == 'LP':
             edge_label_index, edge_label = data.dataset.edge_label_index, data.dataset.edge_label
             if len(edge_label) == 0 or edge_label.numel() == 0: # neglect participants with no testing data
-                print("Ignore participants with no testing data")
+                logging.info("Ignore participants with no testing data")
                 continue
 
         model_id = cm_map[data.dataset.location.id]
@@ -263,7 +264,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
         if task_cfg.task_type == 'LP':
             predicted_y, _, _, _ = global_model(copy.copy(data.dataset))
             acc, ap = lp_prediction(predicted_y, edge_label.type_as(predicted_y))
-            print(f"Test Accuracy with {acc} by {data.dataset.location.id} with {data.dataset.edge_index.shape[1]} edges")
+            logging.info(f"Test Accuracy with {acc} by {data.dataset.location.id} with {data.dataset.edge_index.shape[1]} edges")
             mrr = compute_mrr(predicted_y, edge_label.type_as(predicted_y), edge_label_index)
             if not math.isnan(mrr):
                 metrics['mrr'] += mrr
@@ -289,7 +290,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
                 accuracy, metrics['ap'] = accuracy + ccn_acc, metrics['ap'] + ccn_ap
             else:
                 count -= 1
-            print("CCE Test Accuracy is", ccn_acc, "with MRR", ccn_mrr, "and AP", ccn_ap, "by server with", server_data.edge_index.shape[1], "edges")
+            logging.info(f"CCE Test Accuracy is {ccn_acc}, with MRR {ccn_mrr}, and AP {ccn_ap}, by server with {server_data.edge_index.shape[1]} edges")
 
             count += 1
 
@@ -315,7 +316,7 @@ def catastrophic_forgetting_test(global_model, client_ids, task_cfg, env_cfg, cm
         if task_cfg.task_type == 'LP':
             edge_label = data.dataset.edge_label
             if len(edge_label) == 0 or edge_label.numel() == 0: # neglect participants with no testing data
-                print("Ignore participants with no testing data")
+                logging.info("Ignore participants with no testing data")
                 continue
 
         model_id = cm_map[data.dataset.location.id]

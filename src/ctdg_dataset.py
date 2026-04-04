@@ -86,6 +86,60 @@ def build_patches(temporal_data, num_nodes, in_dim, patch_size=100000):
     return patches
 
 
+def build_cumulative_patches(temporal_data, num_nodes, in_dim, edge_dim, patch_size=100000):
+    """
+    Build cumulative patch graphs where each patch contains ALL edges
+    from the beginning up to the current time window.
+
+    Patch i = edges[0 : (i+1)*patch_size], deduplicated and undirected.
+    This gives full structural context at each time step.
+
+    To manage memory, edge features use a scalar 1.0 per edge (edge_dim=1)
+    instead of full 128-dim vectors, since cumulative graphs can reach 16M+ edges.
+    """
+    src = temporal_data.src
+    dst = temporal_data.dst
+    t = temporal_data.t
+
+    num_events = src.shape[0]
+    patches = []
+
+    shared_node_feature = torch.ones(num_nodes, in_dim)
+    transform = RandomLinkSplit(
+        num_val=0.0, num_test=0.0, add_negative_train_samples=False
+    )
+
+    for start in range(0, num_events, patch_size):
+        # Cumulative: always start from 0
+        end = min(start + patch_size, num_events)
+
+        cum_src = src[:end]
+        cum_dst = dst[:end]
+
+        edge_index = torch.stack([cum_src, cum_dst], dim=0).long()
+        edge_index = to_undirected(edge_index)
+        edge_index = coalesce(edge_index)
+
+        num_edges = edge_index.shape[1]
+        edge_feature = torch.ones(num_edges, edge_dim)
+
+        g = Data(
+            edge_index=edge_index,
+            num_nodes=num_nodes,
+            node_feature=shared_node_feature,
+            edge_feature=edge_feature,
+            t_start=t[0].item(),
+            t_end=t[end - 1].item(),
+        )
+
+        split_data, _, _ = transform(g)
+        patches.append(split_data)
+
+    logging.info(f"Built {len(patches)} cumulative patches (patch_size={patch_size}) from {num_events} events, "
+                 f"last patch has {patches[-1].edge_index.shape[1]} edges")
+    return patches
+
+
 def load_ctdg_data(task_cfg, patch_size=100000):
     """
     Load TGBL dataset and convert to patch-based format.
@@ -117,9 +171,16 @@ def load_ctdg_data(task_cfg, patch_size=100000):
     cfg.dataset.edge_dim = task_cfg.edge_dim
 
     # Build patches from each TGB split independently
-    train_list = build_patches(train_data, num_nodes, task_cfg.in_dim, patch_size)
-    val_list = build_patches(val_data, num_nodes, task_cfg.in_dim, patch_size)
-    test_list = build_patches(test_data, num_nodes, task_cfg.in_dim, patch_size)
+    incremental = getattr(task_cfg, 'incremental_learning', True)
+    if not incremental:
+        logging.info("CTDG cumulative mode: each patch includes all prior edges")
+        build_fn = lambda td: build_cumulative_patches(td, num_nodes, task_cfg.in_dim, task_cfg.edge_dim, patch_size)
+    else:
+        build_fn = lambda td: build_patches(td, num_nodes, task_cfg.in_dim, patch_size)
+
+    train_list = build_fn(train_data)
+    val_list = build_fn(val_data)
+    test_list = build_fn(test_data)
 
     # Align lists: main.py iterates for i in range(num_snapshots - 2)
     # and indexes train_list[i], val_list[i], test_list[i].

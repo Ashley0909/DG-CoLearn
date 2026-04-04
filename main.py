@@ -96,7 +96,8 @@ def main():
     incremental_mode_str = "Incremental Learning (Only Learn New Edges)" if incremental_learning else "Full Graph Learning"
     logging.info(f"Mode: {incremental_mode_str}")
     if mode == 'ctdg':
-        logging.info(f"CTDG Mode: patch_size={patch_size}, {num_snapshots} patches")
+        graph_str = "cumulative" if not incremental_learning else "incremental"
+        logging.info(f"CTDG Mode ({graph_str}): patch_size={patch_size}, {num_snapshots} patches")
 
     clients, cindexmap = init_GNN_clients(env_cfg.n_clients, last_ne=None) # Stay the same for all snapshots
     glob_model = init_global_model(env_cfg, task_cfg, arg)

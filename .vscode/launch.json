@@ -11,7 +11,9 @@
             "program": "/nfs-share/ahta3/workspace/DG-CoLearn/main.py",
             "console": "integratedTerminal",
             // "args": ["Reddit"],
-            "args": ["tgbl-coin",
+            "args": ["tgbn-reddit",
+            "--mode", "ctdg",
+            "--patch_size", "100000",
             "--incremental_learning", "True"
             ],
             // "args": ["as733", "as733.yaml"],

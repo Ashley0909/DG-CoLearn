@@ -1,6 +1,7 @@
 import torch
 from src.fl_clients import EdgeDevice
 from src.gnn_recurrent import GNN
+from graphgym.config import cfg
 import logging
 logging.basicConfig(level=logging.INFO)
 class EnvSettings:
@@ -25,7 +26,7 @@ class EnvSettings:
 class TaskSettings:
     """ Task Settings for FL """
 
-    def __init__(self, task_type, dataset, path, in_dim, out_dim, edge_dim, batch_size=5, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0, mode='snapshot', patch_size=100000):
+    def __init__(self, task_type, dataset, path, in_dim, out_dim, edge_dim, batch_size=5, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0, mode='snapshot', patch_size=100000, fl_strategy='dgcolearn'):
         self.task_type = task_type
         self.dataset = dataset
         self.num_classes = num_classes
@@ -43,6 +44,7 @@ class TaskSettings:
         self.mu = 0.05 # FedProx
         self.mode = mode  # 'snapshot' or 'ctdg'
         self.patch_size = patch_size  # edges per patch in CTDG mode
+        self.fl_strategy = fl_strategy  # 'dgcolearn' or 'feddgl'
 
 def init_config(dataset, bw_set):
     if dataset.lower() == 'sbm': # Generate graphs
@@ -57,11 +59,14 @@ def init_config(dataset, bw_set):
     elif dataset.lower() in {'tgbl-comment', 'tgbl-coin'}:
         env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=2, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.01, lr_decay=0.1)
+    elif dataset.lower() in {'tgbn-reddit'}:
+        env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
     elif dataset in ['DBLP3', 'DBLP5', 'Reddit']:
         env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
         task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
     else:
-        logging.info('[Err] Invalid dataset provided. Options are {SBM, bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733, tgbl-comment}')
+        logging.info('[Err] Invalid dataset provided. Options are {SBM, bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733, tgbl-comment, tgbl-coin, tgbn-reddit}')
         exit(0)
 
     return env_cfg, task_cfg
@@ -82,6 +87,15 @@ def init_global_model(env_cfg, task_cfg, arg):
 
     if device == 'gpu' or device.type == 'cuda':
         torch.set_default_dtype(torch.float32)
+
+    # FedDGL uses EvolveGCN-H as its base dynamic GNN
+    if task_cfg.fl_strategy == 'feddgl':
+        cfg.gnn.layer_type = 'evolve_gcn_h'
+        cfg.dataset.num_nodes = arg['num_nodes']
+        # EvolveGCN-H always outputs in_channels (ignores out_channels), so
+        # dim_inner must equal the Preprocess output dim to keep shapes consistent
+        cfg.gnn.dim_inner = task_cfg.in_dim
+        cfg.gnn.layers_mp = 1
 
     model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'], task_type=task_cfg.task_type)
     torch.set_default_dtype(torch.float32)

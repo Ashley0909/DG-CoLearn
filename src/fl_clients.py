@@ -77,6 +77,18 @@ def compute_loss(task_cfg, pred, true):
     mse_loss = nn.MSELoss(size_average=True)
     ce_loss = nn.CrossEntropyLoss(size_average=True)
 
+    # Soft-label cross-entropy (e.g. tgbn-reddit): pred and true are both
+    # [N, C] where true is a probability distribution per node. Mask out
+    # nodes with no label (all-zero row) before averaging.
+    if (task_cfg.loss == 'ce' and true.ndim == 2 and pred.ndim == 2
+            and true.shape == pred.shape and true.dtype.is_floating_point):
+        row_mask = true.sum(dim=-1) > 0
+        if row_mask.sum() == 0:
+            return pred.sum() * 0.0, pred
+        log_probs = torch.log_softmax(pred[row_mask], dim=-1)
+        loss = -(true[row_mask] * log_probs).sum(dim=-1).mean()
+        return loss, torch.softmax(pred, dim=-1)
+
     # default manipulation for pred and true
     # can be skipped if special loss computation is needed
     # if multi task binary classification, treat as flatten binary
@@ -203,7 +215,7 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
 
     with torch.no_grad():  # Don't need to compute gradients bc testing don't require updating weights
         count = 0.0 # only for getting metrics, since each client only has one batch (so dont need count for accuracy)
-        metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0}
+        metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0, 'ndcg': 0.0}
         for data in fdl.fbd_list:
             if task_cfg.task_type == 'LP':
                 edge_label_index, edge_label, val_nodes = data.dataset.edge_label_index, data.dataset.edge_label, data.dataset.subnodes
@@ -226,9 +238,10 @@ def local_test(models, client_ids, task_cfg, env_cfg, cm_map, fdl, last_loss_rep
             else:
                 predicted_y, true, _, _ = model(copy.copy(data.dataset))
                 loss, _ = compute_loss(task_cfg, predicted_y, true)
-                acc, macro_f1, micro_f1 = nc_prediction(predicted_y, true)
+                acc, macro_f1, micro_f1, ndcg = nc_prediction(predicted_y, true)
                 metrics['macro_f1'] += macro_f1
                 metrics['micro_f1'] += micro_f1
+                metrics['ndcg'] += ndcg
             # Compute Loss and other metrics
             client_test_loss[model_id] += loss.detach().item()
             client_test_acc[model_id] += acc
@@ -248,7 +261,7 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
     # Local evaluation, batch-wise
     accuracy = 0.0
     count = 0
-    metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0}
+    metrics = {'ap': 0.0, 'macro_f1': 0.0, 'micro_f1': 0.0, 'mrr': 0.0, 'ndcg': 0.0}
 
     for data in fdl.fbd_list:
         if task_cfg.task_type == 'LP':
@@ -273,8 +286,9 @@ def global_test(global_model, server, client_ids, task_cfg, env_cfg, cm_map, fdl
                 count -= 1
         else:
             predicted_y, true_label, _, _ = global_model(copy.copy(data.dataset))
-            acc, macro_f1, micro_f1 = nc_prediction(predicted_y, true_label)
+            acc, macro_f1, micro_f1, ndcg = nc_prediction(predicted_y, true_label)
             accuracy, metrics['macro_f1'], metrics['micro_f1'] = accuracy + acc, metrics['macro_f1'] + macro_f1, metrics['micro_f1'] + micro_f1
+            metrics['ndcg'] += ndcg
 
         count += 1
 
@@ -329,20 +343,20 @@ def catastrophic_forgetting_test(global_model, client_ids, task_cfg, env_cfg, cm
             accuracy, metrics['ap'] = accuracy + acc, metrics['ap'] + ap
         else:
             predicted_y, true_label, _, _ = global_model(copy.copy(data.dataset))
-            _, _, micro_f1 = nc_prediction(predicted_y, true_label)
+            _, _, micro_f1, _ = nc_prediction(predicted_y, true_label)
             full_f1 += micro_f1
         count += 1
 
     if task_cfg.task_type == 'LP':
         current_acc = accuracy/count
-        acc_forgetting = original_metric['best_acc'] - current_acc
+        acc_forgetting = original_metric.get('best_acc', 0.0) - current_acc
         forgetting_dict['acc'] = acc_forgetting
         current_ap = metrics['ap']/count
-        ap_forgetting = original_metric['best_ap'] - current_ap
+        ap_forgetting = original_metric.get('best_ap', 0.0) - current_ap
         forgetting_dict['ap'] = ap_forgetting
     else:
         current_f1 = full_f1 / count
-        forgetting = original_metric['best_f1'] - current_f1
-        forgetting_dict['f1'] = forgetting 
+        forgetting = original_metric.get('best_f1', 0.0) - current_f1
+        forgetting_dict['f1'] = forgetting
     
     return forgetting_dict

@@ -208,4 +208,8 @@ def run_dygl(env_cfg, task_cfg, server, clients, global_mod, cm_map, fed_data_tr
 
    torch.save(checkpoint, f"{save_path}/model_checkpoint_ss{snapshot}_lr{task_cfg.lr}.pth")
 
+   # If no round improved (e.g. no participating clients), fall back to input model
+   if best_model is None:
+      best_model = global_mod
+
    return best_model, best_metrics, val_ap_fig, test_ap_fig, test_ap, fed_data_test

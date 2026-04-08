@@ -27,6 +27,32 @@ try:
 except ImportError:
     PyGLinkPropPredDataset = None
 
+try:
+    from tgb.nodeproppred.dataset_pyg import PyGNodePropPredDataset
+except ImportError:
+    PyGNodePropPredDataset = None
+
+
+def load_tgbn(dataset_root, dataset_name):
+    """Load a TGB node-property-prediction dataset (e.g. tgbn-reddit).
+
+    Returns the dataset handle (needed for get_node_label) alongside the
+    TemporalData object and train/val/test edge masks.
+    """
+    logging.info(f"Loading tgbn dataset from {dataset_root}")
+    if PyGNodePropPredDataset is None:
+        raise ImportError(
+            "tgb is required for tgbn-* datasets. Install it with `pip install tgb`."
+        )
+
+    dataset = PyGNodePropPredDataset(name=dataset_name, root=dataset_root)
+    data = dataset.get_TemporalData()
+    train_mask = dataset.train_mask
+    val_mask = dataset.val_mask
+    test_mask = dataset.test_mask
+    logging.info("tgbn data loaded!")
+    return dataset, data, train_mask, val_mask, test_mask
+
 
 def load_tgbl(dataset_root, dataset_name):
     logging.info(f"Loading tgbl dataset from {dataset_root}")
@@ -103,6 +129,73 @@ def load_gnndata(task_cfg):
         if first_edge_feature is not None:
             task_cfg.edge_dim = first_edge_feature.shape[1]
             cfg.dataset.edge_dim = task_cfg.edge_dim
+
+    elif task_cfg.task_type == 'NC' and task_cfg.dataset.lower() in {'tgbn-reddit', 'tgbn-genre', 'tgbn-token'}:
+        # TGB node-property-prediction dataset -> equal-width time snapshots
+        num_snapshots_target = 10
+        tgbn_dataset, td, _, _, _ = load_tgbn(task_cfg.path, task_cfg.dataset.lower())
+        num_nodes = td.num_nodes
+        num_classes = tgbn_dataset.num_classes
+        task_cfg.num_classes = num_classes
+        task_cfg.in_dim = 32
+        task_cfg.out_dim = num_classes
+        hidden_conv1, hidden_conv2 = 128, 128
+        last_embeddings = [
+            torch.zeros(num_nodes, hidden_conv1),
+            torch.zeros(num_nodes, hidden_conv1),
+            torch.zeros(num_nodes, hidden_conv2),
+        ]
+        msg = getattr(td, 'msg', None)
+        edge_dim = msg.shape[1] if msg is not None else 128
+        task_cfg.edge_dim = edge_dim
+        cfg.dataset.edge_dim = edge_dim
+
+        t_tensor = td.t
+        t_min, t_max = int(t_tensor.min().item()), int(t_tensor.max().item())
+        bin_width = max(1, (t_max - t_min + 1) // num_snapshots_target)
+        bin_edges = [t_min + i * bin_width for i in range(num_snapshots_target)] + [t_max + 1]
+
+        tgbn_dataset.reset_label_time()
+        data_list = []
+        for b in range(num_snapshots_target):
+            lo, hi = bin_edges[b], bin_edges[b + 1]
+            ei_mask = (t_tensor >= lo) & (t_tensor < hi)
+            patch_src = td.src[ei_mask].long()
+            patch_dst = td.dst[ei_mask].long()
+            edge_index = torch.stack([patch_src, patch_dst], dim=0)
+            edge_index = to_undirected(edge_index)
+            edge_index = coalesce(edge_index)
+
+            num_edges = edge_index.shape[1]
+            edge_feature = torch.ones(num_edges, edge_dim)
+            if msg is not None and ei_mask.any():
+                orig_count = int(ei_mask.sum().item())
+                if orig_count <= num_edges:
+                    edge_feature[:orig_count] = msg[ei_mask].float()
+
+            # Attach labels: drain get_node_label up through hi
+            node_label = torch.zeros(num_nodes, num_classes)
+            while True:
+                label_tuple = tgbn_dataset.get_node_label(hi - 1)
+                if label_tuple is None:
+                    break
+                _, label_srcs, labels = label_tuple
+                node_label[label_srcs] = labels
+
+            g = Data(
+                edge_index=edge_index,
+                num_nodes=num_nodes,
+                node_feature=torch.ones(num_nodes, task_cfg.in_dim),
+                edge_feature=edge_feature,
+                node_label=node_label,
+                node_label_index=torch.arange(num_nodes),
+            )
+            data_list.append(g)
+
+        logging.info(f"Built {len(data_list)} tgbn snapshots (bin_width={bin_width})")
+        train_list, val_list, test_list = generate_tvt(task_cfg, len(data_list), data_list)
+        num_snapshots = len(data_list)
+        return num_snapshots, train_list, val_list, test_list, {'last_embeddings': last_embeddings, 'num_nodes': num_nodes}
 
     elif task_cfg.task_type == 'NC':
         data = np.load('./data/{}.npz'.format(task_cfg.dataset))
@@ -278,7 +371,11 @@ def graph_partition(server, data, num_parts, task_type, partition_type='Ours', t
     #     louvainSplitter = LouvainSplitter(num_parts)
     #     partitioning_labels = louvainSplitter(data)
     if partition_type == 'Ours':
-        node_labels = [] if node_label is None else node_label.tolist()
+        # For soft labels (2D prob vectors), skip label-based partitioning
+        if node_label is None or node_label.dim() != 1:
+            node_labels = []
+        else:
+            node_labels = node_label.tolist()
         labels = partition.CoLearnPartition(copy.deepcopy(adjacency_list), edge_index.shape[1], node_labels=node_labels, K=num_parts)
         partitioning_labels = torch.tensor(labels)
     # elif partition_type == 'Label':

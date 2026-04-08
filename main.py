@@ -41,6 +41,7 @@ def main():
     incremental_learning = True  # default to True
     mode = 'snapshot'  # 'snapshot' or 'ctdg'
     patch_size = 100000  # edges per patch in CTDG mode
+    fl_strategy = 'dgcolearn'  # 'dgcolearn' or 'feddgl'
     cfg_file = None
 
     i = 2
@@ -63,6 +64,12 @@ def main():
                 i += 2
             else:
                 i += 1
+        elif sys.argv[i] == '--fl_strategy':
+            if i + 1 < len(sys.argv):
+                fl_strategy = sys.argv[i + 1].lower()
+                i += 2
+            else:
+                i += 1
         else:
             cfg_file = str(sys.argv[i])  # Assume it's the config file for as-733
             i += 1
@@ -76,6 +83,7 @@ def main():
     task_cfg.incremental_learning = incremental_learning  # Add incremental learning flag to config
     task_cfg.mode = mode
     task_cfg.patch_size = patch_size
+    task_cfg.fl_strategy = fl_strategy
 
     # Load Data
     data_loading_start = time.time()
@@ -127,18 +135,38 @@ def main():
             x_labels.append(f"Snapshot {ss} Round {rd}")
     test_ap_fig = configure_plotly(x_labels, test_ap, 'Average Tested Precision (Area under PR Curve)', "")
 
+    # Initialize FedDGL state if using FedDGL strategy
+    feddgl_state = None
+    if fl_strategy == 'feddgl':
+        from src.feddgl import FedDGLState
+        proto_dim = task_cfg.in_dim  # matches EvolveGCN hidden dim (cfg.gnn.dim_inner set in init_global_model)
+        feddgl_state = FedDGLState(
+            num_classes=task_cfg.num_classes, proto_dim=proto_dim,
+            gamma=1.0, q=0.5, topk=50
+        )
+        logging.info(f"FedDGL: initialized state with {task_cfg.num_classes} classes, proto_dim={proto_dim}")
+
     past_test_data, best_metrics = None, None # For measuring catastrophic forgetting
     snapshot_times = []
     for i in range(num_snapshots-2): # only (num_snapshots - 2) training rounds because of TVT split
         snapshot_start_time = time.time()
         logging.info("Snapshot %d", i)
         server.server_round = i
-        fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, data_size = get_gnn_clientdata(server, train_list[i], val_list[i], test_list[i], task_cfg, clients)       
-        glob_model, best_metrics, _, test_ap_fig, test_ap, past_test_data = run_dygl(env_cfg, task_cfg, server, clients, glob_model, cindexmap, fed_data_train, fed_data_val, fed_data_test, 
-                                                                    i, client_shard_sizes, data_size, test_ap_fig, test_ap, {'data': past_test_data, 'metric': best_metrics}, arg["num_nodes"])
+        fed_data_train, fed_data_val, fed_data_test, client_shard_sizes, data_size = get_gnn_clientdata(server, train_list[i], val_list[i], test_list[i], task_cfg, clients)
+        if fl_strategy == 'feddgl':
+            from src.feddgl import run_feddgl
+            glob_model, best_metrics, _, test_ap_fig, test_ap, past_test_data = run_feddgl(
+                env_cfg, task_cfg, server, clients, glob_model, cindexmap,
+                fed_data_train, fed_data_val, fed_data_test,
+                i, client_shard_sizes, data_size, test_ap_fig, test_ap,
+                {'data': past_test_data, 'metric': best_metrics}, arg["num_nodes"],
+                feddgl_state=feddgl_state)
+        else:
+            glob_model, best_metrics, _, test_ap_fig, test_ap, past_test_data = run_dygl(env_cfg, task_cfg, server, clients, glob_model, cindexmap, fed_data_train, fed_data_val, fed_data_test,
+                                                                        i, client_shard_sizes, data_size, test_ap_fig, test_ap, {'data': past_test_data, 'metric': best_metrics}, arg["num_nodes"])
         snapshot_time = time.time() - snapshot_start_time
         snapshot_times.append(snapshot_time)
-        logging.info(f"Snapshot Ends. Best Round: {best_metrics['best_round']}, Best Metrics: {best_metrics}")
+        logging.info(f"Snapshot Ends. Best Round: {best_metrics.get('best_round', 'N/A')}, Best Metrics: {best_metrics}")
         logging.info(f"Snapshot {i} Training Time: {snapshot_time:.2f} seconds")
         logging.info("=============")
     

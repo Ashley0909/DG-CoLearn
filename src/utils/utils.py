@@ -216,6 +216,25 @@ def lp_prediction(pred_score, true_l):
     return acc, ap
 
 def nc_prediction(pred_score, true_l):
+    # Soft-label case (e.g. tgbn-reddit): probability vectors per node.
+    # Skip rows with no label (all-zero) and compute both NDCG@10 and argmax F1.
+    if true_l.dim() == 2:
+        from sklearn.metrics import ndcg_score
+        y_true = true_l.detach().cpu().numpy()
+        y_score = pred_score.detach().cpu().numpy()
+        row_mask = y_true.sum(axis=1) > 0
+        if row_mask.sum() == 0:
+            return 0.0, 0.0, 0.0, 0.0
+        y_true_m = y_true[row_mask]
+        y_score_m = y_score[row_mask]
+        ndcg = ndcg_score(y_true_m, y_score_m, k=10)
+        pred_cls = y_score_m.argmax(axis=1)
+        true_cls = y_true_m.argmax(axis=1)
+        acc = accuracy_score(true_cls, pred_cls)
+        macro_f1 = f1_score(true_cls, pred_cls, average='macro', zero_division=0)
+        micro_f1 = f1_score(true_cls, pred_cls, average='micro', zero_division=0)
+        return acc, macro_f1, micro_f1, ndcg
+
     pred = pred_score.argmax(dim=1).detach().cpu().numpy()
     true = true_l.cpu().numpy()
 
@@ -223,7 +242,7 @@ def nc_prediction(pred_score, true_l):
     macro_f1 = f1_score(true, pred, average='macro')
     micro_f1 = f1_score(true, pred, average='micro')
 
-    return acc, macro_f1, micro_f1
+    return acc, macro_f1, micro_f1, 0.0
 
 def compute_mrr(pred_score, true_l, edge_label_index, do_softmax=True):
     ''' Compute MRR by grouping edges per source node (memory-efficient).
@@ -329,9 +348,12 @@ def generated_neg_cce_edges(edge_index, node_assignment, total_num, num_neg_samp
     return neg_edge_index
 
 def count_label_occur(node_assignment, node_labels):
-    if node_labels == None:
+    if node_labels is None:
         return
-    
+    # Skip for soft labels (e.g. tgbn-reddit)
+    if node_labels.dim() != 1:
+        return
+
     pairs = torch.stack([node_assignment, node_labels], dim=1)
 
     # Get unique (subgraph, label) pairs and their counts
@@ -349,6 +371,11 @@ def count_label_occur(node_assignment, node_labels):
         logging.info(f"Subgraph {subgraph}: {label_counts}")
 
 def compute_label_weights(node_label):
+    # Soft labels (e.g. tgbn-reddit): return uniform weights
+    if node_label.dim() == 2:
+        num_classes = node_label.shape[1]
+        return torch.ones(num_classes) / num_classes
+
     num_classes = torch.max(node_label)
     class_counts = torch.bincount(node_label, minlength=num_classes).float()
 

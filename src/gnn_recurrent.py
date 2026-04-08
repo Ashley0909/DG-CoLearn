@@ -171,7 +171,9 @@ class GNN(nn.Module):
         else:
             cfg.dataset.task = 'node'
             cfg.dataset.edge_encoder = False
-            cfg.gnn.layer_type = 'gcnconv'
+            # Preserve recurrent layer type if already set (e.g. FedDGL uses EvolveGCN)
+            if cfg.gnn.layer_type not in recurrent_layer_types:
+                cfg.gnn.layer_type = 'gcnconv'
 
         GNNStage = stage_dict[cfg.gnn.stage_type]
         GNNHead = head_dict[cfg.dataset.task]

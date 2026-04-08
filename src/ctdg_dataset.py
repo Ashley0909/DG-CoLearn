@@ -13,7 +13,7 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.transforms import RandomLinkSplit
 from torch_geometric.utils import to_undirected, coalesce
-from src.flgnn_dataset import load_tgbl, gen_train_clients
+from src.flgnn_dataset import load_tgbl, load_tgbn, gen_train_clients
 import partition
 
 logging.basicConfig(level=logging.INFO)
@@ -140,6 +140,181 @@ def build_cumulative_patches(temporal_data, num_nodes, in_dim, edge_dim, patch_s
     return patches
 
 
+def build_nc_patches(temporal_data, tgbn_dataset, num_nodes, in_dim, edge_dim,
+                     num_classes, patch_size=100000):
+    """Group edge events into fixed-size patches and attach per-patch node labels.
+
+    Labels are drained from tgbn_dataset.get_node_label() for every label
+    timestamp that falls within the patch's [t_start, t_end] window.
+    Nodes without labels in the window keep zeros.
+    """
+    src = temporal_data.src
+    dst = temporal_data.dst
+    t = temporal_data.t
+    msg = getattr(temporal_data, 'msg', None)
+
+    num_events = src.shape[0]
+    patches = []
+
+    for start in range(0, num_events, patch_size):
+        end = min(start + patch_size, num_events)
+        patch_src = src[start:end].long()
+        patch_dst = dst[start:end].long()
+        t_end = int(t[end - 1].item())
+
+        edge_index = torch.stack([patch_src, patch_dst], dim=0)
+        edge_index = to_undirected(edge_index)
+        edge_index = coalesce(edge_index)
+
+        num_edges = edge_index.shape[1]
+        if msg is not None:
+            edge_feature = torch.ones(num_edges, msg.shape[1])
+            orig_count = end - start
+            if orig_count <= num_edges:
+                edge_feature[:orig_count] = msg[start:end].float()
+        else:
+            edge_feature = torch.ones(num_edges, edge_dim)
+
+        # Drain all label timestamps up through t_end (stateful iterator)
+        node_label = torch.zeros(num_nodes, num_classes)
+        while True:
+            label_tuple = tgbn_dataset.get_node_label(t_end)
+            if label_tuple is None:
+                break
+            _, label_srcs, labels = label_tuple
+            node_label[label_srcs] = labels
+
+        g = Data(
+            edge_index=edge_index,
+            num_nodes=num_nodes,
+            node_feature=torch.ones(num_nodes, in_dim),
+            edge_feature=edge_feature,
+            node_label=node_label,
+            node_label_index=torch.arange(num_nodes),
+            t_start=int(t[start].item()),
+            t_end=t_end,
+        )
+        patches.append(g)
+
+    logging.info(f"Built {len(patches)} NC patches of size {patch_size} from {num_events} events")
+    return patches
+
+
+def build_cumulative_nc_patches(temporal_data, tgbn_dataset, num_nodes, in_dim,
+                                edge_dim, num_classes, patch_size=100000):
+    """Cumulative version of build_nc_patches: patch i includes ALL edges from
+    the beginning (index 0) up to (i+1)*patch_size, so the graph grows over time.
+
+    Labels are still drained per-window via tgbn_dataset.get_node_label().
+    """
+    src = temporal_data.src
+    dst = temporal_data.dst
+    t = temporal_data.t
+
+    num_events = src.shape[0]
+    patches = []
+
+    for start in range(0, num_events, patch_size):
+        end = min(start + patch_size, num_events)
+        t_end = int(t[end - 1].item())
+
+        # Cumulative: always start from index 0
+        cum_src = src[:end].long()
+        cum_dst = dst[:end].long()
+
+        edge_index = torch.stack([cum_src, cum_dst], dim=0)
+        edge_index = to_undirected(edge_index)
+        edge_index = coalesce(edge_index)
+
+        num_edges = edge_index.shape[1]
+        edge_feature = torch.ones(num_edges, edge_dim)
+
+        # Drain all label timestamps up through t_end (stateful iterator)
+        node_label = torch.zeros(num_nodes, num_classes)
+        while True:
+            label_tuple = tgbn_dataset.get_node_label(t_end)
+            if label_tuple is None:
+                break
+            _, label_srcs, labels = label_tuple
+            node_label[label_srcs] = labels
+
+        g = Data(
+            edge_index=edge_index,
+            num_nodes=num_nodes,
+            node_feature=torch.ones(num_nodes, in_dim),
+            edge_feature=edge_feature,
+            node_label=node_label,
+            node_label_index=torch.arange(num_nodes),
+            t_start=int(t[0].item()),
+            t_end=t_end,
+        )
+        patches.append(g)
+
+    logging.info(f"Built {len(patches)} cumulative NC patches (patch_size={patch_size}) from {num_events} events, "
+                 f"last patch has {patches[-1].edge_index.shape[1]} edges")
+    return patches
+
+
+def load_ctdg_nc_data(task_cfg, patch_size=100000):
+    """CTDG loader for TGB node-property-prediction datasets (e.g. tgbn-reddit)."""
+    tgbn_dataset, data, train_mask, val_mask, test_mask = load_tgbn(
+        task_cfg.path, task_cfg.dataset.lower()
+    )
+    num_nodes = data.num_nodes
+    num_classes = tgbn_dataset.num_classes
+
+    task_cfg.num_classes = num_classes
+    task_cfg.in_dim = 32
+    task_cfg.out_dim = num_classes
+    msg = getattr(data, 'msg', None)
+    task_cfg.edge_dim = msg.shape[1] if msg is not None else 128
+
+    from graphgym.config import cfg
+    cfg.dataset.edge_dim = task_cfg.edge_dim
+
+    incremental = getattr(task_cfg, 'incremental_learning', True)
+    mode_str = "incremental" if incremental else "cumulative"
+    logging.info(f"CTDG-NC mode ({mode_str}): {num_nodes} nodes, {num_classes} classes, patch_size={patch_size}")
+
+    tgbn_dataset.reset_label_time()
+    train_data = data[train_mask]
+    val_data = data[val_mask]
+    test_data = data[test_mask]
+
+    if incremental:
+        build_fn = lambda td: build_nc_patches(td, tgbn_dataset, num_nodes,
+                                               task_cfg.in_dim, task_cfg.edge_dim,
+                                               num_classes, patch_size)
+    else:
+        build_fn = lambda td: build_cumulative_nc_patches(td, tgbn_dataset, num_nodes,
+                                                          task_cfg.in_dim, task_cfg.edge_dim,
+                                                          num_classes, patch_size)
+
+    train_list = build_fn(train_data)
+    val_list = build_fn(val_data)
+    test_list = build_fn(test_data)
+
+    num_snapshots = len(train_list)
+    if len(val_list) < num_snapshots:
+        val_list = [val_list[i % len(val_list)] for i in range(num_snapshots)]
+    if len(test_list) < num_snapshots:
+        test_list = [test_list[i % len(test_list)] for i in range(num_snapshots)]
+
+    num_snapshots = len(train_list) + 2
+
+    hidden_conv1, hidden_conv2 = 128, 128
+    last_embeddings = [
+        torch.zeros(num_nodes, hidden_conv1),
+        torch.zeros(num_nodes, hidden_conv1),
+        torch.zeros(num_nodes, hidden_conv2),
+    ]
+    arg = {'last_embeddings': last_embeddings, 'num_nodes': num_nodes}
+
+    logging.info(f"CTDG-NC: {len(train_list)} training patches, "
+                 f"{len(val_list)} val patches, {len(test_list)} test patches")
+    return num_snapshots, train_list, val_list, test_list, arg
+
+
 def load_ctdg_data(task_cfg, patch_size=100000):
     """
     Load TGBL dataset and convert to patch-based format.
@@ -151,6 +326,9 @@ def load_ctdg_data(task_cfg, patch_size=100000):
     Returns the same tuple as load_gnndata():
         (num_snapshots, train_list, val_list, test_list, arg)
     """
+    if task_cfg.task_type == 'NC':
+        return load_ctdg_nc_data(task_cfg, patch_size)
+
     data, train_data, val_data, test_data = load_tgbl(task_cfg.path, task_cfg.dataset.lower())
 
     num_nodes = data.num_nodes

@@ -1,4 +1,4 @@
-# To use the most updated implementation, switch to `fast_gpa` branch.
+# To use the most updated implementation, switch to `fast_gpa` branch. 🚀
 
 # Instructions and Guideline to Files
 
@@ -24,7 +24,7 @@ Runs the Federated Learning process, called by `main.py`
 
 # Step 1: Downloading Dataset
 
-Due to the large sizes of the node classification datasets, we include the link to download each dataset in a [Google Drive](https://drive.google.com/drive/folders/19BWid2En9IWdzbPeZ3Tj29c4iDdXhtRV?usp=drive_link). Simply download the files and copy them into the `data/` directory
+Due to the large sizes of particular datasets, we include the link to download each dataset in a [Google Drive](https://drive.google.com/drive/folders/19BWid2En9IWdzbPeZ3Tj29c4iDdXhtRV?usp=drive_link). Simply download the files and copy them into the `data/` directory
 
 ---
 
@@ -78,16 +78,20 @@ python3 main.py $dataset$
 ```
 
 where
-`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733, tgbl-comment}
+`dataset`:  datasets, options are {bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733, tgbl-coin, tgbn-reddit}
 
-Example Experiments
+**Example Experiments**
 
 `python3 main.py bitcoinOTC`
 `python3 main.py DBLP3`
 `python3 main.py Reddit`
-`python3 main.py tgbl-comment`
 
-The configuration of AS-733 is different, we have provided a configuration file `as733.yaml` as another argument.
+We use CTDG method (i.e. DyGFormer [1]) to process TGB datasets:
+
+`python3 main.py tgbl-coin --mode ctdg --patch_size 100000`
+`python3 main.py tgbn-reddit --mode ctdg --patch_size 100000`
+
+The configuration of AS-733 is different, we have provided a configuration file `as733.yaml` as another argument:
 
 `python3 main.py as733 as733.yaml`
 
@@ -118,3 +122,5 @@ You can visualise the result using `analysis_gpa.ipynb` for comparing graph part
 Simply change the path of the log result recorded using our logging system and rename it to your desire.
 
 ---
+
+[1] Yu, Le, et al. "Towards better dynamic graph learning: New architecture and unified library." Advances in Neural Information Processing Systems 36 (2023): 67686-67700.

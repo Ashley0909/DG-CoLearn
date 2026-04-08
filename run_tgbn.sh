@@ -11,5 +11,5 @@
 source /nfs-share/ahta3/miniforge3/etc/profile.d/conda.sh
 conda activate dgcolearn311
 
-# python3 -u main.py tgbn-reddit --mode ctdg --patch_size 100000 --incremental_learning True
-python3 main.py tgbn-reddit --mode ctdg --patch_size 100000 --fl_strategy feddgl --incremental_learning False
+python3 -u main.py tgbn-reddit --mode ctdg --patch_size 100000 --incremental_learning True
+# python3 main.py tgbn-reddit --mode ctdg --patch_size 100000 --fl_strategy feddgl --incremental_learning False

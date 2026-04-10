@@ -1,35 +1,9 @@
-import copy
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GCNConv, Linear
 
-class ReshapeH():
-    def __init__(self, glob_shape):
-        self.glob_shape = glob_shape
-
-    def reshape_to_fill(self, h, subnodes):
-        if h.shape[0] == self.glob_shape:
-            return h
-        
-        reshaped = torch.zeros((self.glob_shape, h.shape[1]))
-        # reshaped = copy.deepcopy(self.empty_h)
-        reshaped[subnodes] = h
-
-        return reshaped
-    
-class MLPEncoder(nn.Module):
-    def __init__(self, in_dim, out_dim, hidden_dim=16):
-        super().__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(in_dim, hidden_dim),
-            # nn.ReLU(),
-            nn.Linear(hidden_dim, out_dim)
-        )
-
-    def forward(self, x):
-        return self.encoder(x)
+from src.fl_models import ReshapeH
 
 class ROLANDGNN(torch.nn.Module):
     def __init__(self, device, input_dim, num_nodes, output_dim, dropout=0.3, update='moving', loss=nn.BCEWithLogitsLoss):

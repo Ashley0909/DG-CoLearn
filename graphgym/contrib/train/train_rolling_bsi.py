@@ -34,11 +34,11 @@ def get_sample(G, today: int, forecast_horizon: int):
     device = torch.device(cfg.device)
     # ==== construct edges for message passing (MP) ====
     # Use all positive edges in (-infty, today] for message passing and embedding construction.
-    prior_edge_mask = (G.edge_time_raw <= today).bool().to(device)
+    prior_edge_mask = (G.edge_time_raw <= today).bool()
 
     # ==== construct edges to be predicted ====
     # Get edges in (today, today + forecast horizon] as positive samples.
-    f = torch.scalar_tensor(forecast_horizon * 86400, dtype=torch.int32).to(device)
+    f = torch.scalar_tensor(forecast_horizon * 86400, dtype=torch.int32)
     forecast_mask = torch.logical_and(
         (G.edge_time_raw > today).bool(),
         (G.edge_time_raw <= today + f).bool()
@@ -53,11 +53,11 @@ def get_sample(G, today: int, forecast_horizon: int):
     num_neg = n_edge_index.shape[1]
 
     # Combine positive and negative samples.
-    edge_label_index = torch.cat((p_edge_index, n_edge_index), axis=1).to(device)
+    edge_label_index = torch.cat((p_edge_index, n_edge_index), axis=1)
     # Create labels.
     edge_label = torch.cat(
         (torch.ones(num_pos), torch.zeros(num_neg))
-    ).long().to(device)
+    ).long()
 
     f_time_delta = today + f - G.edge_time_raw[prior_edge_mask]
 

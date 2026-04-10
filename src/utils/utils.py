@@ -2,6 +2,7 @@ import requests
 import gzip
 import shutil
 import os
+import tarfile
 
 import numpy as np
 import torch
@@ -9,12 +10,13 @@ import sys
 import datetime
 import random
 from torch_geometric.data import Data
-from collections import deque, defaultdict
+from collections import deque
 
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import f1_score, accuracy_score
 from scipy.sparse import coo_matrix
-
+import logging
+logging.basicConfig(level=logging.INFO)
 class Logger(object):
     def __init__(self, path):
         now = datetime.datetime.now()
@@ -35,6 +37,9 @@ class Logger(object):
     def flush(self):
         pass
 
+def is_dir_empty(path):
+    return os.path.isdir(path) and not os.listdir(path)
+
 def download_url(url, save_path):
     response = requests.get(url, stream=True)
     file_path = os.path.join(save_path, url.split("/")[-1])
@@ -48,6 +53,10 @@ def extract_gz(gz_path):
         with open(extracted_path, "wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
     return extracted_path
+
+def extract_tar_gz(path, extract_to):
+    with tarfile.open(path, "r:gz") as tar:
+        tar.extractall(path=extract_to)
 
 def process_txt_data(txt_path):
     with open(txt_path, 'r') as f:
@@ -91,32 +100,49 @@ def get_exclusive_subgraph(current, prev):
     prev_T = prev.cpu().numpy().T
 
     # Find exclusive edges in current (not in prev)
-    add_mask = np.all(current_T[:, None] == prev_T[None, :], axis=-1)
-    exclusive_add_mask = ~np.any(add_mask, axis=1)
+    exclusive_add_mask = ~np.any(np.all(current_T[:, None] == prev_T[None, :], axis=-1), axis=1)
     exclusive_current = current[:, exclusive_add_mask]
 
     # Find exclusive edges in prev (not in current)
-    remove_mask = np.all(prev_T[:, None] == current_T[None, :], axis=-1)
-    exclusive_remove_mask = ~np.any(remove_mask, axis=1)
+    exclusive_remove_mask = ~np.any(np.all(prev_T[:, None] == current_T[None, :], axis=-1), axis=1)
     exclusive_prev = prev[:, exclusive_remove_mask]
+
+    logging.info(f'> Info: Exclusive edges - Newly Added: {torch.unique(exclusive_current, dim=1).size(1)}, Deleted: {torch.unique(exclusive_prev, dim=1).size(1)}')
 
     # Combine both sets of exclusive edges
     exclusive_edges = torch.cat([exclusive_current, exclusive_prev], dim=1)
 
-    # Get 1-hop neighbors
-    new_nodes = torch.unique(exclusive_edges)
-    mask_1hop = torch.isin(current[0], new_nodes) | torch.isin(current[1], new_nodes)
+    # Get 1-hop neighbors of all updated nodes
+    updated_nodes = torch.unique(exclusive_edges)
+    mask_1hop = torch.isin(current[0], updated_nodes) | torch.isin(current[1], updated_nodes)
     one_hop_edges = current[:, mask_1hop]
 
-    # Get 2-hop neighbors
+    # Get 2-hop neighbors of all updated nodes
     one_hop_nodes = torch.unique(one_hop_edges)
     mask_2hop = torch.isin(current[0], one_hop_nodes) | torch.isin(current[1], one_hop_nodes)
     two_hop_edges = current[:, mask_2hop]
 
     if two_hop_edges.nelement() == 0:
-        print('>E No edges left to train')
+        logging.info('>E No edges left to train')
 
-    return two_hop_edges
+    # Get nodes that exclusively appear in current and prev (Note: Exclusive edges does not mean exclusive nodes)
+    prev_nodes = torch.unique(prev)
+    current_nodes = torch.unique(current)
+    new_nodes = current_nodes[~torch.isin(current_nodes, prev_nodes)].tolist()
+    
+    # Build an adjacency list for the new nodes
+    adj_new_nodes = {}
+    for n in new_nodes:
+        mask = (current[0] == n) | (current[1] == n)
+        connected_edges = current[:, mask]
+
+        if connected_edges.nelement() != 0:
+            connected_nodes = torch.unique(torch.where(connected_edges[0] == n, connected_edges[1], connected_edges[0])) # if index 0 is n, return index 1, else index 0
+            adj_new_nodes[n] = connected_nodes.tolist()
+        else:
+            adj_new_nodes[n] = []
+
+    return two_hop_edges, adj_new_nodes
 
 def node_embedding_update_sum(start_node, ccn, k):
     '''
@@ -190,6 +216,25 @@ def lp_prediction(pred_score, true_l):
     return acc, ap
 
 def nc_prediction(pred_score, true_l):
+    # Soft-label case (e.g. tgbn-reddit): probability vectors per node.
+    # Skip rows with no label (all-zero) and compute both NDCG@10 and argmax F1.
+    if true_l.dim() == 2:
+        from sklearn.metrics import ndcg_score
+        y_true = true_l.detach().cpu().numpy()
+        y_score = pred_score.detach().cpu().numpy()
+        row_mask = y_true.sum(axis=1) > 0
+        if row_mask.sum() == 0:
+            return 0.0, 0.0, 0.0, 0.0
+        y_true_m = y_true[row_mask]
+        y_score_m = y_score[row_mask]
+        ndcg = ndcg_score(y_true_m, y_score_m, k=10)
+        pred_cls = y_score_m.argmax(axis=1)
+        true_cls = y_true_m.argmax(axis=1)
+        acc = accuracy_score(true_cls, pred_cls)
+        macro_f1 = f1_score(true_cls, pred_cls, average='macro', zero_division=0)
+        micro_f1 = f1_score(true_cls, pred_cls, average='micro', zero_division=0)
+        return acc, macro_f1, micro_f1, ndcg
+
     pred = pred_score.argmax(dim=1).detach().cpu().numpy()
     true = true_l.cpu().numpy()
 
@@ -197,32 +242,41 @@ def nc_prediction(pred_score, true_l):
     macro_f1 = f1_score(true, pred, average='macro')
     micro_f1 = f1_score(true, pred, average='micro')
 
-    return acc, macro_f1, micro_f1
+    return acc, macro_f1, micro_f1, 0.0
 
 def compute_mrr(pred_score, true_l, edge_label_index, do_softmax=True):
-    ''' Using the same way how EvolveGCN evaluates mrr '''
+    ''' Compute MRR by grouping edges per source node (memory-efficient).
+        Equivalent to the original dense-matrix approach but avoids
+        allocating a (num_nodes x num_nodes) array. '''
     if do_softmax:
         probs = torch.softmax(pred_score, dim=0)
     else:
         probs = pred_score
 
-    probs = probs.cpu().detach().numpy()
+    probs = probs.cpu().detach().numpy().squeeze()
     true_l = true_l.cpu().detach().numpy()
 
     source_nodes = edge_label_index[0].cpu().detach().numpy()
     target_nodes = edge_label_index[1].cpu().detach().numpy()
 
-    pred_matrix = coo_matrix((probs, (source_nodes, target_nodes))).toarray()
-    true_matrix = coo_matrix((true_l, (source_nodes, target_nodes))).toarray()
+    # Group by source node
+    from collections import defaultdict
+    src_groups = defaultdict(lambda: ([], []))
+    for idx in range(len(source_nodes)):
+        src = source_nodes[idx]
+        src_groups[src][0].append(probs[idx])
+        src_groups[src][1].append(true_l[idx])
 
-    # Calculate mrr for each row where there are true edges
     row_mrrs = []
-    for i, pred_row in enumerate(pred_matrix):
-        # Check if there are any existing edges in the true_matrix for this row
-        if np.isin(1, true_matrix[i]):  # 1 indicates an existing edge
-            row_mrrs.append(get_row_mrr(pred_row, true_matrix[i]))
+    for src, (pred_list, label_list) in src_groups.items():
+        pred_arr = np.array(pred_list)
+        label_arr = np.array(label_list)
+        if np.any(label_arr == 1):
+            row_mrrs.append(get_row_mrr(pred_arr, label_arr))
 
-    avg_mrr = torch.tensor(row_mrrs).mean()  # Return the average mrr across all rows
+    if not row_mrrs:
+        return 0.0
+    avg_mrr = torch.tensor(row_mrrs).mean()
     return avg_mrr.float().item()
 
 def get_row_mrr(prob_score, true_l):
@@ -234,7 +288,7 @@ def get_row_mrr(prob_score, true_l):
 
     # Apply the ordered indices to the existing mask to find the rank of true edges
     ordered_existing_mask = existing_mask[ordered_indices]
-    existing_ranks = np.arange(1, true_l.shape[0] + 1, dtype=np.cfloat)[ordered_existing_mask]
+    existing_ranks = np.arange(1, true_l.shape[0] + 1, dtype=np.float64)[ordered_existing_mask]
 
     if existing_ranks.shape[0] == 0: # No valid ranks, return 0 instead of NaN
         return 0.0
@@ -261,14 +315,45 @@ def generate_neg_edges(edge_index, node_range:torch.Tensor, num_neg_samples:int=
             neg_edges.add((src, dst))
         run += 1
 
+    if len(neg_edges) == 0:
+        return torch.empty((2, 0), dtype=torch.long)
+
+    neg_edge_index = torch.tensor(list(neg_edges)).t()  # Convert back to tensor shape (2, num_neg_samples)
+    
+    return neg_edge_index
+
+def generated_neg_cce_edges(edge_index, node_assignment, total_num, num_neg_samples:int=None):
+    ''' Generate negative edges for cross-client evaluation (CCE) within a specific subgraph '''
+    allowed_nodes = torch.arange(total_num)
+    existing_edges = set(map(tuple, edge_index.t().tolist()))  # Convert to set for fast lookup
+
+    if num_neg_samples is None:
+        num_neg_samples = edge_index.size(1)  # Default: same number as positive edges
+
+    neg_edges = set()
+    timeout = num_neg_samples * 5
+    run = 0
+
+    while (len(neg_edges) < num_neg_samples) and (run < timeout):
+        src, dst = random.choice(allowed_nodes), random.choice(allowed_nodes)
+        if src != dst and node_assignment[src] != node_assignment[dst] and (src, dst) not in existing_edges: # Check if this cross client edge is not already existing
+            neg_edges.add((src, dst))
+        run += 1
+
+    if len(neg_edges) == 0:
+        return torch.empty((2, 0), dtype=torch.long)
+
     neg_edge_index = torch.tensor(list(neg_edges)).t()  # Convert back to tensor shape (2, num_neg_samples)
     
     return neg_edge_index
 
 def count_label_occur(node_assignment, node_labels):
-    if node_labels == None:
+    if node_labels is None:
         return
-    
+    # Skip for soft labels (e.g. tgbn-reddit)
+    if node_labels.dim() != 1:
+        return
+
     pairs = torch.stack([node_assignment, node_labels], dim=1)
 
     # Get unique (subgraph, label) pairs and their counts
@@ -281,11 +366,16 @@ def count_label_occur(node_assignment, node_labels):
             subgraph_label_counts[subgraph] = {}
         subgraph_label_counts[subgraph][label] = count
 
-    # Print results
+    # logging.info results
     for subgraph, label_counts in subgraph_label_counts.items():
-        print(f"Subgraph {subgraph}: {label_counts}")
+        logging.info(f"Subgraph {subgraph}: {label_counts}")
 
 def compute_label_weights(node_label):
+    # Soft labels (e.g. tgbn-reddit): return uniform weights
+    if node_label.dim() == 2:
+        num_classes = node_label.shape[1]
+        return torch.ones(num_classes) / num_classes
+
     num_classes = torch.max(node_label)
     class_counts = torch.bincount(node_label, minlength=num_classes).float()
 

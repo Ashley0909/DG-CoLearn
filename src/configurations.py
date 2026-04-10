@@ -1,0 +1,102 @@
+import torch
+from src.fl_clients import EdgeDevice
+from src.gnn_recurrent import GNN
+from graphgym.config import cfg
+import logging
+logging.basicConfig(level=logging.INFO)
+class EnvSettings:
+    """ Environment Settings for FL """
+
+    def __init__(self, n_clients, n_rounds, n_epochs, keep_best=True, device='gpu', showplot=False, bw_set=(0.175, 1250), max_T=830):
+        self.mode = None
+        self.n_clients = n_clients
+        self.n_rounds = n_rounds
+        self.n_epochs = n_epochs
+        self.keep_best = keep_best # keep best global model if True
+        self.device = device
+        self.showplot = showplot
+        self.bw_set = bw_set  # bandwidth setting = (bw_d, bw_u, bw_server)
+        self.max_T = max_T  # max time
+
+        if device == 'cpu':
+            self.device = torch.device('cpu')
+        elif device == 'gpu' and torch.cuda.is_available():
+            self.device = torch.device('cuda:0')
+
+class TaskSettings:
+    """ Task Settings for FL """
+
+    def __init__(self, task_type, dataset, path, in_dim, out_dim, edge_dim, batch_size=5, optimizer='SGD', num_classes=10, loss=None, lr=0.01, lr_decay=1.0, poisoning_rate=0.0, mode='snapshot', patch_size=100000, fl_strategy='dgcolearn'):
+        self.task_type = task_type
+        self.dataset = dataset
+        self.num_classes = num_classes
+        self.path = path
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.edge_dim = edge_dim
+        self.batch_size = batch_size
+        self.optimizer = optimizer
+        self.loss = loss
+        self.lr = lr
+        self.lr_decay = lr_decay
+        self.poisoning_rate = poisoning_rate
+        self.model_size = 10.0  #10MB
+        self.mu = 0.05 # FedProx
+        self.mode = mode  # 'snapshot' or 'ctdg'
+        self.patch_size = patch_size  # edges per patch in CTDG mode
+        self.fl_strategy = fl_strategy  # 'dgcolearn' or 'feddgl'
+
+def init_config(dataset, bw_set):
+    if dataset.lower() == 'sbm': # Generate graphs
+        env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
+    elif dataset.lower() in ['bitcoinotc', 'uci']:
+        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=2, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.03, lr_decay=0.1)
+    elif dataset.lower() == 'as733':
+        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=2, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=1, batch_size=5, optimizer='Adam', loss='ce', lr=0.01, lr_decay=0.1)
+    elif dataset.lower() in {'tgbl-comment', 'tgbl-coin'}:
+        env_cfg = EnvSettings(n_clients=10, n_rounds=2, n_epochs=2, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='LP', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.01, lr_decay=0.1)
+    elif dataset.lower() in {'tgbn-reddit'}:
+        env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
+    elif dataset in ['DBLP3', 'DBLP5', 'Reddit']:
+        env_cfg = EnvSettings(n_clients=10, n_rounds=10, n_epochs=10, keep_best=True, device='gpu', bw_set=bw_set, max_T=5600)
+        task_cfg = TaskSettings(task_type='NC', dataset=dataset, path=f'data/{dataset}/', in_dim=None, out_dim=None, edge_dim=128, batch_size=5, optimizer='Adam', loss='ce', lr=0.04, lr_decay=1e-1)
+    else:
+        logging.info('[Err] Invalid dataset provided. Options are {SBM, bitcoinOTC, UCI, DBLP3, DBLP5, Reddit, as733, tgbl-comment, tgbl-coin, tgbn-reddit}')
+        exit(0)
+
+    return env_cfg, task_cfg
+
+def init_GNN_clients(num_clients, last_ne):
+    """ last_ne is the same for each client, with shape [total_num_nodes, hidden_conv_1] and [total_num_nodes, hidden_conv_2] """
+    clients = []
+    cm_map = {}
+    for i in range(num_clients):
+        clients.append(EdgeDevice(id=f'client_{i}', prev_ne=last_ne, subnodes=None))
+        cm_map[f'client_{i}'] = i
+
+    return clients, cm_map
+
+def init_global_model(env_cfg, task_cfg, arg):
+    model = None
+    device = env_cfg.device
+
+    if device == 'gpu' or device.type == 'cuda':
+        torch.set_default_dtype(torch.float32)
+
+    # FedDGL uses EvolveGCN-H as its base dynamic GNN
+    if task_cfg.fl_strategy == 'feddgl':
+        cfg.gnn.layer_type = 'evolve_gcn_h'
+        cfg.dataset.num_nodes = arg['num_nodes']
+        # EvolveGCN-H always outputs in_channels (ignores out_channels), so
+        # dim_inner must equal the Preprocess output dim to keep shapes consistent
+        cfg.gnn.dim_inner = task_cfg.in_dim
+        cfg.gnn.layers_mp = 1
+
+    model = GNN(dim_in=task_cfg.in_dim, dim_out=task_cfg.out_dim, glob_shape=arg['num_nodes'], task_type=task_cfg.task_type)
+    torch.set_default_dtype(torch.float32)
+    return model

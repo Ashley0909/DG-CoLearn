@@ -3,7 +3,8 @@ import copy
 import random
 import torch
 from torch_geometric.utils import from_networkx
-
+import logging
+logging.basicConfig(level=logging.INFO)
 def generate_graph(task_cfg):
     ''' Generate a sequence of evolving graphs by SBM. Rather than gradually adjusting connection, first construct snapshot 0, then manually change edges.'''
     snapshots = []
